@@ -99,6 +99,7 @@
   }
   table.grid thead tr.grp th{top:0;z-index:11;background:#eaeeec;}
   table.grid thead tr.sub th{top:26px;z-index:10;}
+  table.grid thead th.th-vert{writing-mode:vertical-rl;text-orientation:upright;font-size:9px;letter-spacing:-1px;padding:4px 1px;}
   table.grid td.fixed, table.grid th.fixed{
     position:sticky;left:0;background:#fff;z-index:5;
   }
@@ -186,6 +187,7 @@
   tr.pv-holiday td.pv-daynum{color:#a12626;}
   .pv-teacheronly{color:#8a4b00;}
   .pv-annual{font-weight:700;color:#155c34;}
+  .pv-cleaning-off{color:var(--warn);}
   .pv-meetingnote{color:#3949ab;font-style:italic;}
   .preview-memolist{margin-top:14px;font-size:12.5px;}
   .preview-memolist h4{font-size:13px;color:var(--accent);margin:0 0 6px;}
@@ -260,7 +262,7 @@
   <button class="tab" data-tab="settings">設定(学校名・祝休日)</button>
 </nav>
 
-<main class="narrow" id="mainSchedule">
+<main id="mainSchedule">
 
   <div id="tab-schedule">
     <div id="noFileBanner" class="banner info" style="display:none;"></div>
@@ -273,7 +275,6 @@
         <button id="btnNextMonth" class="ghost tiny" title="次の月" style="font-size:14px;padding:4px 10px;">▶</button>
         <div class="spacer"></div>
         <button id="btnResetWidths" class="ghost tiny" style="font-size:12px;padding:5px 10px;">列幅をリセット</button>
-        <button id="btnWeeklyDutyBulk" class="ghost tiny" style="font-size:12px;padding:5px 10px;">週番をまとめて入力</button>
       </div>
       <div class="grid-topscroll" id="gridTopScroll"><div id="gridTopScrollInner"></div></div>
       <div class="grid-wrap" id="gridWrap"></div>
@@ -371,6 +372,11 @@
         <input type="text" id="setSchoolName" placeholder="○○中学校" style="width:260px;">
       </div>
       <div class="field-row">
+        <label>版・状態表示(任意)</label>
+        <input type="text" id="setVersionLabel" placeholder="例: 正式版、保護者説明会時点(4/10)" style="width:260px;">
+        <small class="hint">月間・年間予定表のタイトルに表示されます(印刷・PDF・Excel出力にも反映)。</small>
+      </div>
+      <div class="field-row">
         <label>年度(4月始まり・西暦)</label>
         <input type="number" id="setFiscalYear" style="width:100px;">
         <small class="hint">例: 令和8年度 → 2026 と入力(2026年4月〜2027年3月)</small>
@@ -415,11 +421,29 @@
     </div>
 
     <div class="panel">
+      <h2>祝日の例外(追加・変更・削除)</h2>
+      <p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">
+        国の特別法による祝日移動(例: 2020年東京オリンピックに伴う「海の日」「スポーツの日」「山の日」の一時的な移動)など、上の自動計算だけでは対応できない例外がある場合に、個別の日付を手動で祝日として追加したり、自動計算された祝日の指定を解除したりできます。
+        「変更」したい場合は、元の日付の祝日指定を解除し、新しい日付を祝日として追加してください。ここでの設定はこのデータファイルに保存されます。
+      </p>
+      <div class="field-row" style="flex-wrap:wrap;gap:8px;align-items:center;">
+        <input type="date" id="holidayOvrDate">
+        <select id="holidayOvrType" style="max-width:220px;">
+          <option value="add">祝日として追加する</option>
+          <option value="remove">この日の祝日指定を解除する</option>
+        </select>
+        <input type="text" id="holidayOvrLabel" placeholder="名称(例: 海の日)" style="max-width:200px;">
+        <button id="btnHolidayOvrSave" class="primary">保存</button>
+        <span id="holidayOvrMsg" style="font-size:12.5px;color:var(--warn);"></span>
+      </div>
+      <div class="holiday-list" id="holidayOverrideList" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="panel">
       <h2>入力候補(プリセット)の編集</h2>
       <p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">
         各項目をクリックしたときに候補として表示される内容です。読点(、)またはカンマ(,)区切りで自由に編集できます(自由入力自体は常に可能です)。
       </p>
-      <div class="field-row"><label style="min-width:140px;">掃除</label><input type="text" id="presetCleaning" style="flex:1;min-width:280px;"></div>
       <div class="field-row"><label style="min-width:140px;">部活動</label><input type="text" id="presetClub" style="flex:1;min-width:280px;"></div>
       <div class="field-row"><label style="min-width:140px;">1〜3年 授業日課</label><input type="text" id="presetPeriod" style="flex:1;min-width:280px;"></div>
       <div class="field-row"><label style="min-width:140px;">週番</label><input type="text" id="presetWeeklyDuty" style="flex:1;min-width:280px;"></div>
@@ -590,7 +614,6 @@
   </div>
 </div>
 
-<datalist id="dl-cleaning"></datalist>
 <datalist id="dl-club"></datalist>
 <datalist id="dl-lunch"></datalist>
 <datalist id="dl-period"></datalist>
@@ -621,7 +644,6 @@ async function sha256Hex(text){
 
 function defaultPresets(){
   return {
-    cleaning: ['○','×','15:00以降','大'],
     club: ['○','×','15:00以降'],
     lunch: ['○','×'],
     period: ['1','2','3','4','5','6','道','総','学','欠','●','○','行','音','弁'],
@@ -649,8 +671,10 @@ function emptyState(){
     formatVersion: 7,
     meta:{ schoolName:'', fiscalYear: now.getMonth()>=3 ? now.getFullYear() : now.getFullYear()-1,
       term2StartMonth: 8, term3StartMonth: 1, // 2学期・3学期の開始月(暦月1-12)。既定は1学期4-7月/2学期8-12月/3学期1-3月
-      editPasswordHash: DEFAULT_PASSWORD_HASH }, // 編集用パスワード(SHA-256ハッシュ)。既定値は"0000"
+      editPasswordHash: DEFAULT_PASSWORD_HASH, // 編集用パスワード(SHA-256ハッシュ)。既定値は"0000"
+      versionLabel:'' }, // 予定表タイトルに添える版表記(例:"正式版","保護者説明会時点(4/10)")。任意
     manualDayFlags:{},   // "YYYY-MM-DD" -> {mode:'holiday'|'schoolday', label:''}
+    holidayOverrides:{}, // "YYYY-MM-DD" -> {type:'add'|'remove', label:''} 特別法による祝日移動等の例外を手動で追加・解除
     days:{},             // "YYYY-MM-DD" -> dayRecord
     presets: defaultPresets(),
     colWidths:{},         // 列key -> 幅(px)。未指定は既定値を使用
@@ -669,6 +693,16 @@ function normalizeState(obj){
   if(!obj.meta.term2StartMonth) obj.meta.term2StartMonth = 8;
   if(!obj.meta.term3StartMonth) obj.meta.term3StartMonth = 1;
   if(!obj.meta.editPasswordHash) obj.meta.editPasswordHash = DEFAULT_PASSWORD_HASH;
+  if(typeof obj.meta.versionLabel !== 'string') obj.meta.versionLabel = '';
+  if(!obj.holidayOverrides || typeof obj.holidayOverrides!=='object') obj.holidayOverrides = {};
+  else {
+    Object.keys(obj.holidayOverrides).forEach(key=>{
+      const ov = obj.holidayOverrides[key];
+      if(!ov || (ov.type!=='add' && ov.type!=='remove') || !/^\d{4}-\d{2}-\d{2}$/.test(key)){
+        delete obj.holidayOverrides[key];
+      }
+    });
+  }
   if(!obj.requiredHours){ obj.requiredHours = defaultRequiredHours(); }
   else {
     const def = defaultRequiredHours();
@@ -708,7 +742,7 @@ function emptyDayRecord(){
   return {
     eventsAnnual:'', eventsMonthly:'', eventsTeacherOnly:'', meeting:'',
     planningMeeting:false, staffMeeting:false,
-    cleaning:'', club:'',
+    cleaning:null, club:'', // 掃除はnull=未設定(土日祝は既定オフ、それ以外は既定オン)。明示的にtrue/falseを入れると常にその値を使う
     lunch:{g1:'',g2:'',g3:''},
     periods:{ g1:['','','','','',''], g2:['','','','','',''], g3:['','','','','',''] },
     schoolDay:{g1:null,g2:null,g3:null}, // 学年別の登校日フラグ。null=祝日・土日から自動判定
@@ -729,6 +763,10 @@ function migrateDayRecord(rec){
   delete out.eventsPublic;
   out.planningMeeting = !!rec.planningMeeting;
   out.staffMeeting = !!rec.staffMeeting;
+  // 掃除は旧形式(自由入力文字列)からの移行: 空欄は「未設定」(null)、"×"は「なし」、それ以外(○/大/15:00以降など)は「あり」
+  if(typeof rec.cleaning === 'boolean') out.cleaning = rec.cleaning;
+  else if(typeof rec.cleaning === 'string') out.cleaning = rec.cleaning === '' ? null : rec.cleaning !== '×';
+  else out.cleaning = null;
   out.lunch = Object.assign({g1:'',g2:'',g3:''}, rec.lunch||{});
   out.periods = {
     g1: (rec.periods && rec.periods.g1) ? rec.periods.g1.slice(0,6).concat(Array(6).fill('')).slice(0,6) : ['','','','','',''],
@@ -784,6 +822,16 @@ function computeNationalHolidays(year){
   add(10, nthWeekdayDate(year,10,1,2), 'スポーツの日');
   add(11,3,'文化の日');
   add(11,23,'勤労感謝の日');
+  // 特別法による祝日移動など、自動計算だけでは対応できない例外の手動追加・解除
+  // (振替休日・国民の休日の判定はこの反映後に行うため、手動での祝日追加からも振替休日が自動で発生する)
+  const overrides = state.holidayOverrides || {};
+  Object.keys(overrides).forEach(key=>{
+    if(!key.startsWith(year+'-')) return;
+    const ov = overrides[key];
+    if(!ov) return;
+    if(ov.type==='remove') h.delete(key);
+    else if(ov.type==='add') h.set(key, ov.label || '祝日(手動追加)');
+  });
   const sortedKeys = Array.from(h.keys()).sort();
   for(const k of sortedKeys){
     const d = new Date(k+'T00:00:00');
@@ -820,6 +868,12 @@ function getDayStatus(y,m,d){
   if(dow===0) return {isHoliday:true, label:'日曜', source:'weekend'};
   if(dow===6) return {isHoliday:false, label:'土曜', source:'weekend-sat'};
   return {isHoliday:false, label:'', source:null};
+}
+// 「学校行事等(年間行事)」欄が未入力の祝日には、既定で祝日名(元日・振替休日など)を表示する。
+// 何か入力済みならその内容を優先し、祝日名は表示しない(実データ(state.days)には書き込まない、表示専用の既定値)。
+function effectiveEventsAnnual(rec, status){
+  if(rec.eventsAnnual) return rec.eventsAnnual;
+  return (status && status.source==='national') ? status.label : '';
 }
 // 指定日・学年が登校日かどうか。明示的にチェックボックスで設定されていればその値、
 // 未設定なら祝日・土日の自動判定(平日=登校日、土日祝=休業日)を既定値として使う。
@@ -1508,9 +1562,9 @@ const COLS = [
   {key:'eventsMonthly', label:'学校行事等(月のみ)', w:190, hint:'月の予定表のみに掲載されます'},
   {key:'eventsTeacherOnly', label:'学校行事等(教員のみ)', w:170},
   {key:'meeting', label:'会議・出張・研修', w:110},
-  {key:'planningMeeting', label:'企画会議', w:44, type:'checkbox'},
-  {key:'staffMeeting', label:'職員会議', w:44, type:'checkbox'},
-  {key:'cleaning', label:'掃除', w:52, dl:'dl-cleaning', hint:'×:簡単清掃'},
+  {key:'planningMeeting', label:'企画会議', w:26, type:'checkbox', vertical:true},
+  {key:'staffMeeting', label:'職員会議', w:26, type:'checkbox', vertical:true},
+  {key:'cleaning', label:'掃除', w:26, type:'checkbox', vertical:true, hint:'既定は平日「あり」・土日祝「なし」。チェックを変更すると月の予定表に反映されます(「なし」の日だけ「掃除×」と表示)'},
   {key:'club', label:'部活動', w:52, dl:'dl-club'},
   {key:'lunchG1', label:'1年', w:36, type:'checkbox', grpLunch:true},
   {key:'lunchG2', label:'2年', w:36, type:'checkbox', grpLunch:true},
@@ -1532,7 +1586,7 @@ function colWidth(key){
 }
 function renderDatalists(){
   const map = {
-    'dl-cleaning':'cleaning', 'dl-club':'club', 'dl-lunch':'lunch',
+    'dl-club':'club', 'dl-lunch':'lunch',
     'dl-period':'period', 'dl-weeklyduty':'weeklyDuty'
   };
   Object.keys(map).forEach(dlId=>{
@@ -1558,7 +1612,7 @@ function setFieldValue(dateKey, key, value){
   const sdm = key.match(/^g([123])SchoolDay$/);
   if(sdm){
     rec.schoolDay['g'+sdm[1]] = (value===true || value==='1' || value==='true');
-  } else if(key==='planningMeeting' || key==='staffMeeting'){
+  } else if(key==='planningMeeting' || key==='staffMeeting' || key==='cleaning'){
     rec[key] = (value===true || value==='1' || value==='true' || (typeof value==='string' && value.trim()!==''));
   } else if(key==='lunchG1'){ rec.lunch.g1 = value ? '○' : ''; }
   else if(key==='lunchG2'){ rec.lunch.g2 = value ? '○' : ''; }
@@ -1577,7 +1631,7 @@ function pruneIfEmpty(dateKey){
   const rec = state.days[dateKey];
   if(!rec) return;
   const empty = !rec.eventsAnnual && !rec.eventsMonthly && !rec.eventsTeacherOnly && !rec.meeting &&
-    !rec.planningMeeting && !rec.staffMeeting && !rec.cleaning && !rec.club &&
+    !rec.planningMeeting && !rec.staffMeeting && rec.cleaning===null && !rec.club &&
     !rec.lunch.g1 && !rec.lunch.g2 && !rec.lunch.g3 && !rec.weeklyDuty && !rec.memo &&
     rec.schoolDay.g1===null && rec.schoolDay.g2===null && rec.schoolDay.g3===null &&
     Object.values(rec.periods).every(arr=>arr.every(v=>!v));
@@ -1637,12 +1691,16 @@ function renderAgenda(){
     else if(c.grpLunch){ gkey='lunch'; glabel='給食(学年別)'; grouped=true; }
     else if(c.grpAttend){ gkey='attend'; glabel='登校日'; grouped=true; }
     else { gkey='single-'+c.key; glabel=c.label; grouped=false; } // 単独列は常に固有キーにして誤結合を防ぐ
-    if(gkey!==cur){ groups.push({label:glabel, span:0, grouped, hint:c.hint, colKey:c.key}); cur=gkey; }
+    if(gkey!==cur){ groups.push({label:glabel, span:0, grouped, hint:c.hint, colKey:c.key, vertical:c.vertical}); cur=gkey; }
     groups[groups.length-1].span++;
   });
   groups.forEach(g=>{
     if(g.grouped) html += `<th colspan="${g.span}">${g.label}</th>`;
-    else html += `<th rowspan="2" title="${escapeHtml(g.hint||'')}">${g.label}${editUnlocked?`<span class="resize-handle" data-col-key="${g.colKey}"></span>`:''}</th>`;
+    else {
+      const bulkBtn = g.colKey==='weeklyDuty' ? `<br><button type="button" class="ghost tiny" id="btnWeeklyDutyBulk" title="週番をまとめて入力" style="font-size:9.5px;padding:1px 4px;margin-top:2px;">まとめて入力</button>` : '';
+      const thCls = g.vertical ? ' class="th-vert"' : '';
+      html += `<th rowspan="2"${thCls} title="${escapeHtml(g.hint||'')}">${g.label}${bulkBtn}${editUnlocked?`<span class="resize-handle" data-col-key="${g.colKey}"></span>`:''}</th>`;
+    }
   });
   html += '</tr><tr class="sub">';
   COLS.forEach(c=>{ if(c.grade || c.grpLunch || c.grpAttend) html += `<th>${c.label}${editUnlocked?`<span class="resize-handle" data-col-key="${c.key}"></span>`:''}</th>`; });
@@ -1667,7 +1725,10 @@ function renderAgenda(){
     html += `<tr class="${rowClasses.join(' ')}" data-key="${key}">`;
     html += `<td class="fixed daynum">${d}</td><td class="fixed2 daydow">${DOW[dow]}</td>`;
     COLS.forEach((c,colIdx)=>{
-      const val = getFieldValue(rec, null, c.key);
+      // 掃除は未設定(null)なら土日祝は既定オフ、それ以外の平日は既定オンにする(schoolDayと同じ考え方)
+      const val = c.key==='cleaning' ? (typeof rec.cleaning==='boolean' ? rec.cleaning : autoSchoolDay)
+        : c.key==='eventsAnnual' ? effectiveEventsAnnual(rec, status)
+        : getFieldValue(rec, null, c.key);
       const gcls = c.grade ? ('g'+c.grade+'col') : '';
       const memoCls = c.key==='memo' ? 'memocell' : '';
       const dis = editUnlocked ? '' : 'disabled';
@@ -1754,6 +1815,13 @@ function attachGridHandlers(){
       if(!editUnlocked){ openPasswordModal(); return; }
       openMemoModal(btn.dataset.key, btn.dataset.daylabel);
     });
+  });
+
+  const bulkBtn = table.querySelector('#btnWeeklyDutyBulk');
+  if(bulkBtn) bulkBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    if(!editUnlocked){ openPasswordModal(); return; }
+    openWeeklyDutyModal();
   });
 
   table.querySelectorAll('td.cell').forEach(td=>{
@@ -1919,7 +1987,6 @@ document.getElementById('statsMonthSelect').addEventListener('change', renderSta
 const PV_COLS_TEACHER = [
   {key:'events', label:'学\u3000校\u3000行\u3000事\u3000等', w:210},
   {key:'meeting', label:'会議・出張・研修', w:100},
-  {key:'cleaning', label:'掃除', w:40},
   {key:'club', label:'部活動', w:40},
   {key:'lunchG1', label:'1年', grpLunch:true, w:32},
   {key:'lunchG2', label:'2年', grpLunch:true, w:32},
@@ -1933,7 +2000,6 @@ PV_COLS_TEACHER.push({key:'weeklyDuty', label:'週番', w:44});
 // 家庭用: 会議・出張・研修と週番(教員向け情報)を除いた構成
 const PV_COLS_FAMILY = [
   {key:'events', label:'学\u3000校\u3000行\u3000事\u3000等', w:260},
-  {key:'cleaning', label:'掃除', w:40},
   {key:'club', label:'部活動', w:40},
   {key:'lunchG1', label:'1年', grpLunch:true, w:32},
   {key:'lunchG2', label:'2年', grpLunch:true, w:32},
@@ -1980,6 +2046,14 @@ function groupHeaderForExport(cols){
   return groups;
 }
 
+// 予定表タイトルに使う「学校名(+版・状態表示)」。設定タブの「版・状態表示」に入力があれば
+// 学校名の後ろに添える(例: "○○中学校　保護者説明会時点(4/10)")。プレビュー・PDF印刷・Excel出力すべてで共通して使う。
+function schoolNameWithVersion(){
+  const name = state.meta.schoolName || '(学校名未設定)';
+  const v = (state.meta.versionLabel||'').trim();
+  return v ? `${name}　${v}` : name;
+}
+
 function buildMonthlyExportGrid(year, month, cols, audience, includeMemo){
   const dim = daysInMonth(year,month);
   const groups = groupHeaderForExport(cols);
@@ -1990,7 +2064,7 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo){
   const stamp = `出力日\u3000${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
 
   const titleRow = new Array(totalCols).fill(null);
-  titleRow[0] = {v:`令和${reiwa}年度\u3000${state.meta.schoolName||'(学校名未設定)'}`, style:XSTYLE.TITLE};
+  titleRow[0] = {v:`令和${reiwa}年度\u3000${schoolNameWithVersion()}`, style:XSTYLE.TITLE};
   const subtitleRow = new Array(totalCols).fill(null);
   subtitleRow[0] = {v:`${month}月\u3000行事予定(${audienceLabel})`, style:XSTYLE.TITLE};
   subtitleRow[totalCols-1] = {v:stamp, style:XSTYLE.DATE};
@@ -2049,8 +2123,10 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo){
     cols.forEach(c=>{
       if(c.key==='events'){
         const parts = [];
-        if(rec.eventsAnnual) parts.push(rec.eventsAnnual);
+        const effAnnual = effectiveEventsAnnual(rec, status);
+        if(effAnnual) parts.push(effAnnual);
         if(rec.eventsMonthly) parts.push(rec.eventsMonthly);
+        if(rec.cleaning===false) parts.push('掃除×');
         if(audience==='teacher' && rec.eventsTeacherOnly) parts.push('['+rec.eventsTeacherOnly+']');
         row.push({v:parts.filter(Boolean).join('\u3000'), style:lS});
       } else if(c.key==='meeting'){
@@ -2059,8 +2135,7 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo){
         if(rec.staffMeeting) parts.push('職員会議');
         if(rec.meeting) parts.push(rec.meeting);
         row.push({v:parts.join('\u3000'), style:cS});
-      } else if(c.key==='cleaning'){ row.push({v:rec.cleaning||'', style:cS}); }
-      else if(c.key==='club'){ row.push({v:rec.club||'', style:cS}); }
+      } else if(c.key==='club'){ row.push({v:rec.club||'', style:cS}); }
       else if(c.key==='lunchG1'){ row.push({v:rec.lunch.g1||'', style:cS}); }
       else if(c.key==='lunchG2'){ row.push({v:rec.lunch.g2||'', style:cS}); }
       else if(c.key==='lunchG3'){ row.push({v:rec.lunch.g3||'', style:cS}); }
@@ -2201,7 +2276,7 @@ function buildAnnualExportGrid(fy, audience){
   const today = new Date();
   const stamp = `出力日\u3000${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
   const audienceLabel = audience==='teacher' ? '教職員用' : '家庭用';
-  grid[0][0] = {v:`令和${reiwa}年度\u3000${state.meta.schoolName||'(学校名未設定)'}\u3000年間行事予定(${audienceLabel})`, style:XSTYLE.TITLE};
+  grid[0][0] = {v:`令和${reiwa}年度\u3000${schoolNameWithVersion()}\u3000年間行事予定(${audienceLabel})`, style:XSTYLE.TITLE};
   merges.push(`${colLetter(1)}1:${colLetter(totalCols)}1`);
   grid[1][0] = {v:'※「学校行事等(年間行事)」欄の内容を中心に表示', style:XSTYLE.TITLE};
   grid[1][totalCols-1] = {v:stamp, style:XSTYLE.DATE};
@@ -2227,7 +2302,7 @@ function buildAnnualExportGrid(fy, audience){
       const lS = status.isHoliday ? XSTYLE.HOLIDAY_LEFT : XSTYLE.LEFT;
       grid[rIdx][base] = {v:d, num:true, style:cS};
       grid[rIdx][base+1] = {v:DOW[dow], style:cS};
-      grid[rIdx][base+2] = {v:annualEventText(rec, opts), style:lS};
+      grid[rIdx][base+2] = {v:annualEventText(rec, opts, status), style:lS};
     }
     const sumRowBase = r0+2+maxDim;
     const [y1,y2,y3] = yearCum[i], [t1,t2,t3] = termCum[i], [mo1,mo2,mo3] = monthly[i];
@@ -2264,7 +2339,7 @@ function renderMonthlyPreview(opts){
   const reiwa = year - 2018;
   const cols = opts.cols;
 
-  let html = `<div class="preview-title">令和${reiwa}年度\u3000${escapeHtml(state.meta.schoolName||'(学校名未設定)')}</div>`;
+  let html = `<div class="preview-title">令和${reiwa}年度\u3000${escapeHtml(schoolNameWithVersion())}</div>`;
   html += `<div class="preview-subtitle">${month}月\u3000${opts.subtitle}</div>`;
   html += '<div style="display:flex;gap:14px;align-items:flex-start;">';
   html += '<div style="flex:1;min-width:0;">';
@@ -2305,9 +2380,11 @@ function renderMonthlyPreview(opts){
     html += `<td class="pv-daynum">${d}</td><td class="pv-dow">${DOW[dow]}</td>`;
     cols.forEach(c=>{
       if(c.key==='events'){
-        const annual = rec.eventsAnnual ? `<span class="pv-annual">${escapeHtml(rec.eventsAnnual)}</span>` : '';
+        const effAnnual = effectiveEventsAnnual(rec, status);
+        const annual = effAnnual ? `<span class="pv-annual">${escapeHtml(effAnnual)}</span>` : '';
         const monthly = rec.eventsMonthly ? escapeHtml(rec.eventsMonthly) : '';
-        const parts = [annual, monthly];
+        const cleaningMark = rec.cleaning===false ? `<span class="pv-cleaning-off">掃除×</span>` : '';
+        const parts = [annual, monthly, cleaningMark];
         if(opts.audience==='teacher' && rec.eventsTeacherOnly){
           parts.push(`<span class="pv-teacheronly">[${escapeHtml(rec.eventsTeacherOnly)}]</span>`);
         }
@@ -2319,8 +2396,6 @@ function renderMonthlyPreview(opts){
         if(rec.staffMeeting) parts.push('職員会議');
         if(rec.meeting) parts.push(rec.meeting);
         html += `<td class="pv-center">${escapeHtml(parts.join('\u3000'))}</td>`;
-      } else if(c.key==='cleaning'){
-        html += `<td class="pv-center">${escapeHtml(rec.cleaning||'')}</td>`;
       } else if(c.key==='club'){
         html += `<td class="pv-center">${escapeHtml(rec.club||'')}</td>`;
       } else if(c.key==='lunchG1'){
@@ -2369,7 +2444,7 @@ function renderMonthlyPreview(opts){
       const status = getDayStatus(ny,nm,d);
       const dow = new Date(ny,nm-1,d).getDay();
       const rec = migrateDayRecord(state.days[dkey(ny,nm,d)]);
-      const parts = [rec.eventsAnnual, rec.eventsMonthly].filter(Boolean);
+      const parts = [effectiveEventsAnnual(rec, status), rec.eventsMonthly].filter(Boolean);
       const rowCls = status.isHoliday ? 'pv-holiday' : '';
       html += `<tr class="${rowCls}"><td class="pv-daynum">${d}</td><td class="pv-dow">${DOW[dow]}</td><td class="pv-events">${escapeHtml(parts.join('\u3000'))}</td></tr>`;
     }
@@ -2429,6 +2504,8 @@ function computeStatsForRange(monthList){
     lunchOn: {1:0,2:0,3:0},              // 給食○の日数
     lunchOff: {1:0,2:0,3:0},             // 給食×の日数
     periodTally: {1:{},2:{},3:{}},       // 学年別、コード別のコマ数集計
+    weekdaySchoolDays: {1:{},2:{},3:{}}, // 学年別、曜日別(0=日〜6=土)の登校日数
+    periodByWeekday: {1:{},2:{},3:{}},   // 学年別、曜日別の①〜⑥それぞれの実施回数(6要素配列)
     eventDays: 0,                        // 学校行事等(年間・月のみ)が入力されている日数
     teacherEventDays: 0                  // 学校行事等(教員のみ)が入力されている日数
   };
@@ -2436,13 +2513,19 @@ function computeStatsForRange(monthList){
     const dim = daysInMonth(year,month);
     for(let d=1; d<=dim; d++){
       const rec = migrateDayRecord(state.days[dkey(year,month,d)]);
+      const dow = new Date(year,month-1,d).getDay();
       [1,2,3].forEach(g=>{
-        if(isSchoolDay(year,month,d,g)) result.schoolDays[g]++;
+        const isSD = isSchoolDay(year,month,d,g);
+        if(isSD) result.schoolDays[g]++;
+        if(!result.weekdaySchoolDays[g][dow]) result.weekdaySchoolDays[g][dow] = 0;
+        if(isSD) result.weekdaySchoolDays[g][dow]++;
         const arr = rec.periods['g'+g];
         const filled = arr.filter(v=>v && v.trim());
         filled.forEach(code=>{
           result.periodTally[g][code] = (result.periodTally[g][code]||0)+1;
         });
+        if(!result.periodByWeekday[g][dow]) result.periodByWeekday[g][dow] = [0,0,0,0,0,0];
+        arr.forEach((v,idx)=>{ if(v && v.trim()) result.periodByWeekday[g][dow][idx]++; });
       });
       const lg = rec.lunch;
       [['1',lg.g1],['2',lg.g2],['3',lg.g3]].forEach(([g,v])=>{
@@ -2549,6 +2632,27 @@ function renderStats(){
   html += '<small class="hint">「1」〜「6」は時限の便宜番号での入力回数、「総」「道」「学」「行」「音」「弁」「欠」「●」はその記号が入力された回数です。</small>';
   html += '</div>';
 
+  // 曜日・時限別の実施回数(カット把握用): 「月①」が月/学期/年間で何回実施されたかを、
+  // その曜日の登校日数と並べて確認できるようにする。差があれば行事等でその時限がカットされたことがわかる。
+  html += '<div class="panel"><h2>曜日・時限別の実施回数</h2>';
+  html += '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">「登校日数」はその曜日が登校日だった回数、「①」〜「⑥」はそのうち実際に授業日課(コマ数)を入力した回数です。登校日数より少ない場合、その差の分だけ行事や短縮授業などでその時限がカットされたことを表します。</p>';
+  const weekdayOrder = [1,2,3,4,5,6,0]; // 月火水木金土日の順(JSのgetDay()は日=0始まり)
+  const weekdayLabel = ['日','月','火','水','木','金','土'];
+  [1,2,3].forEach(g=>{
+    const usedDows = weekdayOrder.filter(dow=> cols.some(c=> (c.s.weekdaySchoolDays[g][dow]||0) > 0));
+    html += `<h3 class="stats-grade-title">${g}年</h3>`;
+    if(usedDows.length===0){ html += '<p class="preview-empty">まだ登校日が設定されていません。</p>'; return; }
+    html += `<table class="stats-table"><thead><tr><th></th>${cols.map(c=>`<th>${c.label}</th>`).join('')}</tr></thead><tbody>`;
+    usedDows.forEach(dow=>{
+      html += `<tr class="stats-total"><td>${weekdayLabel[dow]}曜　登校日数</td>${cols.map(c=>`<td>${c.s.weekdaySchoolDays[g][dow]||0}</td>`).join('')}</tr>`;
+      for(let p=0; p<6; p++){
+        html += `<tr><td>${weekdayLabel[dow]}${'①②③④⑤⑥'[p]}</td>${cols.map(c=>`<td>${(c.s.periodByWeekday[g][dow]||[0,0,0,0,0,0])[p]}</td>`).join('')}</tr>`;
+      }
+    });
+    html += '</tbody></table>';
+  });
+  html += '</div>';
+
   // 必要時数との比較(学習指導要領)
   html += '<div class="panel"><h2>必要時数との比較(年間累計)</h2>';
   html += '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">「①〜⑥」に数字(1〜6)を入力した分をまとめて「教科(数字入力分)」として比較しています。個々の教科(国語・数学など)ごとの内訳は、時間割の教科までは記録していないため区別できません。「設定」タブの「必要時数の編集」で必要時数を変更できます。</p>';
@@ -2583,9 +2687,10 @@ function renderStats(){
   wrap.innerHTML = html;
 }
 
-function buildAnnualEventParts(rec, opts){
+function buildAnnualEventParts(rec, opts, status){
   const parts = [];
-  if(rec.eventsAnnual) parts.push({text:rec.eventsAnnual, cls:'annual'});
+  const effAnnual = effectiveEventsAnnual(rec, status);
+  if(effAnnual) parts.push({text:effAnnual, cls:'annual'});
   if(opts.includeMonthly && rec.eventsMonthly) parts.push({text:rec.eventsMonthly, cls:null});
   if(opts.includeTeacherOnly && rec.eventsTeacherOnly) parts.push({text:rec.eventsTeacherOnly, cls:'teacheronly'});
   if(opts.includeMeeting && rec.staffMeeting){
@@ -2593,8 +2698,8 @@ function buildAnnualEventParts(rec, opts){
   }
   return parts;
 }
-function annualEventHtml(rec, opts){
-  return buildAnnualEventParts(rec, opts).map(p=>{
+function annualEventHtml(rec, opts, status){
+  return buildAnnualEventParts(rec, opts, status).map(p=>{
     const t = escapeHtml(p.text);
     if(p.cls==='annual') return `<span class="pv-annual">${t}</span>`;
     if(p.cls==='teacheronly') return `<span class="pv-teacheronly">[${t}]</span>`;
@@ -2602,8 +2707,8 @@ function annualEventHtml(rec, opts){
     return t;
   }).join('\u3000');
 }
-function annualEventText(rec, opts){
-  return buildAnnualEventParts(rec, opts).map(p=>{
+function annualEventText(rec, opts, status){
+  return buildAnnualEventParts(rec, opts, status).map(p=>{
     if(p.cls==='annual') return p.text;
     if(p.cls==='teacheronly') return `[${p.text}]`;
     if(p.cls==='meeting') return `◆${p.text}`;
@@ -2642,7 +2747,7 @@ function renderAnnualPreview(audience){
   });
 
   const audienceLabel = audience==='teacher' ? '教職員用' : '家庭用';
-  let html = `<div class="preview-title">令和${reiwa}年度\u3000${escapeHtml(state.meta.schoolName||'(学校名未設定)')}\u3000年間行事予定(${audienceLabel})</div>`;
+  let html = `<div class="preview-title">令和${reiwa}年度\u3000${escapeHtml(schoolNameWithVersion())}\u3000年間行事予定(${audienceLabel})</div>`;
   html += `<div class="grid-topscroll" id="${tableId}TopScroll"><div id="${tableId}TopScrollInner"></div></div>`;
   html += `<div class="preview-scroll" id="${tableId}ScrollOuter"><div class="annual-row" id="${tableId}">`;
   months.forEach(({year,month}, i)=>{
@@ -2654,7 +2759,7 @@ function renderAnnualPreview(audience){
       const dow = new Date(year,month-1,d).getDay();
       const rec = migrateDayRecord(state.days[dkey(year,month,d)]);
       const rowCls = status.isHoliday ? 'pv-holiday' : '';
-      html += `<tr class="${rowCls}"><td class="pv-daynum">${d}</td><td class="pv-dow">${DOW[dow]}</td><td class="pv-events">${annualEventHtml(rec, opts)}</td></tr>`;
+      html += `<tr class="${rowCls}"><td class="pv-daynum">${d}</td><td class="pv-dow">${DOW[dow]}</td><td class="pv-events">${annualEventHtml(rec, opts, status)}</td></tr>`;
     }
     const [y1,y2,y3] = yearCum[i];
     const [t1,t2,t3] = termCum[i];
@@ -2694,19 +2799,21 @@ function fitPreviewCells(wrapId){
 //////////////////////// 設定タブ ////////////////////////
 function renderSettingsTab(){
   document.getElementById('setSchoolName').value = state.meta.schoolName || '';
+  document.getElementById('setVersionLabel').value = state.meta.versionLabel || '';
   document.getElementById('setFiscalYear').value = state.meta.fiscalYear;
   renderHolidayList();
+  renderHolidayOverrideList();
   populateTermSelect('setTerm2Start', state.meta.term2StartMonth);
   populateTermSelect('setTerm3Start', state.meta.term3StartMonth);
-  document.getElementById('presetCleaning').value = state.presets.cleaning.join('、');
   document.getElementById('presetClub').value = state.presets.club.join('、');
   document.getElementById('presetPeriod').value = state.presets.period.join('、');
   document.getElementById('presetWeeklyDuty').value = state.presets.weeklyDuty.join('、');
   renderRequiredHoursEditor();
   refreshBackupUI();
-  ['setSchoolName','setFiscalYear','setTerm2Start','setTerm3Start',
-   'presetCleaning','presetClub','presetPeriod','presetWeeklyDuty',
+  ['setSchoolName','setVersionLabel','setFiscalYear','setTerm2Start','setTerm3Start',
+   'presetClub','presetPeriod','presetWeeklyDuty',
    'pwCurrentInput','pwNewInput','pwNewInput2','btnChangePassword',
+   'holidayOvrDate','holidayOvrType','holidayOvrLabel','btnHolidayOvrSave',
    'btnChooseBackupFolder','backupIntervalSelect'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.disabled = !editUnlocked;
@@ -2759,7 +2866,6 @@ function bindPresetInput(elId, presetKey){
     markDirty();
   });
 }
-bindPresetInput('presetCleaning','cleaning');
 bindPresetInput('presetClub','club');
 bindPresetInput('presetPeriod','period');
 bindPresetInput('presetWeeklyDuty','weeklyDuty');
@@ -2777,6 +2883,11 @@ document.getElementById('setSchoolName').addEventListener('input', (e)=>{
   if(!editUnlocked) return;
   state.meta.schoolName = e.target.value;
   document.getElementById('schoolTag').textContent = state.meta.schoolName ? `(${state.meta.schoolName})` : '(未設定)';
+  markDirty();
+});
+document.getElementById('setVersionLabel').addEventListener('input', (e)=>{
+  if(!editUnlocked) return;
+  state.meta.versionLabel = e.target.value;
   markDirty();
 });
 document.getElementById('setFiscalYear').addEventListener('change', (e)=>{
@@ -2845,6 +2956,70 @@ function renderHolidayList(){
   });
 }
 
+//////////////////////// 祝日の例外(手動追加・解除) ////////////////////////
+function renderHolidayOverrideList(){
+  const wrap = document.getElementById('holidayOverrideList');
+  const overrides = state.holidayOverrides || {};
+  const keys = Object.keys(overrides).sort();
+  if(keys.length===0){ wrap.innerHTML = '<p style="padding:10px;font-size:12.5px;color:var(--ink-soft);">手動での例外設定はありません。</p>'; return; }
+  wrap.innerHTML = `<table><thead><tr><th>日付</th><th>種別</th><th>名称</th><th></th></tr></thead><tbody>${
+    keys.map(key=>{
+      const ov = overrides[key];
+      const typeLabel = ov.type==='add' ? '祝日として追加' : '祝日指定を解除';
+      return `<tr>
+        <td>${key}</td>
+        <td>${typeLabel}</td>
+        <td>${ov.type==='add' ? escapeHtml(ov.label||'') : ''}</td>
+        <td>
+          <button class="ghost tiny" data-editovr="${key}">編集</button>
+          <button class="ghost tiny danger" data-delovr="${key}">削除</button>
+        </td>
+      </tr>`;
+    }).join('')
+  }</tbody></table>`;
+  wrap.querySelectorAll('button[data-editovr]').forEach(btn=>{
+    btn.disabled = !editUnlocked;
+    btn.addEventListener('click', ()=>{
+      if(!editUnlocked) return;
+      const key = btn.dataset.editovr;
+      const ov = state.holidayOverrides[key];
+      if(!ov) return;
+      document.getElementById('holidayOvrDate').value = key;
+      document.getElementById('holidayOvrType').value = ov.type;
+      document.getElementById('holidayOvrLabel').value = ov.label || '';
+      document.getElementById('holidayOvrMsg').textContent = '';
+    });
+  });
+  wrap.querySelectorAll('button[data-delovr]').forEach(btn=>{
+    btn.disabled = !editUnlocked;
+    btn.addEventListener('click', ()=>{
+      if(!editUnlocked) return;
+      const key = btn.dataset.delovr;
+      delete state.holidayOverrides[key];
+      holidayCache = {};
+      markDirty();
+      renderHolidayOverrideList();
+      renderHolidayList();
+    });
+  });
+}
+document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
+  if(!editUnlocked) return;
+  const dateStr = document.getElementById('holidayOvrDate').value;
+  const msgEl = document.getElementById('holidayOvrMsg');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)){ msgEl.textContent = '日付を選択してください。'; return; }
+  const type = document.getElementById('holidayOvrType').value;
+  const label = document.getElementById('holidayOvrLabel').value.trim();
+  if(type==='add' && !label){ msgEl.textContent = '名称を入力してください。'; return; }
+  state.holidayOverrides[dateStr] = type==='add' ? {type:'add', label} : {type:'remove'};
+  holidayCache = {};
+  msgEl.textContent = '';
+  document.getElementById('holidayOvrLabel').value = '';
+  markDirty();
+  renderHolidayOverrideList();
+  renderHolidayList();
+});
+
 //////////////////////// ヘルプ ////////////////////////
 document.getElementById('helpBody').innerHTML = `
   <h4>このアプリについて</h4>
@@ -2870,9 +3045,10 @@ document.getElementById('helpBody').innerHTML = `
     <li>複数マスを選択した状態で <strong>Delete</strong> キーを押すと、選択範囲をまとめて空にできます。</li>
     <li>列見出しの右端をドラッグすると列の幅を変えられます(画面に入りきらない場合に調整してください)。「設定」タブの「列幅をリセット」で既定の幅に戻せます。</li>
     <li>「週番をまとめて入力」ボタンから、現在表示中の月にかかる週を一覧から選び、内容を入力すると、その週の月〜金(休業日を除く)にまとめて同じ週番を入力できます。入力候補は「設定」タブの入力候補編集と共通です。どの日に反映されるかは画面上で確認してから適用できます。「月全体に順番で割り当て」を選ぶと、「1年、2年、3年」のように読点区切りで指定した内容を、今月の各週に順番(足りなくなったら最初に戻る)で一括入力できます。なお、年間予定入力のマス自体は常に1日ずつ分かれています(結合されるのは「月間予定表(教員用)」の画面表示とExcel出力のみです)。</li>
-    <li>掃除・部活動・給食・授業日課・週番の入力候補(クリックした時に出る候補)は「設定」タブの「入力候補(プリセット)の編集」から自由に変更できます。</li>
+    <li>部活動・給食・授業日課・週番の入力候補(クリックした時に出る候補)は「設定」タブの「入力候補(プリセット)の編集」から自由に変更できます。</li>
     <li>学校行事等は3つの欄に分かれています。「年間行事」(年間予定表にも掲載予定、太字の緑で表示)、「月のみ」(月の予定表のみに掲載)、「教員のみ」(教員用にのみ掲載、オレンジで表示)。載せたい範囲に応じて入力する欄を選んでください。</li>
     <li>「企画会議」「職員会議」はチェックボックスで入れられます。チェックすると、教員用の会議・出張・研修欄に自動的に「企画会議」「職員会議」の文字が追加されます(自由入力の内容と合わせて表示されます)。</li>
+    <li>「掃除」もチェックボックスです。何もしなければ平日は「あり」、土曜・日曜・祝日は「なし」に自動でなります。手動でチェックを変更した場合はその状態が優先され、「なし」にした日だけ月間予定表の「学校行事等」欄に「掃除×」と自動的に表示されます。</li>
     <li>列の並びは元のExcel(4月職・4月生シート)を基本にしつつ、上記の欄を追加しています。「給食(学年別)」の右にある「登校日」列は、学年ごとに登校日かどうかを判定するためのチェックボックスです(このアプリで追加した列です)。</li>
     <li>「登校日」のチェックは、平日は自動でオン、土日・祝日は自動でオフになっています。実際と異なる場合(土曜授業を行う、逆に平日を休業日にするなど)は、その学年のチェックを直接つけ外ししてください。チェックを外すと、その学年の①〜⑥時限の欄は入力できなくなります。休みや特別な登校日の理由は「学校行事等(年間行事)」などに書き添えてください。時数・集計タブの授業日数は、このチェックを元に計算されます。</li>
     <li>「メモ(根拠等)」列はボタンになっており、クリックすると複数行の文章を入力できる画面が開きます。ここに入力した内容は月間予定表(教員用)の画面に一覧表示され、Excel出力時は「メモも出力に含める」にチェックした場合のみ、説明資料として出力に追加されます(チェックしなければ出力には含まれません)。</li>
@@ -3196,10 +3372,6 @@ function openWeeklyDutyModal(){
   document.getElementById('weeklyDutyOverlay').classList.add('show');
 }
 function closeWeeklyDutyModal(){ document.getElementById('weeklyDutyOverlay').classList.remove('show'); }
-document.getElementById('btnWeeklyDutyBulk').addEventListener('click', ()=>{
-  if(!editUnlocked){ openPasswordModal(); return; }
-  openWeeklyDutyModal();
-});
 document.getElementById('weeklyDutyModalClose').addEventListener('click', closeWeeklyDutyModal);
 document.getElementById('weeklyDutyCancel').addEventListener('click', closeWeeklyDutyModal);
 document.getElementById('weeklyDutyWeekSelect').addEventListener('change', renderWeeklyDutyPreview);
