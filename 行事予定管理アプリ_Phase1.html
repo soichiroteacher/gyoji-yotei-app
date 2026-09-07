@@ -385,6 +385,11 @@
         <small class="hint">例: 令和8年度 → 2026 と入力(2026年4月〜2027年3月)</small>
       </div>
       <div class="field-row">
+        <label></label>
+        <button type="button" id="btnImportPrevYearEvents" class="ghost tiny"></button>
+        <span id="importPrevYearMsg" style="font-size:12.5px;color:var(--ink-soft);"></span>
+      </div>
+      <div class="field-row">
         <label>2学期の開始月</label>
         <select id="setTerm2Start"></select>
         <label style="margin-left:12px;">3学期の開始月</label>
@@ -2849,6 +2854,8 @@ function renderSettingsTab(){
   document.getElementById('setSchoolName').value = state.meta.schoolName || '';
   document.getElementById('setVersionLabel').value = state.meta.versionLabel || '';
   document.getElementById('setFiscalYear').value = state.meta.fiscalYear;
+  document.getElementById('btnImportPrevYearEvents').textContent = `${state.meta.fiscalYear-1}年度の行事を候補に追加`;
+  document.getElementById('importPrevYearMsg').textContent = '';
   renderHolidayList();
   renderHolidayOverrideList();
   populateTermSelect('setTerm2Start', state.meta.term2StartMonth);
@@ -2861,6 +2868,7 @@ function renderSettingsTab(){
   ['setSchoolName','setVersionLabel','setFiscalYear','setTerm2Start','setTerm3Start',
    'presetClub','presetPeriod','presetWeeklyDuty',
    'pwCurrentInput','pwNewInput','pwNewInput2','btnChangePassword',
+   'btnImportPrevYearEvents',
    'holidayOvrDate','holidayOvrType','holidayOvrLabel','btnHolidayOvrSave',
    'btnChooseBackupFolder','backupIntervalSelect'].forEach(id=>{
     const el = document.getElementById(id);
@@ -3098,6 +3106,7 @@ document.getElementById('helpBody').innerHTML = `
     <li>「企画会議」「職員会議」はチェックボックスで入れられます。チェックすると、教員用の会議・出張・研修欄に自動的に「企画会議」「職員会議」の文字が追加されます(自由入力の内容と合わせて表示されます)。</li>
     <li>「掃除」もチェックボックスです。何もしなければ平日は「あり」、土曜・日曜・祝日は「なし」に自動でなります。手動でチェックを変更した場合はその状態が優先され、「なし」にした日だけ月間予定表の「学校行事等」欄に「掃除×」と自動的に表示されます。</li>
     <li>「学校行事等(年間行事/月のみ/教員のみ)」欄はクリックすると入力用のウィンドウが開きます。そこで直接入力するほか、「候補から選ぶ」で日程が決まっていない行事などをあらかじめ「候補に追加」しておき、日程が決まったら選んで反映できます。候補は削除するまで残り、複数の日で繰り返し使えます(使用済みの候補は薄く表示され、使用回数も確認できます)。</li>
+    <li>「設定」タブの年度の下にある「(前年度)の行事を候補に追加」ボタンを押すと、前年度分の「学校行事等(年間行事)」に入力済みの内容をまとめて候補に登録できます。年度を切り替えて新しい年度の予定を組む際に便利です(既にある候補と同じ内容は追加されません)。</li>
     <li>列の並びは元のExcel(4月職・4月生シート)を基本にしつつ、上記の欄を追加しています。「給食(学年別)」の右にある「登校日」列は、学年ごとに登校日かどうかを判定するためのチェックボックスです(このアプリで追加した列です)。</li>
     <li>「登校日」のチェックは、平日は自動でオン、土日・祝日は自動でオフになっています。実際と異なる場合(土曜授業を行う、逆に平日を休業日にするなど)は、その学年のチェックを直接つけ外ししてください。チェックを外すと、その学年の①〜⑥時限の欄は入力できなくなります。休みや特別な登校日の理由は「学校行事等(年間行事)」などに書き添えてください。時数・集計タブの授業日数は、このチェックを元に計算されます。</li>
     <li>「メモ(根拠等)」列はボタンになっており、クリックすると複数行の文章を入力できる画面が開きます。ここに入力した内容は月間予定表(教員用)の画面に一覧表示され、Excel出力時は「メモも出力に含める」にチェックした場合のみ、説明資料として出力に追加されます(チェックしなければ出力には含まれません)。</li>
@@ -3281,6 +3290,34 @@ document.getElementById('eventPickerSave').addEventListener('click', ()=>{
   markDirty();
   closeEventPickerModal();
   renderAgenda();
+});
+
+// 前年度の「学校行事等(年間行事)」の内容を候補プールへ一括登録する(重複する内容は追加しない)
+function importPreviousYearEventsToCandidates(){
+  const prevFY = state.meta.fiscalYear - 1;
+  const seen = new Set((state.eventCandidates||[]).map(c=>c.text));
+  let added = 0;
+  fiscalMonthList(prevFY).forEach(({year,month})=>{
+    const dim = daysInMonth(year,month);
+    for(let d=1; d<=dim; d++){
+      const rec = state.days[dkey(year,month,d)];
+      const text = rec && rec.eventsAnnual ? rec.eventsAnnual.trim() : '';
+      if(!text || seen.has(text)) continue;
+      seen.add(text);
+      if(!state.eventCandidates) state.eventCandidates = [];
+      state.eventCandidates.push({id:genId(), text, useCount:0});
+      added++;
+    }
+  });
+  return {added, prevFY};
+}
+document.getElementById('btnImportPrevYearEvents').addEventListener('click', ()=>{
+  if(!editUnlocked) return;
+  const {added, prevFY} = importPreviousYearEventsToCandidates();
+  const msgEl = document.getElementById('importPrevYearMsg');
+  if(added===0){ msgEl.textContent = `${prevFY}年度分に、追加できる行事(学校行事等(年間行事))が見つかりませんでした。`; return; }
+  markDirty();
+  msgEl.textContent = `${prevFY}年度の行事から${added}件を候補に追加しました(既にある候補と重複するものは除きます)。`;
 });
 
 document.getElementById('btnUnlock').addEventListener('click', ()=>{
