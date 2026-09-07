@@ -236,8 +236,11 @@
   .annual-opts label{display:flex;align-items:center;gap:4px;white-space:nowrap;cursor:pointer;}
   .annual-month-title{background:#eaeaea;color:#1f3b3d;font-size:13px;font-weight:700;text-align:center;padding:5px 6px;border-bottom:1px solid #999;}
   tr.annual-pad td{background:#fafafa;border-color:#eee;}
-  tr.annual-summary td{background:#ececec;font-size:10.5px;font-weight:600;text-align:right;color:var(--ink-soft);padding:3px 6px 3px 2px;white-space:nowrap;}
+  tr.annual-summary td{background:#ececec;font-size:10.5px;font-weight:600;color:var(--ink-soft);padding:3px 6px 3px 2px;white-space:nowrap;}
   tr.annual-summary-month td{background:#d7d7d7;color:#1f3b3d;font-weight:700;}
+  tr.annual-summary .as-row{display:flex;justify-content:flex-end;}
+  tr.annual-summary .as-label{display:inline-block;width:3.4em;flex:none;text-align:left;}
+  tr.annual-summary .as-val{display:inline-block;width:3.1em;flex:none;text-align:right;font-variant-numeric:tabular-nums;}
 
   /* ===== 時数・集計 ===== */
   table.stats-table{border-collapse:collapse;font-size:13px;margin-bottom:6px;}
@@ -738,6 +741,7 @@ const DOW = ['日','月','火','水','木','金','土'];
 // 入力・設定変更・自動保存はできない(開いただけでは編集モードにならない)。
 const DEFAULT_PASSWORD_HASH = '9af15b336e6a9619928537df30b2e6a2376569fcf9d7e773eccede65606529a0';
 let editUnlocked = false;
+let mealListExpanded = false; // 「給食のない日 一覧」を全件表示中かどうか(時数・集計タブの再描画をまたいで保持)
 async function sha256Hex(text){
   const buf = new TextEncoder().encode(text);
   const digest = await crypto.subtle.digest('SHA-256', buf);
@@ -2621,15 +2625,20 @@ function buildAnnualExportGrid(fy, audience){
     }
     const sumRowBase = r0+2+maxDim;
     const [y1,y2,y3] = yearCum[i], [t1,t2,t3] = termCum[i], [mo1,mo2,mo3] = monthly[i];
-    grid[sumRowBase][base] = {v:`年計 ①${y1}②${y2}③${y3}`, style:XSTYLE.SUMMARY};
+    // ラベルの文字数(2字/3字)と数値の桁数がそろわないと①②③の位置がずれるため、
+    // ラベルは3字幅(全角スペースで埋める)、数値は3桁幅(半角スペースで埋める)にそろえる。
+    const padLabel3 = s => s.length<3 ? s+'　'.repeat(3-s.length) : s;
+    const padNum3 = n => String(n).padStart(3,' ');
+    const sumLine = (label,v1,v2,v3) => `${padLabel3(label)} ①${padNum3(v1)}②${padNum3(v2)}③${padNum3(v3)}`;
+    grid[sumRowBase][base] = {v:sumLine('年計',y1,y2,y3), style:XSTYLE.SUMMARY};
     grid[sumRowBase][base+1] = {v:'', style:XSTYLE.SUMMARY};
     grid[sumRowBase][base+2] = {v:'', style:XSTYLE.SUMMARY};
     merges.push(`${colLetter(base+1)}${sumRowBase+1}:${colLetter(base+3)}${sumRowBase+1}`);
-    grid[sumRowBase+1][base] = {v:`学期計 ①${t1}②${t2}③${t3}`, style:XSTYLE.SUMMARY};
+    grid[sumRowBase+1][base] = {v:sumLine('学期計',t1,t2,t3), style:XSTYLE.SUMMARY};
     grid[sumRowBase+1][base+1] = {v:'', style:XSTYLE.SUMMARY};
     grid[sumRowBase+1][base+2] = {v:'', style:XSTYLE.SUMMARY};
     merges.push(`${colLetter(base+1)}${sumRowBase+2}:${colLetter(base+3)}${sumRowBase+2}`);
-    grid[sumRowBase+2][base] = {v:`月計 ①${mo1}②${mo2}③${mo3}`, style:XSTYLE.SUMMARY};
+    grid[sumRowBase+2][base] = {v:sumLine('月計',mo1,mo2,mo3), style:XSTYLE.SUMMARY};
     grid[sumRowBase+2][base+1] = {v:'', style:XSTYLE.SUMMARY};
     grid[sumRowBase+2][base+2] = {v:'', style:XSTYLE.SUMMARY};
     merges.push(`${colLetter(base+1)}${sumRowBase+3}:${colLetter(base+3)}${sumRowBase+3}`);
@@ -2970,20 +2979,26 @@ function renderStats(){
   html += `<tr><td>給食のない日数(登校日のうち)</td><td>${mealSummary.schoolDays[1]-mealSummary.effMealCount[1]}</td><td>${mealSummary.schoolDays[2]-mealSummary.effMealCount[2]}</td><td>${mealSummary.schoolDays[3]-mealSummary.effMealCount[3]}</td></tr>`;
   html += '</tbody></table><small class="hint">土日祝など、そもそも登校日でない日は集計に含めません。</small></div>';
 
-  html += '<div class="panel"><h2>給食のない日 一覧(年間)</h2>';
+  const MEAL_LIST_PREVIEW_COUNT = 20;
+  html += `<div class="panel"><h2>給食のない日 一覧(年間) <span class="hint" style="font-weight:normal;">(${mealSummary.noLunchDays.length}件)</span></h2>`;
   if(mealSummary.noLunchDays.length===0){
     html += '<p class="preview-empty">該当する日はありません。</p>';
   } else {
+    const showAll = mealListExpanded || mealSummary.noLunchDays.length<=MEAL_LIST_PREVIEW_COUNT;
     html += '<table class="stats-table meal-list-table"><thead><tr><th>日付</th><th>曜</th><th>学年</th><th>行事等</th><th>宿泊行事等(給食扱いにする)</th></tr></thead><tbody>';
-    mealSummary.noLunchDays.forEach(item=>{
+    mealSummary.noLunchDays.forEach((item,idx)=>{
       const gradeLabel = item.grades.map(g=>g+'年').join('・');
       const cbs = item.grades.map(g=>{
         const checked = !!(state.mealCountOverrides[item.key] && state.mealCountOverrides[item.key]['g'+g]);
         return `<label class="meal-override-label"><input type="checkbox" class="meal-override-cb" data-key="${item.key}" data-grade="g${g}"${checked?' checked':''}>${g}年</label>`;
       }).join(' ');
-      html += `<tr><td>${item.month}/${item.d}</td><td>${DOW[item.dow]}</td><td>${gradeLabel}</td><td>${escapeHtml(item.reason)}</td><td>${cbs}</td></tr>`;
+      const rowHidden = (!showAll && idx>=MEAL_LIST_PREVIEW_COUNT) ? ' hidden' : '';
+      html += `<tr${rowHidden}><td>${item.month}/${item.d}</td><td>${DOW[item.dow]}</td><td>${gradeLabel}</td><td>${escapeHtml(item.reason)}</td><td>${cbs}</td></tr>`;
     });
     html += '</tbody></table>';
+    if(mealSummary.noLunchDays.length>MEAL_LIST_PREVIEW_COUNT){
+      html += `<button type="button" class="ghost tiny" id="btnToggleMealList">${showAll ? '先頭' + MEAL_LIST_PREVIEW_COUNT + '件だけ表示' : `すべて表示(${mealSummary.noLunchDays.length}件)`}</button>`;
+    }
   }
   html += '<small class="hint">修学旅行など宿泊を伴う行事で、給食(学校給食)は提供されないが食事はしている日は、該当する学年にチェックを入れると「給食のない日」から除外され、上の喫食数に加算されます。</small>';
   html += '</div>';
@@ -3118,6 +3133,13 @@ function renderStats(){
       renderStats();
     });
   });
+  const btnToggleMealList = document.getElementById('btnToggleMealList');
+  if(btnToggleMealList){
+    btnToggleMealList.addEventListener('click', ()=>{
+      mealListExpanded = !mealListExpanded;
+      renderStats();
+    });
+  }
 }
 
 function buildAnnualEventParts(rec, opts, status){
@@ -3197,9 +3219,10 @@ function renderAnnualPreview(audience){
     const [y1,y2,y3] = yearCum[i];
     const [t1,t2,t3] = termCum[i];
     const [m1,m2,m3] = monthly[i];
-    html += `<tr class="annual-summary"><td colspan="3">年計\u3000①${y1}\u3000②${y2}\u3000③${y3}</td></tr>`;
-    html += `<tr class="annual-summary"><td colspan="3">学期計\u3000①${t1}\u3000②${t2}\u3000③${t3}</td></tr>`;
-    html += `<tr class="annual-summary annual-summary-month"><td colspan="3">月計\u3000①${m1}\u3000②${m2}\u3000③${m3}</td></tr>`;
+    const asRow = (label, v1, v2, v3) => `<span class="as-row"><span class="as-label">${label}</span><span class="as-val">①${v1}</span><span class="as-val">②${v2}</span><span class="as-val">③${v3}</span></span>`;
+    html += `<tr class="annual-summary"><td colspan="3">${asRow('年計', y1, y2, y3)}</td></tr>`;
+    html += `<tr class="annual-summary"><td colspan="3">${asRow('学期計', t1, t2, t3)}</td></tr>`;
+    html += `<tr class="annual-summary annual-summary-month"><td colspan="3">${asRow('月計', m1, m2, m3)}</td></tr>`;
     html += '</tbody></table></div>';
   });
   html += '</div></div>';
@@ -3777,7 +3800,8 @@ function openEventPickerModal(key, field, fieldLabel, dayLabel){
     const [y,m,d] = key.split('-').map(Number);
     initial = effectiveEventsAnnual(rec, getDayStatus(y,m,d));
   }
-  eventPickerBoxValues = [initial];
+  eventPickerBoxValues = initial ? initial.split('　').map(s=>s.trim()).filter(Boolean) : [];
+  if(eventPickerBoxValues.length===0) eventPickerBoxValues = [''];
   document.getElementById('eventPickerAddMsg').textContent = '';
   renderEventPickerBoxes();
   renderEventCandidateList();
