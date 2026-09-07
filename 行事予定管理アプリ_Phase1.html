@@ -331,7 +331,7 @@
       <select id="pvMonthSelect"></select>
       <div class="spacer"></div>
       <label style="font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:4px;"><input type="checkbox" id="includeMemoInExport"> メモも出力に含める</label>
-      <button id="btnPrintTeacher">🖨 PDFで保存/印刷</button>
+      <button id="btnPrintTeacher" hidden>🖨 PDFで保存/印刷</button>
       <button id="btnExportTeacherXlsx">Excelに出力(この月)</button>
       <button id="btnExportTeacherYearXlsx">Excelに出力(年間12か月)</button>
     </div>
@@ -346,7 +346,7 @@
       <label style="font-size:13px;color:var(--ink-soft);margin-left:8px;">月</label>
       <select id="pvFamilyMonthSelect"></select>
       <div class="spacer"></div>
-      <button id="btnPrintFamily">🖨 PDFで保存/印刷</button>
+      <button id="btnPrintFamily" hidden>🖨 PDFで保存/印刷</button>
       <button id="btnExportFamilyXlsx">Excelに出力(この月)</button>
       <button id="btnExportFamilyYearXlsx">Excelに出力(年間12か月)</button>
     </div>
@@ -359,7 +359,7 @@
     <div class="month-head">
       <span style="font-size:13px;color:var(--ink-soft);">年度: <strong id="pvAnnualTeacherFyDisplay">-</strong>(設定タブで変更)</span>
       <div class="spacer"></div>
-      <button id="btnPrintAnnualTeacher">🖨 PDFで保存/印刷</button>
+      <button id="btnPrintAnnualTeacher" hidden>🖨 PDFで保存/印刷</button>
       <button id="btnExportAnnualTeacherXlsx">Excelに出力</button>
     </div>
     <div class="annual-opts" id="annualOptsTeacher">
@@ -377,7 +377,7 @@
     <div class="month-head">
       <span style="font-size:13px;color:var(--ink-soft);">年度: <strong id="pvAnnualFamilyFyDisplay">-</strong>(設定タブで変更)</span>
       <div class="spacer"></div>
-      <button id="btnPrintAnnualFamily">🖨 PDFで保存/印刷</button>
+      <button id="btnPrintAnnualFamily" hidden>🖨 PDFで保存/印刷</button>
       <button id="btnExportAnnualFamilyXlsx">Excelに出力</button>
     </div>
     <div class="annual-opts" id="annualOptsFamily">
@@ -3672,6 +3672,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-08</strong>: 最終確認・配布はExcel出力ベースで行う運用のため、月間・年間予定表の「🖨 PDFで保存/印刷」ボタンを非表示に変更(紛らわしさの解消)。</li>
     <li><strong>2026-09-08</strong>: 職場のサーバーなど複数人がアクセスしうる場所にファイルを置いた場合の簡易ロック表示を追加。編集モードにすると画面上部に「編集中」の状態が記録され、他の場所で最近(10分以内)編集が始まっている場合は、編集を始める前に警告を表示するように。編集していない間(閲覧のみ)でも、直近の編集中表示があれば画面上部にバッジで分かるように。</li>
     <li><strong>2026-09-08</strong>: 行事等入力(候補プール)の「使用済み」表示を、色付きバッジで分かりやすく改善。右上の「✕ 閉じる」で内容を保存せずに閉じようとした際、変更があれば確認するように変更(誤って選択内容が消えるのを防止)。</li>
     <li><strong>2026-09-08</strong>: 年間予定表の「年計」「学期計」「月計」で、数字の桁数が違っても①②③の位置が揃うように調整。</li>
@@ -3723,11 +3724,12 @@ document.getElementById('helpBody').innerHTML = `
   </ul>
 
   <h4>月間予定表(教員用・家庭用)の確認・Excel出力</h4>
-  <p>「月間予定表(教員用)」タブでは、入力した内容から教員用の月間予定表を画面上で確認できます。学校行事等は「年間行事」「月のみ」「教員のみ」をすべて合わせて表示し、「年間行事」は太字、「教員のみ」は色分け(オレンジ系)で区別されます。週番は、同じ内容が連続する日をまとめて1つのセルに結合して表示します(内容が変わる日や休業日でそこは区切られます)。入力したメモは表の下に一覧で表示されます。「Excelに出力(この月)」で表示中の月だけを、「Excelに出力(年間12か月)」で4月〜3月の12か月分を1つのExcelファイル(月ごとにシートを分けたもの)としてダウンロードできます。行の高さはすべて固定されており、長い文章を入力した場合は行が伸びるのではなく、セル内の文字が自動的に縮小されて1行に収まります(Microsoft Excelでの「縮小して全体を表示」機能を使用しています)。祝日・休業日の網掛けや集計行の色も、白黒プリンターでも判読できる濃さのグレーにしています。「🖨 PDFで保存/印刷」ボタンからは、ブラウザの印刷機能を使ってPDF保存や紙への印刷ができます(印刷ダイアログの出力先で「PDFに保存」を選んでください)。表の内容が用紙の幅に収まらない場合は、印刷前に自動的に縮小してから印刷されます。</p>
-  <p>「月間予定表(家庭用)」タブでは、同じデータから会議・出張・研修や週番、教員のみの行事を除いた家庭向けの表示を確認できます。表の右側には元のExcelと同様に、翌月の予定(学校行事等のみ)が一覧表示されます。こちらも「Excelに出力」「🖨 PDFで保存/印刷」の両方が使えます(翌月ボックスはExcel出力・PDF/印刷のどちらにも含まれます。行数が増えるため、1ページに収めず複数ページに分けて出力されます)。</p>
+  <p>「月間予定表(教員用)」タブでは、入力した内容から教員用の月間予定表を画面上で確認できます。学校行事等は「年間行事」「月のみ」「教員のみ」をすべて合わせて表示し、「年間行事」は太字、「教員のみ」は色分け(オレンジ系)で区別されます。週番は、同じ内容が連続する日をまとめて1つのセルに結合して表示します(内容が変わる日や休業日でそこは区切られます)。入力したメモは表の下に一覧で表示されます。「Excelに出力(この月)」で表示中の月だけを、「Excelに出力(年間12か月)」で4月〜3月の12か月分を1つのExcelファイル(月ごとにシートを分けたもの)としてダウンロードできます。行の高さはすべて固定されており、長い文章を入力した場合は行が伸びるのではなく、セル内の文字が自動的に縮小されて1行に収まります(Microsoft Excelでの「縮小して全体を表示」機能を使用しています)。祝日・休業日の網掛けや集計行の色も、白黒プリンターでも判読できる濃さのグレーにしています。</p>
+  <p>「月間予定表(家庭用)」タブでは、同じデータから会議・出張・研修や週番、教員のみの行事を除いた家庭向けの表示を確認できます。表の右側には元のExcelと同様に、翌月の予定(学校行事等のみ)が一覧表示されます。こちらも「Excelに出力」で出力できます(翌月ボックスもExcel出力に含まれます。行数が増えるため、1ページに収めず複数ページに分けて出力されます)。</p>
 
-  <h4>年間予定表(教員用・家庭用)の確認・Excel出力・PDF保存</h4>
-  <p>「年間予定表(教員用)」「年間予定表(家庭用)」の2つのタブに分かれています。どちらも基本は「学校行事等(年間行事)」欄の内容を表示しますが、上部のチェックボックスで「学校行事等(月のみ)も含める」「学校行事等(教員のみ)も含める」「職員会議のあった日を含める」をそれぞれ個別にオン・オフできます(既定値: 教員用は月のみ・教員のみをオン、家庭用は月のみだけオン)。教員のみの内容はオレンジ、職員会議は青字で「職員会議」とだけ表示されます(会議の詳細な内容や企画会議・出張などは年間予定表には表示されません)。各月の下部には元のExcelと同様に「年計」「学期計」「月計」として学年別の授業日数を表示します。学期の区切り(2学期・3学期の開始月)は「設定」タブで変更できます。「Excelに出力」ボタンで、A3横1ページに収まる形でその時点のチェック設定のまま年間分をまとめてダウンロードできます(元のExcelと同じくA3サイズ)。「🖨 PDFで保存/印刷」でも同様にA3横で印刷・PDF保存できます。</p>
+  <h4>年間予定表(教員用・家庭用)の確認・Excel出力</h4>
+  <p>「年間予定表(教員用)」「年間予定表(家庭用)」の2つのタブに分かれています。どちらも基本は「学校行事等(年間行事)」欄の内容を表示しますが、上部のチェックボックスで「学校行事等(月のみ)も含める」「学校行事等(教員のみ)も含める」「職員会議のあった日を含める」をそれぞれ個別にオン・オフできます(既定値: 教員用は月のみ・教員のみをオン、家庭用は月のみだけオン)。教員のみの内容はオレンジ、職員会議は青字で「職員会議」とだけ表示されます(会議の詳細な内容や企画会議・出張などは年間予定表には表示されません)。各月の下部には元のExcelと同様に「年計」「学期計」「月計」として学年別の授業日数を表示します。学期の区切り(2学期・3学期の開始月)は「設定」タブで変更できます。「Excelに出力」ボタンで、A3横1ページに収まる形でその時点のチェック設定のまま年間分をまとめてダウンロードできます(元のExcelと同じくA3サイズ)。</p>
+  <p style="font-size:12px;color:var(--ink-soft);">※PDF保存・印刷ボタンは、最終的な確認・配布をExcel出力ベースで行う運用のため、現在は非表示にしています。</p>
 
   <h4>時数・集計の確認</h4>
   <p>「時数・集計」タブでは、入力した内容から次を自動集計して確認できます。</p>
