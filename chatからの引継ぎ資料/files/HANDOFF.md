@@ -14,7 +14,7 @@ Claude(claude.aiおよびClaude Code)での対話を通じて開発してきた�
   - アプリファイルを編集するたびに自動で`git add`→`commit`→`push`する運用(ユーザーの`C:\Users\idolo\.claude\CLAUDE.md`のグローバル指示)。force pushはしない。
   - つまり、ローカルのファイルが万一失われても、このGitHubリポジトリの最新コミットに全履歴が残っている。
 - **クラウドミラー(Googleドライブ同期)**: `C:\Users\idolo\Documents\projects\appcopy\行事予定アプリ\`(`.git`を除いた全ファイルを都度上書きコピー。閲覧用)
-- **GitHub CLI**: このマシンには`gh`コマンドがインストール済みだが、シェルのPATHには入っていない。フルパス`"C:\Program Files\GitHub CLI\gh.exe"`で呼び出す必要がある。GitHubアカウント`soichiroteacher`で認証済み。
+- **GitHub CLI**: このマシンには`gh`コマンドがインストール済み(`C:\Program Files\GitHub CLI\`、システムPATHにも登録済み)。GitHubアカウント`soichiroteacher`で認証済み。以前、インストール後にセッションを再起動しないまま使ったため一時的に`gh`コマンドが見つからず(PATHはプロセス起動時点のものを引き継ぐ仕様のため)フルパス指定が必要だったことがあるが、セッション再起動後は解消し、通常どおり`gh`だけで呼び出せる(2026-09-07 再起動により解消済み)。
 
 ## 概要
 
