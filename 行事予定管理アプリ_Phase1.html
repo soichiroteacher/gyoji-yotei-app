@@ -39,6 +39,7 @@
   .lock-badge{font-size:12px;padding:3px 9px;border-radius:12px;white-space:nowrap;font-weight:600;}
   .lock-badge.locked{background:#f3f5f4;color:var(--ink-soft);}
   .lock-badge.unlocked{background:#e4f3e8;color:#1f7a3d;}
+  .edit-lock-warning{font-size:12px;padding:3px 9px;border-radius:12px;white-space:nowrap;font-weight:600;background:#fbe9d0;color:#8a5a00;}
   .spacer{flex:1;}
   .btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
   button{
@@ -275,6 +276,7 @@
   <h1>行事予定管理</h1>
   <span class="school-tag" id="schoolTag">(未設定)</span>
   <span id="lockBadge" class="lock-badge locked">🔒 閲覧のみ</span>
+  <span id="editLockWarning" class="edit-lock-warning" hidden></span>
   <div class="spacer"></div>
   <div class="btnrow">
     <span id="status">未保存</span>
@@ -812,6 +814,7 @@ function emptyState(){
     extraHours:{ g1:0, g2:0, g3:0 }, // 行事予定にのらない時間数の手入力分(時数・集計タブの「必要時数との比較」に合算)
     mealCountOverrides:{}, // "YYYY-MM-DD" -> {g1:bool,g2:bool,g3:bool} 宿泊行事等で給食○ではないが喫食したものとして数える例外(時数・集計タブの一覧から設定)
     printCounts:[],      // 印刷部数の履歴ログ。{id, date:"YYYY-MM-DD", target:'staff'|'student', staffName:'', count:0, note:''}
+    editLock:{ active:false, since:null }, // 職場サーバー等で共有した場合の簡易ロック表示用。編集モード中は自動保存のたびにsinceを更新し、一定時間更新がなければ失効扱いにする
     days:{},             // "YYYY-MM-DD" -> dayRecord
     presets: defaultPresets(),
     colWidths:{},         // 列key -> 幅(px)。未指定は既定値を使用
@@ -885,6 +888,11 @@ function normalizeState(obj){
       count: Number.isFinite(p.count) ? p.count : 0,
       note: typeof p.note==='string' ? p.note : ''
     }));
+  }
+  if(!obj.editLock || typeof obj.editLock!=='object') obj.editLock = { active:false, since:null };
+  else {
+    obj.editLock.active = !!obj.editLock.active;
+    if(typeof obj.editLock.since !== 'string') obj.editLock.since = null;
   }
   if(!obj.requiredHours){ obj.requiredHours = defaultRequiredHours(); }
   else {
@@ -1094,9 +1102,18 @@ function setStatus(text, cls){
   const el = document.getElementById('status');
   el.textContent = text; el.className = cls||'';
 }
+// 共有サーバー等に置いた場合の簡易ロック表示用。この時間以上sinceが更新されていなければ
+// (=編集中の人が保存もクローズもしないまま離席した等)、失効したものとして扱う。
+const EDIT_LOCK_STALE_MS = 10*60*1000;
+function isEditLockFresh(lock){
+  if(!lock || !lock.active || !lock.since) return false;
+  const since = new Date(lock.since).getTime();
+  return Number.isFinite(since) && (Date.now() - since) < EDIT_LOCK_STALE_MS;
+}
 function markDirty(){
   if(!editUnlocked) return;
   dirty = true;
+  if(state.editLock && state.editLock.active) state.editLock.since = new Date().toISOString();
   setStatus('未保存の変更があります', 'dirty');
   document.getElementById('btnSave').disabled = !fileHandle;
   scheduleAutosave();
@@ -3655,6 +3672,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-08</strong>: 職場のサーバーなど複数人がアクセスしうる場所にファイルを置いた場合の簡易ロック表示を追加。編集モードにすると画面上部に「編集中」の状態が記録され、他の場所で最近(10分以内)編集が始まっている場合は、編集を始める前に警告を表示するように。編集していない間(閲覧のみ)でも、直近の編集中表示があれば画面上部にバッジで分かるように。</li>
     <li><strong>2026-09-08</strong>: 行事等入力(候補プール)の「使用済み」表示を、色付きバッジで分かりやすく改善。右上の「✕ 閉じる」で内容を保存せずに閉じようとした際、変更があれば確認するように変更(誤って選択内容が消えるのを防止)。</li>
     <li><strong>2026-09-08</strong>: 年間予定表の「年計」「学期計」「月計」で、数字の桁数が違っても①②③の位置が揃うように調整。</li>
     <li><strong>2026-09-08</strong>: 「時数・集計」タブの「給食のない日 一覧」が長くなりすぎる場合に、既定20件のみ表示し「すべて表示」で展開できるように変更。</li>
@@ -3675,6 +3693,9 @@ document.getElementById('helpBody').innerHTML = `
   前回編集モードだったかどうかに関わらず、必ず「閲覧のみ」の状態に戻ります。初期パスワードは <code>0000</code> です。
   「設定」タブの「編集パスワードの変更」から、編集モード中にいつでも変更できます(教務主任の方は、初回に必ずパスワードを変更しておくことをおすすめします)。
   パスワードはそのままの文字列ではなく、復元できない形(ハッシュ)に変換してデータファイルに保存されるため、.datファイルを直接開いてもパスワードそのものは分かりません。</p>
+
+  <h4>職場サーバー等で共有する場合の同時編集への注意</h4>
+  <p>このアプリには、複数人が同時に編集した場合の排他制御(片方の変更を待たせる仕組み)はありません。.datファイルを職場サーバーなど複数人がアクセスできる場所に置いている場合、同時に編集して保存すると、後から保存した方の内容で上書きされてしまいます。これを防ぐ簡易的な仕組みとして、「編集する」を押した時点の状態を記録しており、直近10分以内に別の場所で編集が始まっている場合は、編集を始める前に確認メッセージが表示されます。また、閲覧のみの状態でも、画面上部に「⚠ ◯◯:◯◯〜 編集中の可能性」と表示されることがあります。ただしこれはあくまで簡易的な目安です。基本的には「編集は同時に1人だけ」という運用を徹底してください。</p>
 
   <h4>テストデータでの動作確認</h4>
   <p>「設定」タブの「テストデータ」から、元のExcelファイルの実際の記載内容を参考にした4月分のサンプルデータを.datファイルとして書き出せます。現在編集中のデータには影響しません。書き出したファイルを「開く」で読み込むと、入力例が入った状態で各タブの表示やExcel出力を試せます(パスワードは初期値の0000のままです)。すぐに試したいだけなら「サンプルデータをすぐに試す」ボタンで、ファイルを介さずその場で画面上のデータをサンプルに切り替えられます。この操作は開いていたファイル自体を一切変更・上書きしません(保存先が未設定の状態になるため、誤って元のファイルに保存される心配もありません)。お手元のデータに戻るときは、もう一度そのファイルを「開く」で読み込み直してください。</p>
@@ -3764,6 +3785,15 @@ function applyLockUI(){
   }
   document.getElementById('btnSaveAs').disabled = !editUnlocked;
   document.getElementById('btnSave').disabled = !editUnlocked || !fileHandle;
+  const warnEl = document.getElementById('editLockWarning');
+  if(!editUnlocked && isEditLockFresh(state.editLock)){
+    const since = new Date(state.editLock.since);
+    const hh = pad2(since.getHours()), mm = pad2(since.getMinutes());
+    warnEl.textContent = `⚠ ${hh}:${mm}〜 編集中の可能性`;
+    warnEl.hidden = false;
+  } else {
+    warnEl.hidden = true;
+  }
 }
 function openPasswordModal(){
   document.getElementById('pwInput').value = '';
@@ -3976,6 +4006,8 @@ document.getElementById('btnResetColors').addEventListener('click', ()=>{
 
 document.getElementById('btnUnlock').addEventListener('click', ()=>{
   if(editUnlocked){
+    state.editLock = { active:false, since:null };
+    markDirty(); // editUnlockedがまだtrueのうちに呼び、ロック解除を保存対象にする
     editUnlocked = false;
     applyLockUI();
     refreshAll();
@@ -3992,10 +4024,25 @@ async function submitPasswordUnlock(){
   const val = document.getElementById('pwInput').value;
   const hash = await sha256Hex(val);
   if(hash === state.meta.editPasswordHash){
+    // 職場サーバー等で共有している場合、他の場所で編集中でないかをファイルから直接確認する
+    // (このタブが最後に読み込んだ内容が古い可能性があるため、fileHandleから読み直す)。
+    if(fileHandle){
+      try{
+        const file = await fileHandle.getFile();
+        const fresh = JSON.parse(await file.text());
+        if(isEditLockFresh(fresh.editLock)){
+          const mins = Math.max(1, Math.round((Date.now() - new Date(fresh.editLock.since).getTime())/60000));
+          const proceed = confirm(`このファイルは${mins}分前から、別の場所で編集中の可能性があります。\nこのまま編集を続けますか？(同時に編集すると、後から保存した方の内容で上書きされます)`);
+          if(!proceed){ document.getElementById('pwInput').value=''; return; }
+        }
+      }catch(e){ /* 読み直しに失敗した場合は確認をスキップして続行する */ }
+    }
     editUnlocked = true;
+    state.editLock = { active:true, since:new Date().toISOString() };
     closePasswordModal();
     applyLockUI();
     refreshAll();
+    markDirty();
   } else {
     document.getElementById('pwError').style.display = 'block';
   }
