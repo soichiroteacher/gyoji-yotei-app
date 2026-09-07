@@ -160,8 +160,9 @@
   .memo-btn:hover, .field-btn:hover{background:var(--accent-soft);}
   .memo-btn:disabled, .field-btn:disabled{cursor:default;color:#ccc;}
   .memo-btn.has-memo:disabled, .field-btn.has-content:disabled{color:var(--ink-soft);}
-  .candidate-row.used{opacity:.55;}
-  .candidate-row .cand-count{font-size:11px;color:var(--ink-soft);margin-left:6px;}
+  .candidate-row.used{background:#f4f1e8;}
+  .candidate-row.used td:first-child{color:var(--ink-soft);}
+  .candidate-row .cand-count{display:inline-block;font-size:11px;font-weight:600;color:#8a6d1f;background:#f3e3b8;border-radius:3px;padding:1px 6px;margin-left:6px;}
   td.chk{text-align:center;width:36px;min-width:36px;}
   td.cell.chk{text-align:center;}
   td.cell.chk input[type=checkbox]{width:15px;height:15px;margin:0;vertical-align:middle;cursor:pointer;}
@@ -3789,6 +3790,7 @@ document.getElementById('memoSave').addEventListener('click', ()=>{
 // 複数の行事をそれぞれ別の枠に入力し、保存時に1つのテキストへまとめる。
 let eventPickerKey = null, eventPickerField = null, eventPickerBoxValues = [''];
 let eventPickerUsedCandidateIds = new Set(); // このモーダルを開いている間に候補から選んだもの(保存時にまとめて使用回数を増やす)
+let eventPickerInitialSnapshot = ''; // 開いた時点の内容(未保存で閉じようとした時の確認に使用)
 function openEventPickerModal(key, field, fieldLabel, dayLabel){
   eventPickerKey = key;
   eventPickerField = field;
@@ -3802,11 +3804,19 @@ function openEventPickerModal(key, field, fieldLabel, dayLabel){
   }
   eventPickerBoxValues = initial ? initial.split('　').map(s=>s.trim()).filter(Boolean) : [];
   if(eventPickerBoxValues.length===0) eventPickerBoxValues = [''];
+  eventPickerInitialSnapshot = JSON.stringify(eventPickerBoxValues.map(v=>v.trim()).filter(Boolean));
   document.getElementById('eventPickerAddMsg').textContent = '';
   renderEventPickerBoxes();
   renderEventCandidateList();
   document.getElementById('eventPickerOverlay').classList.add('show');
   setTimeout(()=>{ const el = document.querySelector('.ev-box-input'); if(el) el.focus(); }, 50);
+}
+// ✕・キャンセルでの「保存せず閉じる」操作。候補を選んだ・内容を変更した状態のまま
+// 気づかず閉じて選択内容が失われることがないよう、変更がある場合だけ確認する。
+function closeEventPickerModalWithConfirm(){
+  const changed = JSON.stringify(eventPickerBoxValues.map(v=>v.trim()).filter(Boolean)) !== eventPickerInitialSnapshot;
+  if(changed && !confirm('保存せずに閉じますか?入力・選択した内容は失われます。')) return;
+  closeEventPickerModal();
 }
 function closeEventPickerModal(){
   document.getElementById('eventPickerOverlay').classList.remove('show');
@@ -3858,7 +3868,7 @@ function renderEventCandidateList(){
     list.map(c=>{
       const used = c.useCount>0;
       return `<tr class="candidate-row ${used?'used':''}">
-        <td>${escapeHtml(c.text)}${used?`<span class="cand-count">(使用: ${c.useCount}回)</span>`:''}</td>
+        <td>${escapeHtml(c.text)}${used?`<span class="cand-count">✓ 使用済み(${c.useCount}回)</span>`:''}</td>
         <td style="white-space:nowrap;">
           <button class="ghost tiny" data-selectcand="${c.id}" ${editUnlocked?'':'disabled'}>選択</button>
           <button class="ghost tiny danger" data-delcand="${c.id}" ${editUnlocked?'':'disabled'}>削除</button>
@@ -3890,8 +3900,8 @@ function renderEventCandidateList(){
     });
   });
 }
-document.getElementById('eventPickerClose').addEventListener('click', closeEventPickerModal);
-document.getElementById('eventPickerCancel').addEventListener('click', closeEventPickerModal);
+document.getElementById('eventPickerClose').addEventListener('click', closeEventPickerModalWithConfirm);
+document.getElementById('eventPickerCancel').addEventListener('click', closeEventPickerModalWithConfirm);
 document.getElementById('eventPickerSave').addEventListener('click', ()=>{
   if(!eventPickerKey || !editUnlocked) return;
   const val = eventPickerBoxValues.map(v=>v.trim()).filter(Boolean).join('　');
