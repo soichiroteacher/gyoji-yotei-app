@@ -762,6 +762,13 @@ function defaultRequiredHours(){
     g3:{国語:105,社会:140,数学:140,理科:140,音楽:35,美術:35,保健体育:105,技術家庭:35,外国語:140,道徳:35,総合:70,特別活動:35}
   };
 }
+// 「①〜⑥」欄の数字入力では教科まで区別できないため、道徳・総合・特別活動・音楽(いずれも既存の記号「道」「総」「学」「音」で自動集計済み)を除いた
+// 残りの教科について、実際に行った授業のコマ数を手入力で記録できるようにする(「時数・集計」タブの別セクション)。
+const SUBJECT_ACTUAL_SUBJECTS = ['国語','社会','数学','理科','美術','保健体育','技術家庭','外国語'];
+function defaultSubjectActuals(){
+  const zero = {}; SUBJECT_ACTUAL_SUBJECTS.forEach(s=>{ zero[s]=0; });
+  return { g1:{...zero}, g2:{...zero}, g3:{...zero} };
+}
 function defaultAnnualSettings(){
   return {
     teacher: { includeMonthly:true, includeTeacherOnly:true, includeMeeting:false },
@@ -804,6 +811,7 @@ function emptyState(){
     presets: defaultPresets(),
     colWidths:{},         // 列key -> 幅(px)。未指定は既定値を使用
     requiredHours: defaultRequiredHours(), // 学年別・教科別の年間必要時数(学習指導要領の値が初期値、編集可)
+    subjectActuals: defaultSubjectActuals(), // 学年別・教科別の「実際に行った授業」の累計コマ数(手入力。①〜⑥の数字入力とは別管理)
     annualSettings: defaultAnnualSettings() // 年間予定表(教員用/家庭用)にどこまでの情報を載せるか
   };
 }
@@ -879,6 +887,14 @@ function normalizeState(obj){
     ['g1','g2','g3'].forEach(g=>{
       if(!obj.requiredHours[g]) obj.requiredHours[g] = def[g];
       else REQUIRED_HOURS_SUBJECTS.forEach(sub=>{ if(typeof obj.requiredHours[g][sub]!=='number') obj.requiredHours[g][sub] = def[g][sub]; });
+    });
+  }
+  if(!obj.subjectActuals){ obj.subjectActuals = defaultSubjectActuals(); }
+  else {
+    const defSA = defaultSubjectActuals();
+    ['g1','g2','g3'].forEach(g=>{
+      if(!obj.subjectActuals[g]) obj.subjectActuals[g] = defSA[g];
+      else SUBJECT_ACTUAL_SUBJECTS.forEach(sub=>{ if(typeof obj.subjectActuals[g][sub]!=='number') obj.subjectActuals[g][sub] = 0; });
     });
   }
   if(!obj.annualSettings){ obj.annualSettings = defaultAnnualSettings(); }
@@ -3015,9 +3031,22 @@ function renderStats(){
   });
   html += '</div>';
 
+  // 教科別実績の入力(手入力・累計)
+  html += '<div class="panel"><h2>教科別実績の入力(手入力)</h2>';
+  html += '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">「①〜⑥」欄の数字入力ではどの教科かまで区別できないため、実際に行った授業のコマ数(年度累計)を教科ごとに手入力できます。道徳・総合的な学習の時間・特別活動・音楽は、既存の記号(「道」「総」「学」「音」)から自動集計されるため、ここには含みません。</p>';
+  html += '<table class="stats-table"><thead><tr><th></th><th>1年</th><th>2年</th><th>3年</th></tr></thead><tbody>';
+  SUBJECT_ACTUAL_SUBJECTS.forEach(sub=>{
+    html += `<tr><td>${sub}</td>`+['g1','g2','g3'].map(g=>
+      `<td><input type="number" min="0" step="1" class="subject-actual-input" data-grade="${g}" data-subject="${sub}" style="width:64px;" value="${state.subjectActuals[g][sub]}"></td>`
+    ).join('')+'</tr>';
+  });
+  const subjectActualTotal = g => SUBJECT_ACTUAL_SUBJECTS.reduce((s,sub)=>s+(Number(state.subjectActuals[g][sub])||0),0);
+  html += `<tr class="stats-total"><td>合計</td><td>${subjectActualTotal('g1')}</td><td>${subjectActualTotal('g2')}</td><td>${subjectActualTotal('g3')}</td></tr>`;
+  html += '</tbody></table></div>';
+
   // 必要時数との比較(学習指導要領)
   html += '<div class="panel"><h2>必要時数との比較(年間累計)</h2>';
-  html += '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">「①〜⑥」に数字(1〜6)を入力した分をまとめて「教科(数字入力分)」として比較しています。個々の教科(国語・数学など)ごとの内訳は、時間割の教科までは記録していないため区別できません。「設定」タブの「必要時数の編集」で必要時数を変更できます。</p>';
+  html += '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">道徳・総合的な学習の時間・特別活動・音楽は①〜⑥欄の記号から自動集計、教科(国語・数学など)は上の「教科別実績の入力」の手入力値、「教科(数字入力分の合計)」は①〜⑥に数字(1〜6)を入力した回数の単純合計です(教科別の手入力とは別集計につき、目安としてご覧ください)。「設定」タブの「必要時数の編集」で必要時数を変更できます。</p>';
   html += '<table class="stats-table"><thead><tr><th></th><th>1年 実績</th><th>1年 必要</th><th>1年 過不足</th><th>2年 実績</th><th>2年 必要</th><th>2年 過不足</th><th>3年 実績</th><th>3年 必要</th><th>3年 過不足</th></tr></thead><tbody>';
   function compareRow(label, actualFn, requiredKey){
     let row = `<tr><td>${label}</td>`;
@@ -3041,6 +3070,10 @@ function renderStats(){
   html += compareRow('道徳', g=>yearStats.periodTally[g]['道']||0, '道徳');
   html += compareRow('総合的な学習の時間', g=>yearStats.periodTally[g]['総']||0, '総合');
   html += compareRow('特別活動(学級活動等)', g=>yearStats.periodTally[g]['学']||0, '特別活動');
+  html += compareRow('音楽', g=>yearStats.periodTally[g]['音']||0, '音楽');
+  SUBJECT_ACTUAL_SUBJECTS.forEach(sub=>{
+    html += compareRow(sub, g=>state.subjectActuals['g'+g][sub]||0, sub);
+  });
   html += compareRow('教科(数字入力分の合計)', subjectSum, '__subjectTotal__');
   html += '<tr><td>その他(行事予定にのらない分・手入力)</td>' + ['g1','g2','g3'].map(g=>
     `<td><input type="number" min="0" step="1" class="extra-hours-input" data-grade="${g}" style="width:56px;" value="${state.extraHours[g]}"></td><td>―</td><td>―</td>`
@@ -3050,6 +3083,17 @@ function renderStats(){
   html += '</div>';
 
   wrap.innerHTML = html;
+  wrap.querySelectorAll('.subject-actual-input').forEach(inp=>{
+    inp.disabled = !editUnlocked;
+    inp.addEventListener('change', (e)=>{
+      if(!editUnlocked) return;
+      const g = e.target.dataset.grade, sub = e.target.dataset.subject;
+      const v = Number(e.target.value);
+      state.subjectActuals[g][sub] = isNaN(v) || v<0 ? 0 : v;
+      markDirty();
+      renderStats();
+    });
+  });
   wrap.querySelectorAll('.extra-hours-input').forEach(inp=>{
     inp.disabled = !editUnlocked;
     inp.addEventListener('change', (e)=>{
@@ -3656,10 +3700,8 @@ document.getElementById('helpBody').innerHTML = `
   <h4>自動バックアップ</h4>
   <p>「設定」タブの「自動バックアップ」から、.datファイルのバックアップを自動保存するフォルダを指定できます。一度選んだフォルダは次回以降も記憶されますが、ブラウザの仕様上、アプリを開くたびに「アクセスを許可」ボタンを1回押す必要があります(フォルダの選び直しは不要です)。バックアップの頻度は「保存のたびに毎回」「30分おきに1回」「1日に1回(初期設定)」から選べます。バックアップは元のファイルを上書きせず、日時付きの別ファイルとして保存されます。</p>
 
-  <h4>まだ実装されていない機能(今後追加予定)</h4>
-  <ul>
-    <li>教科(国語・数学など)ごとの個別の時数記録・比較(現状は時間割の教科までは記録していません)</li>
-  </ul>
+  <h4>時数・集計 - 教科別実績の入力</h4>
+  <p>①〜⑥欄の数字入力(1〜6)だけでは、どの教科(国語・数学など)の授業だったかまでは区別できません。「時数・集計」タブの「教科別実績の入力」では、道徳・総合的な学習の時間・特別活動・音楽を除く教科(国語・社会・数学・理科・美術・保健体育・技術家庭・外国語)について、実際に行った授業のコマ数を学年ごとに手入力できます(年度累計の数値を直接編集する形式です)。入力した値は、すぐ下の「必要時数との比較」表にも反映されます。道徳・総合的な学習の時間・特別活動・音楽は、①〜⑥欄とは別の記号(「道」「総」「学」「音」)から自動的に集計されるため、ここでの手入力は不要です。「教科(数字入力分の合計)」の行は、①〜⑥に数字を入力した回数の単純合計であり、教科別の手入力の値とは別集計です(目安としてご覧ください)。</p>
 
   <h4>アプリの不具合・様式変更をAIに依頼するときの書き方</h4>
   <pre>1. 対象ファイル: このアプリの index.html(添付/アップロード)
