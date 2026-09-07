@@ -125,6 +125,7 @@
     font-size:12.5px;line-height:20px;background:transparent;outline:none;
   }
   td.cell input:focus{background:#fff8dc;box-shadow:inset 0 0 0 2px #e8c95a;}
+  td.cell input.small-input{font-size:11px;text-align:center;padding:2px 1px;}
   /* 候補リスト(datalist)の矢印アイコンが横幅を圧迫し、●や道などの文字が欠けて見えることがあるため非表示にする */
   td.cell input[list]::-webkit-calendar-picker-indicator{display:none;}
   td.cell input[list]::-webkit-list-button{display:none;-webkit-appearance:none;width:0;}
@@ -133,14 +134,16 @@
   td.cell.noschool input{background:#f2f2f2;color:#ccc;}
   td.cell.selected input{background:transparent;}
   td.memocell input{min-width:130px;}
-  .memo-btn{
+  .memo-btn, .field-btn{
     width:100%;height:28px;border:none;background:transparent;text-align:left;padding:3px 6px;
     font-size:12.5px;color:#b3bac1;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
-  .memo-btn.has-memo{color:var(--ink);}
-  .memo-btn:hover{background:var(--accent-soft);}
-  .memo-btn:disabled{cursor:default;color:#ccc;}
-  .memo-btn.has-memo:disabled{color:var(--ink-soft);}
+  .memo-btn.has-memo, .field-btn.has-content{color:var(--ink);}
+  .memo-btn:hover, .field-btn:hover{background:var(--accent-soft);}
+  .memo-btn:disabled, .field-btn:disabled{cursor:default;color:#ccc;}
+  .memo-btn.has-memo:disabled, .field-btn.has-content:disabled{color:var(--ink-soft);}
+  .candidate-row.used{opacity:.55;}
+  .candidate-row .cand-count{font-size:11px;color:var(--ink-soft);margin-left:6px;}
   td.chk{text-align:center;width:36px;min-width:36px;}
   td.cell.chk{text-align:center;}
   td.cell.chk input[type=checkbox]{width:15px;height:15px;margin:0;vertical-align:middle;cursor:pointer;}
@@ -585,6 +588,29 @@
   </div>
 </div>
 
+<div class="overlay" id="eventPickerOverlay">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head">
+      <h3 id="eventPickerTitle">学校行事等の入力</h3>
+      <button class="ghost" id="eventPickerClose">✕ 閉じる</button>
+    </div>
+    <div class="modal-body">
+      <input type="text" id="eventPickerTextarea" style="width:100%;font-size:13.5px;padding:8px;box-sizing:border-box;font-family:inherit;" placeholder="自由に入力できます">
+      <div class="field-row" style="margin-top:6px;">
+        <button type="button" class="ghost tiny" id="eventPickerAddCandidate">この内容を候補に追加</button>
+        <span id="eventPickerAddMsg" style="font-size:12px;color:var(--warn);"></span>
+      </div>
+      <h4 style="margin:16px 0 4px;font-size:13px;color:var(--accent);">候補から選ぶ</h4>
+      <p style="font-size:12px;color:var(--ink-soft);margin:0 0 8px;">日程が決まっていない行事などを候補として一次保存しておき、日程が決まったらここから選べます。選ぶと上の入力欄に反映されます(反映後は「保存して閉じる」を押してください)。使用済みの候補は薄く表示されます。</p>
+      <div class="holiday-list" id="eventPickerCandidateList" style="max-height:220px;"></div>
+    </div>
+    <div class="modal-foot">
+      <button id="eventPickerCancel">キャンセル</button>
+      <button class="primary" id="eventPickerSave">保存して閉じる</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="pwOverlay">
   <div class="modal" style="max-width:380px;">
     <div class="modal-head">
@@ -665,6 +691,7 @@ function defaultAnnualSettings(){
     family:  { includeMonthly:true, includeTeacherOnly:false, includeMeeting:false }
   };
 }
+function genId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 function emptyState(){
   const now = new Date();
   return {
@@ -675,6 +702,7 @@ function emptyState(){
       versionLabel:'' }, // 予定表タイトルに添える版表記(例:"正式版","保護者説明会時点(4/10)")。任意
     manualDayFlags:{},   // "YYYY-MM-DD" -> {mode:'holiday'|'schoolday', label:''}
     holidayOverrides:{}, // "YYYY-MM-DD" -> {type:'add'|'remove', label:''} 特別法による祝日移動等の例外を手動で追加・解除
+    eventCandidates:[],  // 日程未定の行事等を一次保存しておく候補プール。{id, text, useCount}
     days:{},             // "YYYY-MM-DD" -> dayRecord
     presets: defaultPresets(),
     colWidths:{},         // 列key -> 幅(px)。未指定は既定値を使用
@@ -702,6 +730,14 @@ function normalizeState(obj){
         delete obj.holidayOverrides[key];
       }
     });
+  }
+  if(!Array.isArray(obj.eventCandidates)) obj.eventCandidates = [];
+  else {
+    obj.eventCandidates = obj.eventCandidates.filter(c=>c && typeof c.text==='string' && c.text.trim()!=='').map(c=>({
+      id: c.id || genId(),
+      text: c.text,
+      useCount: Number.isFinite(c.useCount) ? c.useCount : 0
+    }));
   }
   if(!obj.requiredHours){ obj.requiredHours = defaultRequiredHours(); }
   else {
@@ -1574,9 +1610,9 @@ const COLS = [
   {key:'g3SchoolDay', label:'3年', w:36, type:'checkbox', grpAttend:true, schoolDayGrade:'3'},
 ];
 ['1','2','3'].forEach(g=>{
-  for(let i=1;i<=6;i++) COLS.push({key:'g'+g+'p'+i, label:'①②③④⑤⑥'[i-1], w:40, dl:'dl-period', grade:g});
+  for(let i=1;i<=6;i++) COLS.push({key:'g'+g+'p'+i, label:'①②③④⑤⑥'[i-1], w:36, dl:'dl-period', grade:g, cls:'small-input'});
 });
-COLS.push({key:'weeklyDuty', label:'週番', w:60, dl:'dl-weeklyduty'});
+COLS.push({key:'weeklyDuty', label:'週番', w:36, dl:'dl-weeklyduty', cls:'small-input'});
 COLS.push({key:'memo', label:'メモ(根拠等)', w:150});
 
 function colWidth(key){
@@ -1746,9 +1782,14 @@ function renderAgenda(){
         html += `<td class="cell ${memoCls}" data-row="${d-1}" data-col="${colIdx}">`+
           `<button type="button" class="memo-btn ${val?'has-memo':''}" data-key="${key}" data-field="memo" data-daylabel="${escapeHtml(String(d))}日(${DOW[dow]})">${preview || '＋メモ'}</button>`+
           `</td>`;
+      } else if(c.key==='eventsAnnual' || c.key==='eventsMonthly' || c.key==='eventsTeacherOnly'){
+        const evPreview = val ? escapeHtml(val.split('\n')[0]).slice(0,60) + (val.length>60||val.includes('\n') ? '…' : '') : '';
+        html += `<td class="cell" data-row="${d-1}" data-col="${colIdx}">`+
+          `<button type="button" class="field-btn ${val?'has-content':''}" ${dis} data-key="${key}" data-field="${c.key}" data-fieldlabel="${escapeHtml(c.label)}" data-daylabel="${escapeHtml(String(d))}日(${DOW[dow]})">${evPreview || '＋入力'}</button>`+
+          `</td>`;
       } else if(c.key==='weeklyDuty'){
         html += `<td class="cell" data-row="${d-1}" data-col="${colIdx}">`+
-          `<input type="text" ${dis} list="dl-weeklyduty" data-row="${d-1}" data-col="${colIdx}" data-key="${key}" data-field="weeklyDuty" value="${escapeHtml(val)}">`+
+          `<input type="text" ${dis} class="${c.cls||''}" list="dl-weeklyduty" data-row="${d-1}" data-col="${colIdx}" data-key="${key}" data-field="weeklyDuty" value="${escapeHtml(val)}">`+
           `</td>`;
       } else {
         const periodDisabled = c.grade && !effSchoolDay[c.grade];
@@ -1814,6 +1855,13 @@ function attachGridHandlers(){
       e.stopPropagation();
       if(!editUnlocked){ openPasswordModal(); return; }
       openMemoModal(btn.dataset.key, btn.dataset.daylabel);
+    });
+  });
+  table.querySelectorAll('.field-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if(!editUnlocked){ openPasswordModal(); return; }
+      openEventPickerModal(btn.dataset.key, btn.dataset.field, btn.dataset.fieldlabel, btn.dataset.daylabel);
     });
   });
 
@@ -3049,6 +3097,7 @@ document.getElementById('helpBody').innerHTML = `
     <li>学校行事等は3つの欄に分かれています。「年間行事」(年間予定表にも掲載予定、太字の緑で表示)、「月のみ」(月の予定表のみに掲載)、「教員のみ」(教員用にのみ掲載、オレンジで表示)。載せたい範囲に応じて入力する欄を選んでください。</li>
     <li>「企画会議」「職員会議」はチェックボックスで入れられます。チェックすると、教員用の会議・出張・研修欄に自動的に「企画会議」「職員会議」の文字が追加されます(自由入力の内容と合わせて表示されます)。</li>
     <li>「掃除」もチェックボックスです。何もしなければ平日は「あり」、土曜・日曜・祝日は「なし」に自動でなります。手動でチェックを変更した場合はその状態が優先され、「なし」にした日だけ月間予定表の「学校行事等」欄に「掃除×」と自動的に表示されます。</li>
+    <li>「学校行事等(年間行事/月のみ/教員のみ)」欄はクリックすると入力用のウィンドウが開きます。そこで直接入力するほか、「候補から選ぶ」で日程が決まっていない行事などをあらかじめ「候補に追加」しておき、日程が決まったら選んで反映できます。候補は削除するまで残り、複数の日で繰り返し使えます(使用済みの候補は薄く表示され、使用回数も確認できます)。</li>
     <li>列の並びは元のExcel(4月職・4月生シート)を基本にしつつ、上記の欄を追加しています。「給食(学年別)」の右にある「登校日」列は、学年ごとに登校日かどうかを判定するためのチェックボックスです(このアプリで追加した列です)。</li>
     <li>「登校日」のチェックは、平日は自動でオン、土日・祝日は自動でオフになっています。実際と異なる場合(土曜授業を行う、逆に平日を休業日にするなど)は、その学年のチェックを直接つけ外ししてください。チェックを外すと、その学年の①〜⑥時限の欄は入力できなくなります。休みや特別な登校日の理由は「学校行事等(年間行事)」などに書き添えてください。時数・集計タブの授業日数は、このチェックを元に計算されます。</li>
     <li>「メモ(根拠等)」列はボタンになっており、クリックすると複数行の文章を入力できる画面が開きます。ここに入力した内容は月間予定表(教員用)の画面に一覧表示され、Excel出力時は「メモも出力に含める」にチェックした場合のみ、説明資料として出力に追加されます(チェックしなければ出力には含まれません)。</li>
@@ -3145,6 +3194,92 @@ document.getElementById('memoSave').addEventListener('click', ()=>{
   setFieldValue(memoModalKey, 'memo', val);
   markDirty();
   closeMemoModal();
+  renderAgenda();
+});
+
+//////////////////////// 学校行事等の入力(候補プール)モーダル ////////////////////////
+let eventPickerKey = null, eventPickerField = null, eventPickerSelectedCandidateId = null;
+function openEventPickerModal(key, field, fieldLabel, dayLabel){
+  eventPickerKey = key;
+  eventPickerField = field;
+  eventPickerSelectedCandidateId = null;
+  const rec = migrateDayRecord(state.days[key]);
+  document.getElementById('eventPickerTitle').textContent = `${fieldLabel} - ${dayLabel}`;
+  let initial = rec[field] || '';
+  if(field==='eventsAnnual' && !initial){
+    const [y,m,d] = key.split('-').map(Number);
+    initial = effectiveEventsAnnual(rec, getDayStatus(y,m,d));
+  }
+  document.getElementById('eventPickerTextarea').value = initial;
+  document.getElementById('eventPickerAddMsg').textContent = '';
+  renderEventCandidateList();
+  document.getElementById('eventPickerOverlay').classList.add('show');
+  setTimeout(()=> document.getElementById('eventPickerTextarea').focus(), 50);
+}
+function closeEventPickerModal(){
+  document.getElementById('eventPickerOverlay').classList.remove('show');
+  eventPickerKey = null; eventPickerField = null; eventPickerSelectedCandidateId = null;
+}
+function renderEventCandidateList(){
+  const wrap = document.getElementById('eventPickerCandidateList');
+  const list = state.eventCandidates || [];
+  if(list.length===0){ wrap.innerHTML = '<p style="padding:10px;font-size:12.5px;color:var(--ink-soft);">候補はまだありません。上の入力欄に内容を入れてから「この内容を候補に追加」で登録できます。</p>'; return; }
+  wrap.innerHTML = `<table><tbody>${
+    list.map(c=>{
+      const used = c.useCount>0;
+      return `<tr class="candidate-row ${used?'used':''}">
+        <td>${escapeHtml(c.text)}${used?`<span class="cand-count">(使用: ${c.useCount}回)</span>`:''}</td>
+        <td style="white-space:nowrap;">
+          <button class="ghost tiny" data-selectcand="${c.id}" ${editUnlocked?'':'disabled'}>選択</button>
+          <button class="ghost tiny danger" data-delcand="${c.id}" ${editUnlocked?'':'disabled'}>削除</button>
+        </td>
+      </tr>`;
+    }).join('')
+  }</tbody></table>`;
+  wrap.querySelectorAll('button[data-selectcand]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const cand = state.eventCandidates.find(c=>c.id===btn.dataset.selectcand);
+      if(!cand) return;
+      document.getElementById('eventPickerTextarea').value = cand.text;
+      eventPickerSelectedCandidateId = cand.id;
+    });
+  });
+  wrap.querySelectorAll('button[data-delcand]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.dataset.delcand;
+      const cand = state.eventCandidates.find(c=>c.id===id);
+      if(!cand || !confirm(`候補「${cand.text}」を削除しますか?`)) return;
+      state.eventCandidates = state.eventCandidates.filter(c=>c.id!==id);
+      if(eventPickerSelectedCandidateId===id) eventPickerSelectedCandidateId = null;
+      markDirty();
+      renderEventCandidateList();
+    });
+  });
+}
+document.getElementById('eventPickerClose').addEventListener('click', closeEventPickerModal);
+document.getElementById('eventPickerCancel').addEventListener('click', closeEventPickerModal);
+document.getElementById('eventPickerAddCandidate').addEventListener('click', ()=>{
+  if(!editUnlocked) return;
+  const msgEl = document.getElementById('eventPickerAddMsg');
+  const text = document.getElementById('eventPickerTextarea').value.trim();
+  if(!text){ msgEl.textContent = '内容を入力してください。'; return; }
+  if((state.eventCandidates||[]).some(c=>c.text===text)){ msgEl.textContent = 'すでに同じ内容の候補があります。'; return; }
+  if(!state.eventCandidates) state.eventCandidates = [];
+  state.eventCandidates.push({id:genId(), text, useCount:0});
+  markDirty();
+  msgEl.textContent = '候補に追加しました。';
+  renderEventCandidateList();
+});
+document.getElementById('eventPickerSave').addEventListener('click', ()=>{
+  if(!eventPickerKey || !editUnlocked) return;
+  const val = document.getElementById('eventPickerTextarea').value;
+  setFieldValue(eventPickerKey, eventPickerField, val);
+  if(eventPickerSelectedCandidateId){
+    const cand = state.eventCandidates.find(c=>c.id===eventPickerSelectedCandidateId);
+    if(cand) cand.useCount = (cand.useCount||0) + 1;
+  }
+  markDirty();
+  closeEventPickerModal();
   renderAgenda();
 });
 
