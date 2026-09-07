@@ -177,6 +177,8 @@
   .resize-handle:hover, .resize-handle.active{background:var(--accent);opacity:.5;}
 
   .holiday-list{max-height:220px;overflow-y:auto;border:1px solid var(--line-soft);border-radius:6px;}
+  .month-picker-list{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px;max-height:220px;overflow-y:auto;border:1px solid var(--line-soft);border-radius:6px;padding:10px;}
+  .month-picker-list label{display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;}
   .holiday-list table{width:100%;border-collapse:collapse;font-size:12.5px;}
   .holiday-list td,.holiday-list th{padding:5px 8px;border-bottom:1px solid var(--line-soft);text-align:left;}
   .holiday-list tr.manual td{background:#fbf9f2;}
@@ -332,8 +334,7 @@
       <div class="spacer"></div>
       <label style="font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:4px;"><input type="checkbox" id="includeMemoInExport"> メモも出力に含める</label>
       <button id="btnPrintTeacher" hidden>🖨 PDFで保存/印刷</button>
-      <button id="btnExportTeacherXlsx">Excelに出力(この月)</button>
-      <button id="btnExportTeacherYearXlsx">Excelに出力(年間12か月)</button>
+      <button id="btnExportTeacherXlsx">Excelに出力</button>
     </div>
     <div id="previewTeacherWrap" class="print-target"></div>
   </div>
@@ -347,8 +348,7 @@
       <select id="pvFamilyMonthSelect"></select>
       <div class="spacer"></div>
       <button id="btnPrintFamily" hidden>🖨 PDFで保存/印刷</button>
-      <button id="btnExportFamilyXlsx">Excelに出力(この月)</button>
-      <button id="btnExportFamilyYearXlsx">Excelに出力(年間12か月)</button>
+      <button id="btnExportFamilyXlsx">Excelに出力</button>
     </div>
     <div id="previewFamilyWrap" class="print-target"></div>
   </div>
@@ -666,6 +666,33 @@
     <div class="modal-foot">
       <button id="memoCancel">キャンセル</button>
       <button class="primary" id="memoSave">保存して閉じる</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="monthPickerOverlay">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-head">
+      <h3>Excelに出力する月を選択</h3>
+      <button class="ghost" id="monthPickerClose">✕ 閉じる</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">選択した月をシートごとに分けて、1つのExcelファイルにまとめて出力します。</p>
+      <div class="field-row" style="flex-wrap:wrap;gap:6px;">
+        <button type="button" class="ghost tiny" id="monthPickerThisOnly">今月のみ</button>
+        <button type="button" class="ghost tiny" id="monthPickerThisNext">今月+翌月</button>
+        <button type="button" class="ghost tiny" id="monthPickerAll">全12か月</button>
+        <button type="button" class="ghost tiny" id="monthPickerClear">選択をクリア</button>
+      </div>
+      <div id="monthPickerList" class="month-picker-list"></div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;margin-top:10px;">
+        <input type="checkbox" id="monthPickerRefHighlight" checked>
+        2校目以降のシートを「参考」として色を変えて区別する(印刷して見比べる時に一目で分かるようにします)
+      </label>
+    </div>
+    <div class="modal-foot">
+      <button id="monthPickerCancel">キャンセル</button>
+      <button class="primary" id="monthPickerConfirm">出力する</button>
     </div>
   </div>
 </div>
@@ -1281,15 +1308,16 @@ function buildXlsxStyles(){
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
 <fonts count="4"><font><sz val="10"/><name val="Yu Mincho"/></font><font><b/><sz val="10"/><name val="Yu Mincho"/></font><font><b/><sz val="14"/><name val="Yu Mincho"/></font><font><sz val="9"/><name val="Yu Mincho"/></font></fonts>
-<fills count="6"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>
+<fills count="7"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="FFEFEFEF"/><bgColor indexed="64"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="${holidayRgb}"/><bgColor indexed="64"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="FFECECEC"/><bgColor indexed="64"/></patternFill></fill>
-<fill><patternFill patternType="solid"><fgColor rgb="${absentRgb}"/><bgColor indexed="64"/></patternFill></fill></fills>
+<fill><patternFill patternType="solid"><fgColor rgb="${absentRgb}"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFFBE0AE"/><bgColor indexed="64"/></patternFill></fill></fills>
 <borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>
 <border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border></borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="15">
+<cellXfs count="16">
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
@@ -1305,12 +1333,13 @@ function buildXlsxStyles(){
 <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" textRotation="255"/></xf>
 <xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" textRotation="255"/></xf>
 <xf numFmtId="0" fontId="0" fillId="5" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="2" fillId="6" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
 }
 
-const XSTYLE = { HEADER:1, CENTER:2, LEFT:3, HOLIDAY_CENTER:4, HOLIDAY_LEFT:5, SUMMARY:6, TITLE:7, DATE:8, HEADER_VERT:9, LEFT_SMALL:10, HOLIDAY_LEFT_SMALL:11, CENTER_VERT:12, HOLIDAY_CENTER_VERT:13, ABSENT_CENTER:14 };
+const XSTYLE = { HEADER:1, CENTER:2, LEFT:3, HOLIDAY_CENTER:4, HOLIDAY_LEFT:5, SUMMARY:6, TITLE:7, DATE:8, HEADER_VERT:9, LEFT_SMALL:10, HOLIDAY_LEFT_SMALL:11, CENTER_VERT:12, HOLIDAY_CENTER_VERT:13, ABSENT_CENTER:14, TITLE_REF:15 };
 
 function buildWorkbookXml(sheetNames){
   const sheets = sheetNames.map((name,i)=>`<sheet name="${xmlEscape(name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('');
@@ -2322,7 +2351,7 @@ function schoolNameWithVersion(kind){
   return v ? `${name}　${v}` : name;
 }
 
-function buildMonthlyExportGrid(year, month, cols, audience, includeMemo){
+function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isReference){
   const dim = daysInMonth(year,month);
   const groups = groupHeaderForExport(cols);
   const totalCols = 2 + cols.length;
@@ -2332,10 +2361,14 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo){
   const today = new Date();
   const stamp = `出力日\u3000${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
 
+  // 複数月をまとめて出力する際、2枚目以降を「参考」として区別できるようにするための印。
+  // タイトル行の色を変え、副題に【参考】を付け足す(内容の文字サイズ・レイアウトは変えない)。
+  const refMark = isReference ? '【参考】' : '';
+  const refStyle = isReference ? XSTYLE.TITLE_REF : XSTYLE.TITLE;
   const titleRow = new Array(totalCols).fill(null);
-  titleRow[0] = {v:`令和${reiwa}年度\u3000${schoolNameWithVersion('monthly')}`, style:XSTYLE.TITLE};
+  titleRow[0] = {v:`令和${reiwa}年度\u3000${schoolNameWithVersion('monthly')}`, style:refStyle};
   const subtitleRow = new Array(totalCols).fill(null);
-  subtitleRow[0] = {v:`${year}年${month}月\u3000行事予定(${audienceLabel})`, style:XSTYLE.TITLE};
+  subtitleRow[0] = {v:refMark+`${year}年${month}月\u3000行事予定(${audienceLabel})`, style:refStyle};
   subtitleRow[0].v += '(●特別時間割　○学年時間割)'; // ①〜⑥欄の記号の意味を添える
   // 出力日のスタンプは1列だけだと狭すぎて、左の結合セルに隣接しているため右にはみ出せず欠けて見えてしまう。
   // 右端の数列をまとめて確保することで、はみ出さずに全部表示できるようにする。
@@ -2537,40 +2570,76 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo){
   return {grid, merges, colWidths, pageBreakRows};
 }
 
-function exportTeacherMonthlyXlsx(){
-  const sel = document.getElementById('pvMonthSelect');
-  const [yStr,mStr] = (sel.value||'').split('-');
-  const year = Number(yStr), month = Number(mStr);
-  if(!year) return;
-  const includeMemo = document.getElementById('includeMemoInExport').checked;
-  const {grid, merges, colWidths, pageBreakRows} = buildMonthlyExportGrid(year, month, PV_COLS_TEACHER, 'teacher', includeMemo);
-  const bytes = buildXlsxBytes([{name:`${month}月(教員用)`, grid, merges, colWidths, pageOpts:{paperSize:9, orientation:'landscape', fitToHeight: includeMemo?0:1, pageBreakRows}}]);
-  downloadBytes(bytes, `${state.meta.schoolName||'行事予定'}_${month}月_教員用.xlsx`);
-}
-function exportFamilyMonthlyXlsx(){
-  const sel = document.getElementById('pvFamilyMonthSelect');
-  const [yStr,mStr] = (sel.value||'').split('-');
-  const year = Number(yStr), month = Number(mStr);
-  if(!year) return;
-  const {grid, merges, colWidths} = buildMonthlyExportGrid(year, month, PV_COLS_FAMILY, 'family');
-  // 翌月の予定が加わり行数が増えるため、1ページに収めようとして文字が極端に小さくなるのを避ける
-  const bytes = buildXlsxBytes([{name:`${month}月(家庭用)`, grid, merges, colWidths, pageOpts:{paperSize:9, orientation:'landscape', fitToHeight:0}}]);
-  downloadBytes(bytes, `${state.meta.schoolName||'行事予定'}_${month}月_家庭用.xlsx`);
-}
+//////////////////////// Excel出力: 月を選んで出力するモーダル ////////////////////////
+let monthPickerAudience = null; // 'teacher' | 'family'
+function openMonthPickerModal(audience){
+  monthPickerAudience = audience;
+  const sel = document.getElementById(audience==='teacher' ? 'pvMonthSelect' : 'pvFamilyMonthSelect');
+  const [curYStr, curMStr] = (sel.value||'').split('-');
+  const curYear = Number(curYStr), curMonth = Number(curMStr);
+  const months = fiscalMonthList(state.meta.fiscalYear);
+  const curIdx = months.findIndex(m=>m.year===curYear && m.month===curMonth);
+  const nextIdx = curIdx===-1 ? -1 : (curIdx+1)%months.length;
 
-function exportYearMonthlyXlsx(cols, audience, filenameSuffix){
-  const fy = state.meta.fiscalYear;
-  const months = fiscalMonthList(fy);
+  const wrap = document.getElementById('monthPickerList');
+  wrap.innerHTML = months.map((m,i)=>
+    `<label><input type="checkbox" class="month-picker-cb" data-idx="${i}" ${(i===curIdx||i===nextIdx)?'checked':''}>${m.month}月(${m.year})</label>`
+  ).join('');
+
+  document.getElementById('monthPickerOverlay').classList.add('show');
+}
+function closeMonthPickerModal(){
+  document.getElementById('monthPickerOverlay').classList.remove('show');
+  monthPickerAudience = null;
+}
+document.getElementById('monthPickerClose').addEventListener('click', closeMonthPickerModal);
+document.getElementById('monthPickerCancel').addEventListener('click', closeMonthPickerModal);
+function setMonthPickerChecks(predicate){
+  document.querySelectorAll('.month-picker-cb').forEach(cb=>{ cb.checked = predicate(Number(cb.dataset.idx)); });
+}
+document.getElementById('monthPickerThisOnly').addEventListener('click', ()=>{
+  const sel = document.getElementById(monthPickerAudience==='teacher' ? 'pvMonthSelect' : 'pvFamilyMonthSelect');
+  const [y,m] = (sel.value||'').split('-').map(Number);
+  const months = fiscalMonthList(state.meta.fiscalYear);
+  const curIdx = months.findIndex(mo=>mo.year===y && mo.month===m);
+  setMonthPickerChecks(i=>i===curIdx);
+});
+document.getElementById('monthPickerThisNext').addEventListener('click', ()=>{
+  const sel = document.getElementById(monthPickerAudience==='teacher' ? 'pvMonthSelect' : 'pvFamilyMonthSelect');
+  const [y,m] = (sel.value||'').split('-').map(Number);
+  const months = fiscalMonthList(state.meta.fiscalYear);
+  const curIdx = months.findIndex(mo=>mo.year===y && mo.month===m);
+  const nextIdx = curIdx===-1 ? -1 : (curIdx+1)%months.length;
+  setMonthPickerChecks(i=>i===curIdx || i===nextIdx);
+});
+document.getElementById('monthPickerAll').addEventListener('click', ()=> setMonthPickerChecks(()=>true));
+document.getElementById('monthPickerClear').addEventListener('click', ()=> setMonthPickerChecks(()=>false));
+
+document.getElementById('monthPickerConfirm').addEventListener('click', ()=>{
+  const months = fiscalMonthList(state.meta.fiscalYear);
+  const checked = [...document.querySelectorAll('.month-picker-cb')].filter(cb=>cb.checked).map(cb=>months[Number(cb.dataset.idx)]);
+  if(checked.length===0){ alert('出力する月を1つ以上選択してください。'); return; }
+  const markRef = document.getElementById('monthPickerRefHighlight').checked;
+  exportSelectedMonthsXlsx(monthPickerAudience, checked, markRef);
+  closeMonthPickerModal();
+});
+
+function exportSelectedMonthsXlsx(audience, selectedMonths, markReferenceAfterFirst){
+  const cols = audience==='teacher' ? PV_COLS_TEACHER : PV_COLS_FAMILY;
+  const audienceLabel = audience==='teacher' ? '教員用' : '家庭用';
   const includeMemo = audience==='teacher' && document.getElementById('includeMemoInExport').checked;
-  const sheets = months.map(({year,month})=>{
-    const {grid, merges, colWidths} = buildMonthlyExportGrid(year, month, cols, audience, includeMemo);
-    return {name:`${month}月`, grid, merges, colWidths, pageOpts:{paperSize:9, orientation:'landscape', fitToHeight: includeMemo?0:1}};
+  const sheets = selectedMonths.map(({year,month}, i)=>{
+    const isReference = markReferenceAfterFirst && i>0;
+    const {grid, merges, colWidths, pageBreakRows} = buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isReference);
+    // 家庭用は翌月欄が加わり行数が増えるため、1ページに収めようとして文字が極端に小さくなるのを避ける
+    const fitToHeight = audience==='family' ? 0 : (includeMemo?0:1);
+    return {name:`${month}月${isReference?'(参考)':''}`, grid, merges, colWidths, pageOpts:{paperSize:9, orientation:'landscape', fitToHeight, pageBreakRows}};
   });
   const bytes = buildXlsxBytes(sheets);
-  downloadBytes(bytes, `${state.meta.schoolName||'行事予定'}_年間12か月_${filenameSuffix}.xlsx`);
+  const allFy = fiscalMonthList(state.meta.fiscalYear);
+  const monthsLabel = selectedMonths.length===allFy.length ? '年間12か月' : selectedMonths.map(m=>m.month+'月').join('・');
+  downloadBytes(bytes, `${state.meta.schoolName||'行事予定'}_${monthsLabel}_${audienceLabel}.xlsx`);
 }
-function exportTeacherYearXlsx(){ exportYearMonthlyXlsx(PV_COLS_TEACHER, 'teacher', '教員用'); }
-function exportFamilyYearXlsx(){ exportYearMonthlyXlsx(PV_COLS_FAMILY, 'family', '家庭用'); }
 
 //////////////////////// Excel出力: 年間予定表 ////////////////////////
 function buildAnnualExportGrid(fy, audience){
@@ -3672,6 +3741,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-08</strong>: 月間予定表(教員用・家庭用)のExcel出力ボタンを1つに統合。出力する月を選ぶウィンドウが開き、チェックした月をシートごとに分けて1つのファイルに出力できるように(「今月のみ」「今月+翌月」「全12か月」ですぐ選択可)。2枚目以降のシートを「参考」として色分けする機能も追加し、今月分・翌月分を並べて印刷して見比べる際に一目で区別できるようにした。</li>
     <li><strong>2026-09-08</strong>: 最終確認・配布はExcel出力ベースで行う運用のため、月間・年間予定表の「🖨 PDFで保存/印刷」ボタンを非表示に変更(紛らわしさの解消)。</li>
     <li><strong>2026-09-08</strong>: 職場のサーバーなど複数人がアクセスしうる場所にファイルを置いた場合の簡易ロック表示を追加。編集モードにすると画面上部に「編集中」の状態が記録され、他の場所で最近(10分以内)編集が始まっている場合は、編集を始める前に警告を表示するように。編集していない間(閲覧のみ)でも、直近の編集中表示があれば画面上部にバッジで分かるように。</li>
     <li><strong>2026-09-08</strong>: 行事等入力(候補プール)の「使用済み」表示を、色付きバッジで分かりやすく改善。右上の「✕ 閉じる」で内容を保存せずに閉じようとした際、変更があれば確認するように変更(誤って選択内容が消えるのを防止)。</li>
@@ -3724,7 +3794,7 @@ document.getElementById('helpBody').innerHTML = `
   </ul>
 
   <h4>月間予定表(教員用・家庭用)の確認・Excel出力</h4>
-  <p>「月間予定表(教員用)」タブでは、入力した内容から教員用の月間予定表を画面上で確認できます。学校行事等は「年間行事」「月のみ」「教員のみ」をすべて合わせて表示し、「年間行事」は太字、「教員のみ」は色分け(オレンジ系)で区別されます。週番は、同じ内容が連続する日をまとめて1つのセルに結合して表示します(内容が変わる日や休業日でそこは区切られます)。入力したメモは表の下に一覧で表示されます。「Excelに出力(この月)」で表示中の月だけを、「Excelに出力(年間12か月)」で4月〜3月の12か月分を1つのExcelファイル(月ごとにシートを分けたもの)としてダウンロードできます。行の高さはすべて固定されており、長い文章を入力した場合は行が伸びるのではなく、セル内の文字が自動的に縮小されて1行に収まります(Microsoft Excelでの「縮小して全体を表示」機能を使用しています)。祝日・休業日の網掛けや集計行の色も、白黒プリンターでも判読できる濃さのグレーにしています。</p>
+  <p>「月間予定表(教員用)」タブでは、入力した内容から教員用の月間予定表を画面上で確認できます。学校行事等は「年間行事」「月のみ」「教員のみ」をすべて合わせて表示し、「年間行事」は太字、「教員のみ」は色分け(オレンジ系)で区別されます。週番は、同じ内容が連続する日をまとめて1つのセルに結合して表示します(内容が変わる日や休業日でそこは区切られます)。入力したメモは表の下に一覧で表示されます。「Excelに出力」ボタンを押すと出力する月を選ぶウィンドウが開き、チェックした月をそれぞれシートに分けた1つのExcelファイルとしてダウンロードできます(「今月のみ」「今月+翌月」「全12か月」のボタンですぐに選べます)。2枚目以降のシートを「参考」として色を変えて区別するかどうかも選べるので、たとえば今月分と翌月分をまとめて出力・印刷して見比べる際に、どちらのシートか一目で分かるようにできます(文字を縮小するのではなく、タイトル行の色と「【参考】」の表示で区別します)。行の高さはすべて固定されており、長い文章を入力した場合は行が伸びるのではなく、セル内の文字が自動的に縮小されて1行に収まります(Microsoft Excelでの「縮小して全体を表示」機能を使用しています)。祝日・休業日の網掛けや集計行の色も、白黒プリンターでも判読できる濃さのグレーにしています。</p>
   <p>「月間予定表(家庭用)」タブでは、同じデータから会議・出張・研修や週番、教員のみの行事を除いた家庭向けの表示を確認できます。表の右側には元のExcelと同様に、翌月の予定(学校行事等のみ)が一覧表示されます。こちらも「Excelに出力」で出力できます(翌月ボックスもExcel出力に含まれます。行数が増えるため、1ページに収めず複数ページに分けて出力されます)。</p>
 
   <h4>年間予定表(教員用・家庭用)の確認・Excel出力</h4>
@@ -4082,10 +4152,8 @@ document.getElementById('btnHelpClose2').addEventListener('click', ()=> document
 document.getElementById('btnOpen').addEventListener('click', doOpen);
 document.getElementById('btnSaveAs').addEventListener('click', doSaveAs);
 document.getElementById('btnSave').addEventListener('click', doSave);
-document.getElementById('btnExportTeacherXlsx').addEventListener('click', exportTeacherMonthlyXlsx);
-document.getElementById('btnExportFamilyXlsx').addEventListener('click', exportFamilyMonthlyXlsx);
-document.getElementById('btnExportTeacherYearXlsx').addEventListener('click', exportTeacherYearXlsx);
-document.getElementById('btnExportFamilyYearXlsx').addEventListener('click', exportFamilyYearXlsx);
+document.getElementById('btnExportTeacherXlsx').addEventListener('click', ()=> openMonthPickerModal('teacher'));
+document.getElementById('btnExportFamilyXlsx').addEventListener('click', ()=> openMonthPickerModal('family'));
 document.getElementById('btnExportAnnualTeacherXlsx').addEventListener('click', ()=> exportAnnualXlsx('teacher'));
 document.getElementById('btnExportAnnualFamilyXlsx').addEventListener('click', ()=> exportAnnualXlsx('family'));
 document.getElementById('btnExportSample').addEventListener('click', exportSampleData);
