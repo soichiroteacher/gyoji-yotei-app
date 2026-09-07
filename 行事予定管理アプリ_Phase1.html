@@ -3373,6 +3373,8 @@ document.getElementById('setFiscalYear').addEventListener('change', (e)=>{
   markDirty();
   populateMonthSelect();
   renderAgenda();
+  document.getElementById('btnImportPrevYearEvents').textContent = `${state.meta.fiscalYear-1}年度の行事を候補に追加`;
+  document.getElementById('importPrevYearMsg').textContent = '';
 });
 function stepMonth(delta){
   const sel = document.getElementById('monthSelect');
