@@ -514,6 +514,7 @@
         各項目をクリックしたときに候補として表示される内容です。読点(、)またはカンマ(,)区切りで自由に編集できます(自由入力自体は常に可能です)。
       </p>
       <div class="field-row"><label style="min-width:140px;">放課後</label><input type="text" id="presetClub" style="flex:1;min-width:280px;"></div>
+      <div class="field-row"><label style="min-width:140px;">給食</label><input type="text" id="presetLunch" style="flex:1;min-width:280px;"></div>
       <div class="field-row"><label style="min-width:140px;">1〜3年 授業日課</label><input type="text" id="presetPeriod" style="flex:1;min-width:280px;"></div>
       <div class="field-row"><label style="min-width:140px;">週番</label><input type="text" id="presetWeeklyDuty" style="flex:1;min-width:280px;"></div>
     </div>
@@ -786,7 +787,7 @@ async function sha256Hex(text){
 function defaultPresets(){
   return {
     club: ['×','15:00以降','再登校15:00〜'],
-    lunch: ['○','×'],
+    lunch: ['○','×','弁'],
     period: ['1','2','3','4','5','6','道','総','学','欠','●','○','行','音','弁'],
     weeklyDuty: []
   };
@@ -860,6 +861,9 @@ function normalizeState(obj){
   else {
     const def = defaultPresets();
     Object.keys(def).forEach(k=>{ if(!Array.isArray(obj.presets[k])) obj.presets[k] = def[k]; });
+    // 給食欄をチェックボックスから自由入力に変更した際、既存データの候補一覧に「弁」が
+    // 無ければ追加する(以前の既定値は○/×の2つだけだったため)
+    if(Array.isArray(obj.presets.lunch) && !obj.presets.lunch.includes('弁')) obj.presets.lunch.push('弁');
   }
   if(!obj.colWidths || typeof obj.colWidths!=='object') obj.colWidths = {};
   if(!obj.meta) obj.meta = {};
@@ -1877,9 +1881,9 @@ const COLS = [
   {key:'staffMeeting', label:'職員会議', w:30, type:'checkbox', vertical:true},
   {key:'cleaning', label:'掃除', w:30, type:'checkbox', vertical:true, hint:'既定は平日「あり」・土日祝「なし」。月間予定表の「掃除」欄には「なし」の日だけ×が表示されます'},
   {key:'club', label:'放課後', w:52, dl:'dl-club', placeholder:'空欄=あり', hint:'空欄は「活動あり」の意味になります。活動なしの日や、再登校時刻などの特記事項がある日だけ入力してください(例: ×、再登校15:00〜)'},
-  {key:'lunchG1', label:'1年', w:36, type:'checkbox', grpLunch:true},
-  {key:'lunchG2', label:'2年', w:36, type:'checkbox', grpLunch:true},
-  {key:'lunchG3', label:'3年', w:36, type:'checkbox', grpLunch:true},
+  {key:'lunchG1', label:'1年', w:36, dl:'dl-lunch', grpLunch:true, cls:'small-input', hint:'○(給食)・×(給食なし)・弁(お弁当)などを入力できます。候補から選ぶか直接入力してください'},
+  {key:'lunchG2', label:'2年', w:36, dl:'dl-lunch', grpLunch:true, cls:'small-input'},
+  {key:'lunchG3', label:'3年', w:36, dl:'dl-lunch', grpLunch:true, cls:'small-input'},
   {key:'g1SchoolDay', label:'1年', w:36, type:'checkbox', grpAttend:true, schoolDayGrade:'1'},
   {key:'g2SchoolDay', label:'2年', w:36, type:'checkbox', grpAttend:true, schoolDayGrade:'2'},
   {key:'g3SchoolDay', label:'3年', w:36, type:'checkbox', grpAttend:true, schoolDayGrade:'3'},
@@ -1910,9 +1914,9 @@ function renderDatalists(){
 
 function getFieldValue(rec, manual, key){
   if(key==='planningMeeting' || key==='staffMeeting') return !!rec[key];
-  if(key==='lunchG1') return rec.lunch.g1==='○';
-  if(key==='lunchG2') return rec.lunch.g2==='○';
-  if(key==='lunchG3') return rec.lunch.g3==='○';
+  if(key==='lunchG1') return rec.lunch.g1||'';
+  if(key==='lunchG2') return rec.lunch.g2||'';
+  if(key==='lunchG3') return rec.lunch.g3||'';
   const gm = key.match(/^g([123])p([1-6])$/);
   if(gm) return rec.periods['g'+gm[1]][Number(gm[2])-1];
   return rec[key] || '';
@@ -1925,9 +1929,9 @@ function setFieldValue(dateKey, key, value){
     rec.schoolDay['g'+sdm[1]] = (value===true || value==='1' || value==='true');
   } else if(key==='planningMeeting' || key==='staffMeeting' || key==='cleaning'){
     rec[key] = (value===true || value==='1' || value==='true' || (typeof value==='string' && value.trim()!==''));
-  } else if(key==='lunchG1'){ rec.lunch.g1 = value ? '○' : ''; }
-  else if(key==='lunchG2'){ rec.lunch.g2 = value ? '○' : ''; }
-  else if(key==='lunchG3'){ rec.lunch.g3 = value ? '○' : ''; }
+  } else if(key==='lunchG1'){ rec.lunch.g1 = String(value).trim(); }
+  else if(key==='lunchG2'){ rec.lunch.g2 = String(value).trim(); }
+  else if(key==='lunchG3'){ rec.lunch.g3 = String(value).trim(); }
   else {
     const gm = key.match(/^g([123])p([1-6])$/);
     if(gm) rec.periods['g'+gm[1]][Number(gm[2])-1] = String(value).trim();
@@ -3467,13 +3471,14 @@ function renderSettingsTab(){
   populateTermSelect('setTerm2Start', state.meta.term2StartMonth);
   populateTermSelect('setTerm3Start', state.meta.term3StartMonth);
   document.getElementById('presetClub').value = state.presets.club.join('、');
+  document.getElementById('presetLunch').value = state.presets.lunch.join('、');
   document.getElementById('presetPeriod').value = state.presets.period.join('、');
   document.getElementById('presetWeeklyDuty').value = state.presets.weeklyDuty.join('、');
   renderRequiredHoursEditor();
   renderPrintCountList();
   refreshBackupUI();
   ['setSchoolName','setVersionLabelMonthly','setVersionLabelAnnual','setFiscalYear','setTerm2Start','setTerm3Start',
-   'presetClub','presetPeriod','presetWeeklyDuty',
+   'presetClub','presetLunch','presetPeriod','presetWeeklyDuty',
    'pwCurrentInput','pwNewInput','pwNewInput2','btnChangePassword',
    'btnImportPrevYearEvents','setColorHoliday','setColorAbsent','btnResetColors',
    'holidayOvrDate','holidayOvrType','holidayOvrLabel','btnHolidayOvrSave',
@@ -3604,6 +3609,7 @@ function bindPresetInput(elId, presetKey){
   });
 }
 bindPresetInput('presetClub','club');
+bindPresetInput('presetLunch','lunch');
 bindPresetInput('presetPeriod','period');
 bindPresetInput('presetWeeklyDuty','weeklyDuty');
 document.getElementById('setTerm2Start').addEventListener('change', (e)=>{
@@ -3855,6 +3861,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-08</strong>: 「給食」欄をチェックボックスから自由入力(候補選択つき)に変更。これまでチェックボックスでは○しか入力できず、×・弁(お弁当)は画面から入力できなかったが、他の自由入力欄と同じ方式にしたことで○・×・弁のいずれも入力できるようになった。「設定」タブの「入力候補(プリセット)の編集」にも給食の候補一覧を追加。</li>
     <li><strong>2026-09-08</strong>: Excel出力右上の日付表示から「出力日」の文字を消し、日付だけを残すように変更。授業枠の「●」が数字より目立ちすぎて圧迫感があったため、●の時だけ少し小さいフォントサイズで表示するように変更。</li>
     <li><strong>2026-09-08</strong>: 一括で9件の改善を実施。①「開く」「名前を付けて保存」で前回と同じフォルダが初期位置になるように。②前年度の行事を候補に追加する機能が「共通・月間のみ」等の欄の内容も対象にするよう修正(以前は「共通・年間」欄しか見ていなかった)。③保存状態の表示文字数が変わってもツールバー全体がずれないよう幅を固定。④給食のない日一覧で「給食扱い」にチェックすると一覧から消えていたのを、常に一覧に残るよう修正。⑤「学校行事の回数」を、授業枠(①〜⑥)の「行」の合計時数に変更し、授業枠に記録されない行事の時数を自由記述で追加集計できる欄を新設。⑥「●特別時間割」等の注釈をより小さい文字に。⑦月間予定表Excel出力の会議・放課後・給食・授業列を狭く。⑧「部活動」欄の名称を「放課後」に変更。⑨「欠」の網掛けの初期色を薄く。</li>
     <li><strong>2026-09-08</strong>: 学校行事等4欄の名称を「学校行事等(共通・月間のみ)」「学校行事等(教員のみ・年間)」「学校行事等(教員のみ・月間のみ)」に調整(「月間」→「月間のみ」、「教員」→「教員のみ」)し、対象を絞った欄であることをより分かりやすくした。並び順・動作に変更なし。</li>
@@ -3909,6 +3916,7 @@ document.getElementById('helpBody').innerHTML = `
     <li>「学校行事等(共通・年間/共通・月間のみ/教員のみ・年間/教員のみ・月間のみ)」欄はクリックすると入力用のウィンドウが開きます。枠は最初1つですが「＋ 枠を追加」で増やせるので、複数の行事をそれぞれ別の枠に入力してから、保存時に1つにまとめられます。「候補から選ぶ」で日程が決まっていない行事などをあらかじめ「候補に追加」しておき、日程が決まったら選んで(空いている枠、無ければ新しい枠に)反映できます。候補は削除するまで残り、複数の日で繰り返し使えます(使用済みの候補は薄く表示され、使用回数も確認できます)。</li>
     <li>「設定」タブの年度の下にある「(前年度)の行事を候補に追加」ボタンを押すと、前年度分の「学校行事等(共通・年間)」に入力済みの内容をまとめて候補に登録できます。年度を切り替えて新しい年度の予定を組む際に便利です(既にある候補と同じ内容は追加されません)。</li>
     <li>列の並びは元のExcel(4月職・4月生シート)を基本にしつつ、上記の欄を追加しています。「給食」の右にある「登校日」列は、学年ごとに登校日かどうかを判定するためのチェックボックスです(このアプリで追加した列です)。</li>
+    <li>「給食」欄は自由入力です(○・×・弁の3パターンに対応するため、チェックボックスではなく「放課後」欄などと同じ自由入力+候補選択の方式にしています)。クリックすると出る候補から選ぶか、直接入力してください。候補の内容は「設定」タブの「入力候補(プリセット)の編集」から変更できます。</li>
     <li>「登校日」のチェックは、平日は自動でオン、土日・祝日は自動でオフになっています。実際と異なる場合(土曜授業を行う、逆に平日を休業日にするなど)は、その学年のチェックを直接つけ外ししてください。チェックを外すと、その学年の①〜⑥時限の欄は入力できなくなります。休みや特別な登校日の理由は「学校行事等(共通・年間)」などに書き添えてください。時数・集計タブの授業日数は、このチェックを元に計算されます。</li>
     <li>「メモ(根拠等)」列はボタンになっており、クリックすると複数行の文章を入力できる画面が開きます。ここに入力した内容は月間予定表(教員用)の画面に一覧表示され、Excel出力時は「メモも出力に含める」にチェックした場合のみ、説明資料として出力に追加されます(チェックしなければ出力には含まれません)。</li>
   </ul>
