@@ -364,8 +364,8 @@
     </div>
     <div class="annual-opts" id="annualOptsTeacher">
       <span class="annual-opts-label">表示する情報:</span>
-      <label><input type="checkbox" data-audience="teacher" data-opt="includeMonthly"> 学校行事等(共通・月間)も含める</label>
-      <label><input type="checkbox" data-audience="teacher" data-opt="includeTeacherOnly"> 学校行事等(教員・月間)も含める</label>
+      <label><input type="checkbox" data-audience="teacher" data-opt="includeMonthly"> 学校行事等(共通・月間のみ)も含める</label>
+      <label><input type="checkbox" data-audience="teacher" data-opt="includeTeacherOnly"> 学校行事等(教員のみ・月間のみ)も含める</label>
       <label><input type="checkbox" data-audience="teacher" data-opt="includeMeeting"> 職員会議のあった日を含める</label>
     </div>
     <div id="previewAnnualTeacherWrap" class="print-target"></div>
@@ -382,8 +382,8 @@
     </div>
     <div class="annual-opts" id="annualOptsFamily">
       <span class="annual-opts-label">表示する情報:</span>
-      <label><input type="checkbox" data-audience="family" data-opt="includeMonthly"> 学校行事等(共通・月間)も含める</label>
-      <label><input type="checkbox" data-audience="family" data-opt="includeTeacherOnly"> 学校行事等(教員・月間)も含める</label>
+      <label><input type="checkbox" data-audience="family" data-opt="includeMonthly"> 学校行事等(共通・月間のみ)も含める</label>
+      <label><input type="checkbox" data-audience="family" data-opt="includeTeacherOnly"> 学校行事等(教員のみ・月間のみ)も含める</label>
       <label><input type="checkbox" data-audience="family" data-opt="includeMeeting"> 職員会議のあった日を含める</label>
     </div>
     <div id="previewAnnualFamilyWrap" class="print-target"></div>
@@ -480,7 +480,7 @@
       <p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">
         国民の祝日・振替休日は年度の開始/終了西暦から自動計算されます(下の一覧は自動計算の結果の確認用です)。
         土曜授業や開校記念日などで特定の学年だけ登校日/休業日を変えたい場合は、「年間予定入力」タブの「登校日」列(学年ごとのチェックボックス)で切り替えてください。
-        休みや特別な登校日の理由を書き残したい場合は「学校行事等(共通・年間)」または「学校行事等(共通・月間)」欄に入力してください。
+        休みや特別な登校日の理由を書き残したい場合は「学校行事等(共通・年間)」または「学校行事等(共通・月間のみ)」欄に入力してください。
       </p>
       <div class="holiday-list" id="holidayList"></div>
     </div>
@@ -1830,9 +1830,9 @@ document.querySelectorAll('nav.tabs .tab').forEach(btn=>{
 // 日,曜,学校行事等,(教員のみ),会議・出張・研修,掃除,部活動,給食(1〜3年),1年①〜⑥,2年①〜⑥,3年①〜⑥,週番,(メモ,休業/登校変更は独自追加)
 const COLS = [
   {key:'eventsAnnual', label:'学校行事等(共通・年間)', w:190, hint:'年間予定表にも掲載されます'},
-  {key:'eventsMonthly', label:'学校行事等(共通・月間)', w:190, hint:'月の予定表のみに掲載されます'},
-  {key:'eventsTeacherOnlyAnnual', label:'学校行事等(教員・年間)', w:170, hint:'年間予定表(教員用)にのみ掲載されます(月間予定表には表示されません)'},
-  {key:'eventsTeacherOnly', label:'学校行事等(教員・月間)', w:170, hint:'月間予定表(教員用)に掲載されます。年間予定表への表示は「年間予定表(教員用)」タブの設定でオン/オフできます'},
+  {key:'eventsMonthly', label:'学校行事等(共通・月間のみ)', w:190, hint:'月の予定表のみに掲載されます'},
+  {key:'eventsTeacherOnlyAnnual', label:'学校行事等(教員のみ・年間)', w:170, hint:'年間予定表(教員用)にのみ掲載されます(月間予定表には表示されません)'},
+  {key:'eventsTeacherOnly', label:'学校行事等(教員のみ・月間のみ)', w:170, hint:'月間予定表(教員用)に掲載されます。年間予定表への表示は「年間予定表(教員用)」タブの設定でオン/オフできます'},
   {key:'meeting', label:'会議・出張・研修', w:110},
   {key:'planningMeeting', label:'企画会議', w:30, type:'checkbox', vertical:true},
   {key:'staffMeeting', label:'職員会議', w:30, type:'checkbox', vertical:true},
@@ -2939,8 +2939,8 @@ function computeStatsForRange(monthList){
     periodTally: {1:{},2:{},3:{}},       // 学年別、コード別のコマ数集計
     weekdaySchoolDays: {1:{},2:{},3:{}}, // 学年別、曜日別(0=日〜6=土)の登校日数
     periodByWeekday: {1:{},2:{},3:{}},   // 学年別、曜日別の①〜⑥それぞれの実施回数(6要素配列)
-    eventDays: 0,                        // 学校行事等(共通・年間/共通・月間)が入力されている日数
-    teacherEventDays: 0                  // 学校行事等(教員・月間/教員・年間)が入力されている日数
+    eventDays: 0,                        // 学校行事等(共通・年間/共通・月間のみ)が入力されている日数
+    teacherEventDays: 0                  // 学校行事等(教員のみ・月間のみ/教員のみ・年間)が入力されている日数
   };
   monthList.forEach(({year,month})=>{
     const dim = daysInMonth(year,month);
@@ -3248,7 +3248,7 @@ function buildAnnualEventParts(rec, opts, status, audience){
   if(effAnnual) parts.push({text:effAnnual, cls:'annual'});
   if(opts.includeMonthly && rec.eventsMonthly) parts.push({text:rec.eventsMonthly, cls:null});
   if(opts.includeTeacherOnly && rec.eventsTeacherOnly) parts.push({text:rec.eventsTeacherOnly, cls:'teacheronly'});
-  // 「学校行事等(教員・年間)」は月間には出さず、年間予定表(教員用)にのみ常に表示する
+  // 「学校行事等(教員のみ・年間)」は月間には出さず、年間予定表(教員用)にのみ常に表示する
   if(audience==='teacher' && rec.eventsTeacherOnlyAnnual) parts.push({text:rec.eventsTeacherOnlyAnnual, cls:'teacheronly'});
   if(opts.includeMeeting && rec.staffMeeting){
     parts.push({text:'職員会議', cls:'meeting'});
@@ -3585,9 +3585,9 @@ function jumpToDay(y, m, d, focusField){
 //////////////////////// 年間予定入力の検索 ////////////////////////
 const SEARCH_FIELDS = [
   ['eventsAnnual','学校行事等(共通・年間)'],
-  ['eventsMonthly','学校行事等(共通・月間)'],
-  ['eventsTeacherOnlyAnnual','学校行事等(教員・年間)'],
-  ['eventsTeacherOnly','学校行事等(教員・月間)'],
+  ['eventsMonthly','学校行事等(共通・月間のみ)'],
+  ['eventsTeacherOnlyAnnual','学校行事等(教員のみ・年間)'],
+  ['eventsTeacherOnly','学校行事等(教員のみ・月間のみ)'],
   ['meeting','会議・出張・研修'],
   ['club','部活動'],
   ['weeklyDuty','週番'],
@@ -3757,6 +3757,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-08</strong>: 学校行事等4欄の名称を「学校行事等(共通・月間のみ)」「学校行事等(教員のみ・年間)」「学校行事等(教員のみ・月間のみ)」に調整(「月間」→「月間のみ」、「教員」→「教員のみ」)し、対象を絞った欄であることをより分かりやすくした。並び順・動作に変更なし。</li>
     <li><strong>2026-09-08</strong>: 学校行事等4欄の並び順を「共通・年間→共通・月間→教員・年間→教員・月間」に変更し、名称も分かりやすく統一(学校行事等(年間行事)→学校行事等(共通・年間)、学校行事等(月のみ)→学校行事等(共通・月間)、学校行事等(教員のみ)→学校行事等(教員・月間)、学校行事等(教員のみ・年間用)→学校行事等(教員・年間))。動作(どの予定表に載るか)に変更はなく、表示上の並びと名前だけの変更。</li>
     <li><strong>2026-09-08</strong>: 「学校行事等(教員のみ・年間用)」欄を新設。月間予定表には表示されず、教員用の年間予定表にのみ常に表示される(既存の「学校行事等(教員のみ)」欄の挙動は変更なし)。</li>
     <li><strong>2026-09-08</strong>: 月間予定表(家庭用)のExcel出力で、「翌月の予定」を下に積み増すのではなく右側の列に並べる形に変更(元のExcelと同じ配置)。行数が増えなくなり、A4横1ページに収まるようになった。</li>
@@ -3805,7 +3806,7 @@ document.getElementById('helpBody').innerHTML = `
     <li>「企画会議」「職員会議」はチェックボックスで入れられます。チェックすると、教員用の会議・出張・研修欄に自動的に「企画会議」「職員会議」の文字が追加されます(自由入力の内容と合わせて表示されます)。</li>
     <li>「掃除」もチェックボックスです。何もしなければ平日は「あり」、土曜・日曜・祝日は「なし」に自動でなります。手動でチェックを変更した場合はその状態が優先されます。月間予定表(教員用・家庭用)には「掃除」欄があり、いずれかの学年が登校日で、かつ「なし」の日だけ×が表示されます(それ以外は空欄。全学年とも登校日でない日は、掃除の有無にかかわらず空欄になります)。</li>
     <li>「部活動」欄も、空欄のまま=「活動あり」として扱われます。活動がない日や、再登校の時刻など特記事項がある日だけ「×」「再登校15:00〜」のように入力してください。従来通り自由な文章の入力もできます。</li>
-    <li>「学校行事等(共通・年間/共通・月間/教員・年間/教員・月間)」欄はクリックすると入力用のウィンドウが開きます。枠は最初1つですが「＋ 枠を追加」で増やせるので、複数の行事をそれぞれ別の枠に入力してから、保存時に1つにまとめられます。「候補から選ぶ」で日程が決まっていない行事などをあらかじめ「候補に追加」しておき、日程が決まったら選んで(空いている枠、無ければ新しい枠に)反映できます。候補は削除するまで残り、複数の日で繰り返し使えます(使用済みの候補は薄く表示され、使用回数も確認できます)。</li>
+    <li>「学校行事等(共通・年間/共通・月間のみ/教員のみ・年間/教員のみ・月間のみ)」欄はクリックすると入力用のウィンドウが開きます。枠は最初1つですが「＋ 枠を追加」で増やせるので、複数の行事をそれぞれ別の枠に入力してから、保存時に1つにまとめられます。「候補から選ぶ」で日程が決まっていない行事などをあらかじめ「候補に追加」しておき、日程が決まったら選んで(空いている枠、無ければ新しい枠に)反映できます。候補は削除するまで残り、複数の日で繰り返し使えます(使用済みの候補は薄く表示され、使用回数も確認できます)。</li>
     <li>「設定」タブの年度の下にある「(前年度)の行事を候補に追加」ボタンを押すと、前年度分の「学校行事等(共通・年間)」に入力済みの内容をまとめて候補に登録できます。年度を切り替えて新しい年度の予定を組む際に便利です(既にある候補と同じ内容は追加されません)。</li>
     <li>列の並びは元のExcel(4月職・4月生シート)を基本にしつつ、上記の欄を追加しています。「給食」の右にある「登校日」列は、学年ごとに登校日かどうかを判定するためのチェックボックスです(このアプリで追加した列です)。</li>
     <li>「登校日」のチェックは、平日は自動でオン、土日・祝日は自動でオフになっています。実際と異なる場合(土曜授業を行う、逆に平日を休業日にするなど)は、その学年のチェックを直接つけ外ししてください。チェックを外すと、その学年の①〜⑥時限の欄は入力できなくなります。休みや特別な登校日の理由は「学校行事等(共通・年間)」などに書き添えてください。時数・集計タブの授業日数は、このチェックを元に計算されます。</li>
@@ -3817,7 +3818,7 @@ document.getElementById('helpBody').innerHTML = `
   <p>「月間予定表(家庭用)」タブでは、同じデータから会議・出張・研修や週番、教員のみの行事を除いた家庭向けの表示を確認できます。表の右側には元のExcelと同様に、翌月の予定(学校行事等のみ)が一覧表示されます。こちらも「Excelに出力」で出力できます(翌月ボックスもExcel出力に含まれます。元のExcelと同じく、翌月分は行を増やさず右側の列に並べて出力するため、A4横1ページに収まります)。</p>
 
   <h4>年間予定表(教員用・家庭用)の確認・Excel出力</h4>
-  <p>「年間予定表(教員用)」「年間予定表(家庭用)」の2つのタブに分かれています。どちらも基本は「学校行事等(共通・年間)」欄の内容を表示しますが、上部のチェックボックスで「学校行事等(共通・月間)も含める」「学校行事等(教員・月間)も含める」「職員会議のあった日を含める」をそれぞれ個別にオン・オフできます(既定値: 教員用は共通・月間、教員・月間をオン、家庭用は共通・月間だけオン)。教員向けの内容はオレンジ、職員会議は青字で「職員会議」とだけ表示されます(会議の詳細な内容や企画会議・出張などは年間予定表には表示されません)。「学校行事等(教員・年間)」欄に入力した内容は、この設定に関わらず教員用の年間予定表にのみ常に表示されます(月間予定表には表示されません。「学校行事等(教員・月間)」と違って年間だけに載せたい内容専用の欄です)。各月の下部には元のExcelと同様に「年計」「学期計」「月計」として学年別の授業日数を表示します。学期の区切り(2学期・3学期の開始月)は「設定」タブで変更できます。「Excelに出力」ボタンで、A3横1ページに収まる形でその時点のチェック設定のまま年間分をまとめてダウンロードできます(元のExcelと同じくA3サイズ)。</p>
+  <p>「年間予定表(教員用)」「年間予定表(家庭用)」の2つのタブに分かれています。どちらも基本は「学校行事等(共通・年間)」欄の内容を表示しますが、上部のチェックボックスで「学校行事等(共通・月間のみ)も含める」「学校行事等(教員のみ・月間のみ)も含める」「職員会議のあった日を含める」をそれぞれ個別にオン・オフできます(既定値: 教員用は共通・月間のみ、教員のみ・月間のみをオン、家庭用は共通・月間のみだけオン)。教員向けの内容はオレンジ、職員会議は青字で「職員会議」とだけ表示されます(会議の詳細な内容や企画会議・出張などは年間予定表には表示されません)。「学校行事等(教員のみ・年間)」欄に入力した内容は、この設定に関わらず教員用の年間予定表にのみ常に表示されます(月間予定表には表示されません。「学校行事等(教員のみ・月間のみ)」と違って年間だけに載せたい内容専用の欄です)。各月の下部には元のExcelと同様に「年計」「学期計」「月計」として学年別の授業日数を表示します。学期の区切り(2学期・3学期の開始月)は「設定」タブで変更できます。「Excelに出力」ボタンで、A3横1ページに収まる形でその時点のチェック設定のまま年間分をまとめてダウンロードできます(元のExcelと同じくA3サイズ)。</p>
   <p style="font-size:12px;color:var(--ink-soft);">※PDF保存・印刷ボタンは、最終的な確認・配布をExcel出力ベースで行う運用のため、現在は非表示にしています。</p>
 
   <h4>時数・集計の確認</h4>
