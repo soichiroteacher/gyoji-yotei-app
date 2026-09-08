@@ -148,6 +148,7 @@
   }
   td.cell input:focus{background:#fff8dc;box-shadow:inset 0 0 0 2px #e8c95a;}
   td.cell input.small-input{font-size:11px;text-align:center;padding:2px 1px;}
+  td.cell input.period-special{font-size:8px;}
   /* 候補リスト(datalist)の矢印アイコンが横幅を圧迫し、●や道などの文字が欠けて見えることがあるため非表示にする */
   td.cell input[list]::-webkit-calendar-picker-indicator{display:none;}
   td.cell input[list]::-webkit-list-button{display:none;-webkit-appearance:none;width:0;}
@@ -2076,8 +2077,9 @@ function renderAgenda(){
         const periodDisabled = c.grade && !effSchoolDay[c.grade];
         const finalDis = (dis || (periodDisabled ? 'disabled' : ''));
         const absentCls = (c.grade && val==='欠') ? 'period-absent' : '';
+        const specialCls = (c.grade && val==='●') ? 'period-special' : ''; // ●は塗りつぶし丸で見た目が大きく圧迫感があるため、少し小さく表示する
         html += `<td class="cell ${gcls} ${memoCls} ${gsCls} ${periodDisabled?'noschool':''}" data-row="${d-1}" data-col="${colIdx}">`+
-          `<input type="text" ${finalDis} class="${c.cls||''} ${absentCls}" data-row="${d-1}" data-col="${colIdx}" data-key="${key}" data-field="${c.key}" `+
+          `<input type="text" ${finalDis} class="${c.cls||''} ${absentCls} ${specialCls}" data-row="${d-1}" data-col="${colIdx}" data-key="${key}" data-field="${c.key}" `+
           `${c.dl?`list="${c.dl}"`:''} placeholder="${escapeHtml(c.placeholder||'')}" value="${escapeHtml(val)}">`+
           `</td>`;
       }
@@ -2398,7 +2400,7 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
   const reiwa = state.meta.fiscalYear - 2018;
   const audienceLabel = audience==='teacher' ? '教職員用' : '家庭用';
   const today = new Date();
-  const stamp = `出力日　${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
+  const stamp = `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
 
   // 家庭用は「翌月の予定(先取り確認用)」を、行を下に積み増すのではなく右側の列に並べて表示する。
   // 元のExcel(4月生シート等)もこの配置でA4 1枚に収まっており、下に積み増すと行数がほぼ倍になって
@@ -2725,7 +2727,7 @@ function buildAnnualExportGrid(fy, audience){
 
   const reiwa = fy - 2018;
   const today = new Date();
-  const stamp = `出力日\u3000${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
+  const stamp = `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
   const audienceLabel = audience==='teacher' ? '教職員用' : '家庭用';
   grid[0][0] = {v:`令和${reiwa}年度\u3000${schoolNameWithVersion('annual')}\u3000年間行事予定(${audienceLabel})`, style:XSTYLE.TITLE};
   merges.push(`${colLetter(1)}1:${colLetter(totalCols)}1`);
@@ -3853,6 +3855,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-08</strong>: Excel出力右上の日付表示から「出力日」の文字を消し、日付だけを残すように変更。授業枠の「●」が数字より目立ちすぎて圧迫感があったため、●の時だけ少し小さいフォントサイズで表示するように変更。</li>
     <li><strong>2026-09-08</strong>: 一括で9件の改善を実施。①「開く」「名前を付けて保存」で前回と同じフォルダが初期位置になるように。②前年度の行事を候補に追加する機能が「共通・月間のみ」等の欄の内容も対象にするよう修正(以前は「共通・年間」欄しか見ていなかった)。③保存状態の表示文字数が変わってもツールバー全体がずれないよう幅を固定。④給食のない日一覧で「給食扱い」にチェックすると一覧から消えていたのを、常に一覧に残るよう修正。⑤「学校行事の回数」を、授業枠(①〜⑥)の「行」の合計時数に変更し、授業枠に記録されない行事の時数を自由記述で追加集計できる欄を新設。⑥「●特別時間割」等の注釈をより小さい文字に。⑦月間予定表Excel出力の会議・放課後・給食・授業列を狭く。⑧「部活動」欄の名称を「放課後」に変更。⑨「欠」の網掛けの初期色を薄く。</li>
     <li><strong>2026-09-08</strong>: 学校行事等4欄の名称を「学校行事等(共通・月間のみ)」「学校行事等(教員のみ・年間)」「学校行事等(教員のみ・月間のみ)」に調整(「月間」→「月間のみ」、「教員」→「教員のみ」)し、対象を絞った欄であることをより分かりやすくした。並び順・動作に変更なし。</li>
     <li><strong>2026-09-08</strong>: 学校行事等4欄の並び順を「共通・年間→共通・月間→教員・年間→教員・月間」に変更し、名称も分かりやすく統一(学校行事等(年間行事)→学校行事等(共通・年間)、学校行事等(月のみ)→学校行事等(共通・月間)、学校行事等(教員のみ)→学校行事等(教員・月間)、学校行事等(教員のみ・年間用)→学校行事等(教員・年間))。動作(どの予定表に載るか)に変更はなく、表示上の並びと名前だけの変更。</li>
