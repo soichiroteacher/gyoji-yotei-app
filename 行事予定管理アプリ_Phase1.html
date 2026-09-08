@@ -2359,27 +2359,39 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
   const reiwa = state.meta.fiscalYear - 2018;
   const audienceLabel = audience==='teacher' ? '教職員用' : '家庭用';
   const today = new Date();
-  const stamp = `出力日\u3000${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
+  const stamp = `出力日　${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
+
+  // 家庭用は「翌月の予定(先取り確認用)」を、行を下に積み増すのではなく右側の列に並べて表示する。
+  // 元のExcel(4月生シート等)もこの配置でA4 1枚に収まっており、下に積み増すと行数がほぼ倍になって
+  // 1ページに収まらなくなるため、実物のレイアウトに合わせた。
+  let ny, nm, ndim, extraCols = 0;
+  if(audience==='family'){
+    ny = year; nm = month+1;
+    if(nm>12){ nm=1; ny=year+1; }
+    ndim = daysInMonth(ny,nm);
+    extraCols = 3; // 日・曜・学校行事等(翌月分)
+  }
+  const grandTotalCols = totalCols + extraCols;
 
   // 複数月をまとめて出力する際、2枚目以降を「参考」として区別できるようにするための印。
   // タイトル行の色を変え、副題に【参考】を付け足す(内容の文字サイズ・レイアウトは変えない)。
   const refMark = isReference ? '【参考】' : '';
   const refStyle = isReference ? XSTYLE.TITLE_REF : XSTYLE.TITLE;
-  const titleRow = new Array(totalCols).fill(null);
-  titleRow[0] = {v:`令和${reiwa}年度\u3000${schoolNameWithVersion('monthly')}`, style:refStyle};
-  const subtitleRow = new Array(totalCols).fill(null);
-  subtitleRow[0] = {v:refMark+`${year}年${month}月\u3000行事予定(${audienceLabel})`, style:refStyle};
+  const titleRow = new Array(grandTotalCols).fill(null);
+  titleRow[0] = {v:`令和${reiwa}年度　${schoolNameWithVersion('monthly')}`, style:refStyle};
+  const subtitleRow = new Array(grandTotalCols).fill(null);
+  subtitleRow[0] = {v:refMark+`${year}年${month}月　行事予定(${audienceLabel})`, style:refStyle};
   subtitleRow[0].v += '(●特別時間割　○学年時間割)'; // ①〜⑥欄の記号の意味を添える
   // 出力日のスタンプは1列だけだと狭すぎて、左の結合セルに隣接しているため右にはみ出せず欠けて見えてしまう。
-  // 右端の数列をまとめて確保することで、はみ出さずに全部表示できるようにする。
+  // 右端の数列をまとめて確保することで、はみ出さずに全部表示できるようにする(主表側の右端に置く。翌月欄とは別)。
   const dateSpan = Math.min(5, totalCols-1);
   const dateStart = totalCols - dateSpan + 1; // 1-indexed
   subtitleRow[dateStart-1] = {v:stamp, style:XSTYLE.DATE};
 
-  const row1 = new Array(totalCols).fill(null);
-  const row2 = new Array(totalCols).fill(null);
+  const row1 = new Array(grandTotalCols).fill(null);
+  const row2 = new Array(grandTotalCols).fill(null);
   const merges = [
-    `${colLetter(1)}1:${colLetter(totalCols)}1`,
+    `${colLetter(1)}1:${colLetter(grandTotalCols)}1`,
     `${colLetter(1)}2:${colLetter(dateStart-1)}2`,
     `${colLetter(dateStart)}2:${colLetter(totalCols)}2`
   ];
@@ -2400,8 +2412,15 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
     if(c.grade || c.grpLunch) row2[ci2] = {v:c.label, style:XSTYLE.HEADER};
     ci2++;
   });
+  if(extraCols>0){
+    row1[totalCols] = {v:`${nm}月の予定(先取り)`, style:XSTYLE.HEADER};
+    merges.push(`${colLetter(totalCols+1)}3:${colLetter(grandTotalCols)}3`);
+    row2[totalCols] = {v:'日', style:XSTYLE.HEADER};
+    row2[totalCols+1] = {v:'曜', style:XSTYLE.HEADER};
+    row2[totalCols+2] = {v:'学校行事等', style:XSTYLE.HEADER};
+  }
   // 結合セルの陰に隠れる位置も含め、見出し帯(row1/row2)は全マスに罫線を入れて隙間をなくす
-  for(let i=0;i<totalCols;i++){
+  for(let i=0;i<grandTotalCols;i++){
     if(row1[i]==null) row1[i] = {v:'', style:XSTYLE.HEADER};
     if(row2[i]==null) row2[i] = {v:'', style:XSTYLE.HEADER};
   }
@@ -2426,52 +2445,76 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
       i = j;
     }
   }
-  for(let d=1; d<=dim; d++){
-    const dow = new Date(year,month-1,d).getDay();
-    const status = getDayStatus(year,month,d);
-    const rec = migrateDayRecord(state.days[dkey(year,month,d)]);
-    const shaded = isShadedDay(status, dow);
-    const cS = shaded ? XSTYLE.HOLIDAY_CENTER : XSTYLE.CENTER;
-    const lSsmall = shaded ? XSTYLE.HOLIDAY_LEFT_SMALL : XSTYLE.LEFT_SMALL; // 月間予定表の学校行事等は年間より少し小さめのフォントにする
-    const row = [{v:d, num:true, style:cS}, {v:DOW[dow], style:cS}];
-    cols.forEach(c=>{
-      if(c.key==='events'){
-        const parts = [];
-        const effAnnual = effectiveEventsAnnual(rec, status);
-        if(effAnnual) parts.push(effAnnual);
-        if(rec.eventsMonthly) parts.push(rec.eventsMonthly);
-        if(audience==='teacher' && rec.eventsTeacherOnly) parts.push(rec.eventsTeacherOnly);
-        row.push({v:parts.filter(Boolean).join('\u3000'), style:lSsmall});
-      } else if(c.key==='meeting'){
-        const parts=[];
-        if(rec.planningMeeting) parts.push('企画会議');
-        if(rec.staffMeeting) parts.push('職員会議');
-        if(rec.meeting) parts.push(rec.meeting);
-        row.push({v:parts.join('\u3000'), style:cS});
-      } else if(c.key==='cleaning'){
-        const showX = anySchoolDay(year,month,d) && !effectiveCleaning(rec,status,dow);
-        row.push({v: showX ? '×' : '', style:cS});
+  const totalDayRows = extraCols>0 ? Math.max(dim, ndim) : dim;
+  for(let d=1; d<=totalDayRows; d++){
+    const row = new Array(grandTotalCols).fill(null);
+    if(d<=dim){
+      const dow = new Date(year,month-1,d).getDay();
+      const status = getDayStatus(year,month,d);
+      const rec = migrateDayRecord(state.days[dkey(year,month,d)]);
+      const shaded = isShadedDay(status, dow);
+      const cS = shaded ? XSTYLE.HOLIDAY_CENTER : XSTYLE.CENTER;
+      const lSsmall = shaded ? XSTYLE.HOLIDAY_LEFT_SMALL : XSTYLE.LEFT_SMALL; // 月間予定表の学校行事等は年間より少し小さめのフォントにする
+      row[0] = {v:d, num:true, style:cS};
+      row[1] = {v:DOW[dow], style:cS};
+      let ci = 2;
+      cols.forEach(c=>{
+        if(c.key==='events'){
+          const parts = [];
+          const effAnnual = effectiveEventsAnnual(rec, status);
+          if(effAnnual) parts.push(effAnnual);
+          if(rec.eventsMonthly) parts.push(rec.eventsMonthly);
+          if(audience==='teacher' && rec.eventsTeacherOnly) parts.push(rec.eventsTeacherOnly);
+          row[ci] = {v:parts.filter(Boolean).join('　'), style:lSsmall};
+        } else if(c.key==='meeting'){
+          const parts=[];
+          if(rec.planningMeeting) parts.push('企画会議');
+          if(rec.staffMeeting) parts.push('職員会議');
+          if(rec.meeting) parts.push(rec.meeting);
+          row[ci] = {v:parts.join('　'), style:cS};
+        } else if(c.key==='cleaning'){
+          const showX = anySchoolDay(year,month,d) && !effectiveCleaning(rec,status,dow);
+          row[ci] = {v: showX ? '×' : '', style:cS};
+        }
+        else if(c.key==='club'){ row[ci] = {v:rec.club||'', style:cS}; }
+        else if(c.key==='lunchG1'){ row[ci] = {v:rec.lunch.g1||'', style:cS}; }
+        else if(c.key==='lunchG2'){ row[ci] = {v:rec.lunch.g2||'', style:cS}; }
+        else if(c.key==='lunchG3'){ row[ci] = {v:rec.lunch.g3||'', style:cS}; }
+        else if(c.key==='weeklyDuty'){
+          const run = weeklyDutyRuns[d];
+          if(run && run.skip) row[ci] = {v:'', style:cS}; // 結合セルの陰の部分。中身は非表示になるが罫線は入れる
+          else if(run && run.span>1) row[ci] = {v:run.value, style:cS};
+          else row[ci] = {v:rec.weeklyDuty||'', style:cS};
+        }
+        else {
+          const gm = c.key.match(/^g([123])p([1-6])$/);
+          const val = gm ? rec.periods['g'+gm[1]][Number(gm[2])-1] : '';
+          // 「1」〜「6」の数字だけは文字列ではなく数値として書き出す(文字列のままだと
+          // Excelで「数値が文字列として保存されています」という警告が出るため。実害はないが紛らわしい)
+          if(/^[1-6]$/.test(val)) row[ci] = {v:Number(val), num:true, style:cS};
+          else if(val==='欠') row[ci] = {v:val, style:XSTYLE.ABSENT_CENTER};
+          else row[ci] = {v:val||'', style:cS};
+        }
+        ci++;
+      });
+    } else {
+      // メイン表(当月分)はここまでで終わっている(翌月の方が日数が多い場合)。空セルのみ罫線を維持する。
+      for(let i=0;i<totalCols;i++) row[i] = {v:'', style:XSTYLE.CENTER};
+    }
+    if(extraCols>0){
+      if(d<=ndim){
+        const nstatus = getDayStatus(ny,nm,d);
+        const ndow = new Date(ny,nm-1,d).getDay();
+        const nrec = migrateDayRecord(state.days[dkey(ny,nm,d)]);
+        const nparts = [effectiveEventsAnnual(nrec, nstatus), nrec.eventsMonthly].filter(Boolean);
+        const nshaded = isShadedDay(nstatus, ndow);
+        row[totalCols] = {v:d, num:true, style:nshaded?XSTYLE.HOLIDAY_CENTER:XSTYLE.CENTER};
+        row[totalCols+1] = {v:DOW[ndow], style:nshaded?XSTYLE.HOLIDAY_CENTER:XSTYLE.CENTER};
+        row[totalCols+2] = {v:nparts.join('　'), style:nshaded?XSTYLE.HOLIDAY_LEFT_SMALL:XSTYLE.LEFT_SMALL};
+      } else {
+        for(let i=totalCols;i<grandTotalCols;i++) row[i] = {v:'', style:XSTYLE.CENTER};
       }
-      else if(c.key==='club'){ row.push({v:rec.club||'', style:cS}); }
-      else if(c.key==='lunchG1'){ row.push({v:rec.lunch.g1||'', style:cS}); }
-      else if(c.key==='lunchG2'){ row.push({v:rec.lunch.g2||'', style:cS}); }
-      else if(c.key==='lunchG3'){ row.push({v:rec.lunch.g3||'', style:cS}); }
-      else if(c.key==='weeklyDuty'){
-        const run = weeklyDutyRuns[d];
-        if(run && run.skip) row.push({v:'', style:cS}); // 結合セルの陰の部分。中身は非表示になるが罫線は入れる
-        else if(run && run.span>1) row.push({v:run.value, style:cS});
-        else row.push({v:rec.weeklyDuty||'', style:cS});
-      }
-      else {
-        const gm = c.key.match(/^g([123])p([1-6])$/);
-        const val = gm ? rec.periods['g'+gm[1]][Number(gm[2])-1] : '';
-        // 「1」〜「6」の数字だけは文字列ではなく数値として書き出す(文字列のままだと
-        // Excelで「数値が文字列として保存されています」という警告が出るため。実害はないが紛らわしい)
-        if(/^[1-6]$/.test(val)) row.push({v:Number(val), num:true, style:cS});
-        else if(val==='欠') row.push({v:val, style:XSTYLE.ABSENT_CENTER});
-        else row.push({v:val||'', style:cS});
-      }
-    });
+    }
     grid.push(row);
   }
   if(wdColIdx!==-1){
@@ -2496,67 +2539,35 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
         if(rec.eventsAnnual) parts.push(rec.eventsAnnual);
         if(rec.eventsMonthly) parts.push(rec.eventsMonthly);
         if(rec.eventsTeacherOnly) parts.push(rec.eventsTeacherOnly);
-        const eventText = parts.filter(Boolean).join('\u3000');
+        const eventText = parts.filter(Boolean).join('　');
         memoRows.push({d, dow, eventText, memo:rec.memo});
       }
     }
     if(memoRows.length){
-      const totalCols = 2 + cols.length;
       pageBreakRows.push(grid.length); // 「日ごとのメモ」は次ページから印刷されるようにする
-      grid.push(new Array(totalCols).fill(null)); // 空行
-      const headerRow = new Array(totalCols).fill(null);
+      grid.push(new Array(grandTotalCols).fill(null)); // 空行
+      const headerRow = new Array(grandTotalCols).fill(null);
       headerRow[0] = {v:'日ごとのメモ(根拠等)', style:XSTYLE.HEADER};
       grid.push(headerRow);
-      merges.push(`${colLetter(1)}${grid.length}:${colLetter(totalCols)}${grid.length}`);
-      const subHeaderRow = new Array(totalCols).fill(null);
+      merges.push(`${colLetter(1)}${grid.length}:${colLetter(grandTotalCols)}${grid.length}`);
+      const subHeaderRow = new Array(grandTotalCols).fill(null);
       subHeaderRow[0] = {v:'日', style:XSTYLE.HEADER};
       subHeaderRow[1] = {v:'曜', style:XSTYLE.HEADER};
       subHeaderRow[2] = {v:'学校行事等', style:XSTYLE.HEADER};
       subHeaderRow[6] = {v:'メモ(根拠等)', style:XSTYLE.HEADER};
       grid.push(subHeaderRow);
-      merges.push(`${colLetter(3)}${grid.length}:${colLetter(Math.min(6,totalCols))}${grid.length}`);
-      merges.push(`${colLetter(Math.min(7,totalCols))}${grid.length}:${colLetter(totalCols)}${grid.length}`);
+      merges.push(`${colLetter(3)}${grid.length}:${colLetter(Math.min(6,grandTotalCols))}${grid.length}`);
+      merges.push(`${colLetter(Math.min(7,grandTotalCols))}${grid.length}:${colLetter(grandTotalCols)}${grid.length}`);
       memoRows.forEach(({d,dow,eventText,memo})=>{
-        const row2 = new Array(totalCols).fill(null);
-        row2[0] = {v:d, num:true, style:XSTYLE.CENTER};
-        row2[1] = {v:DOW[dow], style:XSTYLE.CENTER};
-        row2[2] = {v:eventText, style:XSTYLE.LEFT};
-        row2[6] = {v:memo, style:XSTYLE.LEFT};
-        grid.push(row2);
-        merges.push(`${colLetter(3)}${grid.length}:${colLetter(Math.min(6,totalCols))}${grid.length}`);
-        merges.push(`${colLetter(Math.min(7,totalCols))}${grid.length}:${colLetter(totalCols)}${grid.length}`);
+        const row2m = new Array(grandTotalCols).fill(null);
+        row2m[0] = {v:d, num:true, style:XSTYLE.CENTER};
+        row2m[1] = {v:DOW[dow], style:XSTYLE.CENTER};
+        row2m[2] = {v:eventText, style:XSTYLE.LEFT};
+        row2m[6] = {v:memo, style:XSTYLE.LEFT};
+        grid.push(row2m);
+        merges.push(`${colLetter(3)}${grid.length}:${colLetter(Math.min(6,grandTotalCols))}${grid.length}`);
+        merges.push(`${colLetter(Math.min(7,grandTotalCols))}${grid.length}:${colLetter(grandTotalCols)}${grid.length}`);
       });
-    }
-  }
-  // 家庭用は、画面のプレビューと同じく「翌月の予定(先取り確認用)」を出力にも含める
-  if(audience==='family'){
-    let ny = year, nm = month+1;
-    if(nm>12){ nm=1; ny=year+1; }
-    const ndim = daysInMonth(ny,nm);
-    const totalCols = 2 + cols.length;
-    grid.push(new Array(totalCols).fill(null)); // 空行
-    const headerRow = new Array(totalCols).fill(null);
-    headerRow[0] = {v:`${nm}月の予定(先取り)`, style:XSTYLE.HEADER};
-    grid.push(headerRow);
-    merges.push(`${colLetter(1)}${grid.length}:${colLetter(totalCols)}${grid.length}`);
-    const subHeaderRow = new Array(totalCols).fill(null);
-    subHeaderRow[0] = {v:'日', style:XSTYLE.HEADER};
-    subHeaderRow[1] = {v:'曜', style:XSTYLE.HEADER};
-    subHeaderRow[2] = {v:'学校行事等', style:XSTYLE.HEADER};
-    grid.push(subHeaderRow);
-    merges.push(`${colLetter(3)}${grid.length}:${colLetter(totalCols)}${grid.length}`);
-    for(let d=1; d<=ndim; d++){
-      const nstatus = getDayStatus(ny,nm,d);
-      const ndow = new Date(ny,nm-1,d).getDay();
-      const nrec = migrateDayRecord(state.days[dkey(ny,nm,d)]);
-      const nparts = [effectiveEventsAnnual(nrec, nstatus), nrec.eventsMonthly].filter(Boolean);
-      const nshaded = isShadedDay(nstatus, ndow);
-      const row3 = new Array(totalCols).fill(null);
-      row3[0] = {v:d, num:true, style:nshaded?XSTYLE.HOLIDAY_CENTER:XSTYLE.CENTER};
-      row3[1] = {v:DOW[ndow], style:nshaded?XSTYLE.HOLIDAY_CENTER:XSTYLE.CENTER};
-      row3[2] = {v:nparts.join('　'), style:nshaded?XSTYLE.HOLIDAY_LEFT:XSTYLE.LEFT};
-      grid.push(row3);
-      merges.push(`${colLetter(3)}${grid.length}:${colLetter(totalCols)}${grid.length}`);
     }
   }
   const colWidths = [3,3].concat(cols.map(c=>{
@@ -2567,6 +2578,7 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
     if(c.grade) return 3;
     return 9;
   }));
+  if(extraCols>0) colWidths.push(3,3,40);
   return {grid, merges, colWidths, pageBreakRows};
 }
 
@@ -2632,7 +2644,7 @@ function exportSelectedMonthsXlsx(audience, selectedMonths, markReferenceAfterFi
     const isReference = markReferenceAfterFirst && i>0;
     const {grid, merges, colWidths, pageBreakRows} = buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isReference);
     // 家庭用は翌月欄が加わり行数が増えるため、1ページに収めようとして文字が極端に小さくなるのを避ける
-    const fitToHeight = audience==='family' ? 0 : (includeMemo?0:1);
+    const fitToHeight = includeMemo?0:1;
     return {name:`${month}月${isReference?'(参考)':''}`, grid, merges, colWidths, pageOpts:{paperSize:9, orientation:'landscape', fitToHeight, pageBreakRows}};
   });
   const bytes = buildXlsxBytes(sheets);
@@ -3741,6 +3753,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-08</strong>: 月間予定表(家庭用)のExcel出力で、「翌月の予定」を下に積み増すのではなく右側の列に並べる形に変更(元のExcelと同じ配置)。行数が増えなくなり、A4横1ページに収まるようになった。</li>
     <li><strong>2026-09-08</strong>: 月間予定表(教員用・家庭用)のExcel出力ボタンを1つに統合。出力する月を選ぶウィンドウが開き、チェックした月をシートごとに分けて1つのファイルに出力できるように(「今月のみ」「今月+翌月」「全12か月」ですぐ選択可)。2枚目以降のシートを「参考」として色分けする機能も追加し、今月分・翌月分を並べて印刷して見比べる際に一目で区別できるようにした。</li>
     <li><strong>2026-09-08</strong>: 最終確認・配布はExcel出力ベースで行う運用のため、月間・年間予定表の「🖨 PDFで保存/印刷」ボタンを非表示に変更(紛らわしさの解消)。</li>
     <li><strong>2026-09-08</strong>: 職場のサーバーなど複数人がアクセスしうる場所にファイルを置いた場合の簡易ロック表示を追加。編集モードにすると画面上部に「編集中」の状態が記録され、他の場所で最近(10分以内)編集が始まっている場合は、編集を始める前に警告を表示するように。編集していない間(閲覧のみ)でも、直近の編集中表示があれば画面上部にバッジで分かるように。</li>
@@ -3795,7 +3808,7 @@ document.getElementById('helpBody').innerHTML = `
 
   <h4>月間予定表(教員用・家庭用)の確認・Excel出力</h4>
   <p>「月間予定表(教員用)」タブでは、入力した内容から教員用の月間予定表を画面上で確認できます。学校行事等は「年間行事」「月のみ」「教員のみ」をすべて合わせて表示し、「年間行事」は太字、「教員のみ」は色分け(オレンジ系)で区別されます。週番は、同じ内容が連続する日をまとめて1つのセルに結合して表示します(内容が変わる日や休業日でそこは区切られます)。入力したメモは表の下に一覧で表示されます。「Excelに出力」ボタンを押すと出力する月を選ぶウィンドウが開き、チェックした月をそれぞれシートに分けた1つのExcelファイルとしてダウンロードできます(「今月のみ」「今月+翌月」「全12か月」のボタンですぐに選べます)。2枚目以降のシートを「参考」として色を変えて区別するかどうかも選べるので、たとえば今月分と翌月分をまとめて出力・印刷して見比べる際に、どちらのシートか一目で分かるようにできます(文字を縮小するのではなく、タイトル行の色と「【参考】」の表示で区別します)。行の高さはすべて固定されており、長い文章を入力した場合は行が伸びるのではなく、セル内の文字が自動的に縮小されて1行に収まります(Microsoft Excelでの「縮小して全体を表示」機能を使用しています)。祝日・休業日の網掛けや集計行の色も、白黒プリンターでも判読できる濃さのグレーにしています。</p>
-  <p>「月間予定表(家庭用)」タブでは、同じデータから会議・出張・研修や週番、教員のみの行事を除いた家庭向けの表示を確認できます。表の右側には元のExcelと同様に、翌月の予定(学校行事等のみ)が一覧表示されます。こちらも「Excelに出力」で出力できます(翌月ボックスもExcel出力に含まれます。行数が増えるため、1ページに収めず複数ページに分けて出力されます)。</p>
+  <p>「月間予定表(家庭用)」タブでは、同じデータから会議・出張・研修や週番、教員のみの行事を除いた家庭向けの表示を確認できます。表の右側には元のExcelと同様に、翌月の予定(学校行事等のみ)が一覧表示されます。こちらも「Excelに出力」で出力できます(翌月ボックスもExcel出力に含まれます。元のExcelと同じく、翌月分は行を増やさず右側の列に並べて出力するため、A4横1ページに収まります)。</p>
 
   <h4>年間予定表(教員用・家庭用)の確認・Excel出力</h4>
   <p>「年間予定表(教員用)」「年間予定表(家庭用)」の2つのタブに分かれています。どちらも基本は「学校行事等(年間行事)」欄の内容を表示しますが、上部のチェックボックスで「学校行事等(月のみ)も含める」「学校行事等(教員のみ)も含める」「職員会議のあった日を含める」をそれぞれ個別にオン・オフできます(既定値: 教員用は月のみ・教員のみをオン、家庭用は月のみだけオン)。教員のみの内容はオレンジ、職員会議は青字で「職員会議」とだけ表示されます(会議の詳細な内容や企画会議・出張などは年間予定表には表示されません)。各月の下部には元のExcelと同様に「年計」「学期計」「月計」として学年別の授業日数を表示します。学期の区切り(2学期・3学期の開始月)は「設定」タブで変更できます。「Excelに出力」ボタンで、A3横1ページに収まる形でその時点のチェック設定のまま年間分をまとめてダウンロードできます(元のExcelと同じくA3サイズ)。</p>
