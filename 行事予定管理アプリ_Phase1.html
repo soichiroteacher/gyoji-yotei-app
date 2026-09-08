@@ -55,7 +55,10 @@
   button:disabled{opacity:.45;cursor:not-allowed;}
   button.tiny{font-size:11px;padding:2px 6px;}
 
-  #status{font-size:12px;color:var(--ink-soft);white-space:nowrap;}
+  /* 「未保存」「保存済み(HH:MM:SS)」など表示文字数が変わっても、ここの幅を固定して
+     ツールバー全体の折り返し(≒レイアウトが下にずれる現象)が起きにくいようにする。
+     長いメッセージは省略記号で切って幅を超えないようにする(hoverで全文を確認可能)。 */
+  #status{font-size:12px;color:var(--ink-soft);white-space:nowrap;width:170px;overflow:hidden;text-overflow:ellipsis;flex:none;}
   #status.dirty{color:var(--warn);}
   #status.saved{color:var(--accent);}
 
@@ -199,7 +202,7 @@
   /* ===== 月間予定表プレビュー ===== */
   .preview-title{font-size:16px;font-weight:700;margin-bottom:2px;}
   .preview-subtitle{font-size:14px;font-weight:600;margin-bottom:10px;}
-  .pv-legend{font-size:11px;font-weight:400;color:var(--ink-soft);margin-left:8px;}
+  .pv-legend{font-size:9px;font-weight:400;color:var(--ink-soft);margin-left:8px;}
   .preview-scroll{overflow-x:auto;border:1px solid #999;}
   table.preview{border-collapse:collapse;font-size:12px;table-layout:fixed;}
   table.preview th, table.preview td{border:1px solid #888;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:22px;box-sizing:border-box;}
@@ -509,7 +512,7 @@
       <p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">
         各項目をクリックしたときに候補として表示される内容です。読点(、)またはカンマ(,)区切りで自由に編集できます(自由入力自体は常に可能です)。
       </p>
-      <div class="field-row"><label style="min-width:140px;">部活動</label><input type="text" id="presetClub" style="flex:1;min-width:280px;"></div>
+      <div class="field-row"><label style="min-width:140px;">放課後</label><input type="text" id="presetClub" style="flex:1;min-width:280px;"></div>
       <div class="field-row"><label style="min-width:140px;">1〜3年 授業日課</label><input type="text" id="presetPeriod" style="flex:1;min-width:280px;"></div>
       <div class="field-row"><label style="min-width:140px;">週番</label><input type="text" id="presetWeeklyDuty" style="flex:1;min-width:280px;"></div>
     </div>
@@ -820,7 +823,7 @@ function lightenHex(hex, ratio){
 }
 // state.colors の内容をCSS変数へ反映する。状態を読み込んだ時・設定タブで色を変えた時に呼ぶ。
 function applyColorSettings(){
-  const c = (state && state.colors) || { holiday:'D9D9D9', absent:'808080' };
+  const c = (state && state.colors) || { holiday:'D9D9D9', absent:'BFBFBF' };
   const root = document.documentElement.style;
   root.setProperty('--holiday-color', '#'+c.holiday);
   root.setProperty('--nonschool-color', '#'+lightenHex(c.holiday, 0.6));
@@ -837,10 +840,11 @@ function emptyState(){
     manualDayFlags:{},   // "YYYY-MM-DD" -> {mode:'holiday'|'schoolday', label:''}
     holidayOverrides:{}, // "YYYY-MM-DD" -> {type:'add'|'remove', label:''} 特別法による祝日移動等の例外を手動で追加・解除
     eventCandidates:[],  // 日程未定の行事等を一次保存しておく候補プール。{id, text, useCount}
-    colors:{ holiday:'D9D9D9', absent:'808080' }, // 土日祝の網掛け色・欠セルの色(6桁HEX、#なし)。設定タブで変更可
+    colors:{ holiday:'D9D9D9', absent:'BFBFBF' }, // 土日祝の網掛け色・欠セルの色(6桁HEX、#なし)。設定タブで変更可
     extraHours:{ g1:0, g2:0, g3:0 }, // 行事予定にのらない時間数の手入力分(時数・集計タブの「必要時数との比較」に合算)
     mealCountOverrides:{}, // "YYYY-MM-DD" -> {g1:bool,g2:bool,g3:bool} 宿泊行事等で給食○ではないが喫食したものとして数える例外(時数・集計タブの一覧から設定)
     printCounts:[],      // 印刷部数の履歴ログ。{id, date:"YYYY-MM-DD", target:'staff'|'student', staffName:'', count:0, note:''}
+    eventHourEntries:[], // 授業枠に載らない行事の時数を自由記述で手入力する一覧。{id, label:'', hours:0}(時数・集計タブの「学校行事の回数」に合算)
     editLock:{ active:false, since:null }, // 職場サーバー等で共有した場合の簡易ロック表示用。編集モード中は自動保存のたびにsinceを更新し、一定時間更新がなければ失効扱いにする
     days:{},             // "YYYY-MM-DD" -> dayRecord
     presets: defaultPresets(),
@@ -887,7 +891,7 @@ function normalizeState(obj){
     }));
   }
   const isHex6 = v => typeof v==='string' && /^[0-9A-Fa-f]{6}$/.test(v);
-  if(!obj.colors || typeof obj.colors!=='object') obj.colors = { holiday:'D9D9D9', absent:'808080' };
+  if(!obj.colors || typeof obj.colors!=='object') obj.colors = { holiday:'D9D9D9', absent:'BFBFBF' };
   else {
     if(!isHex6(obj.colors.holiday)) obj.colors.holiday = 'D9D9D9';
     if(!isHex6(obj.colors.absent)) obj.colors.absent = '808080';
@@ -914,6 +918,14 @@ function normalizeState(obj){
       staffName: typeof p.staffName==='string' ? p.staffName : '',
       count: Number.isFinite(p.count) ? p.count : 0,
       note: typeof p.note==='string' ? p.note : ''
+    }));
+  }
+  if(!Array.isArray(obj.eventHourEntries)) obj.eventHourEntries = [];
+  else {
+    obj.eventHourEntries = obj.eventHourEntries.filter(e=>e && typeof e==='object').map(e=>({
+      id: e.id || genId(),
+      label: typeof e.label==='string' ? e.label : '',
+      hours: Number.isFinite(e.hours) ? e.hours : 0
     }));
   }
   if(!obj.editLock || typeof obj.editLock!=='object') obj.editLock = { active:false, since:null };
@@ -1127,7 +1139,7 @@ const supportsFSA = 'showSaveFilePicker' in window;
 
 function setStatus(text, cls){
   const el = document.getElementById('status');
-  el.textContent = text; el.className = cls||'';
+  el.textContent = text; el.className = cls||''; el.title = text;
 }
 // 共有サーバー等に置いた場合の簡易ロック表示用。この時間以上sinceが更新されていなければ
 // (=編集中の人が保存もクローズもしないまま離席した等)、失効したものとして扱う。
@@ -1163,15 +1175,28 @@ async function writeToHandle(handle){
   markSaved();
   maybeRunBackup();
 }
+// 「開く」「名前を付けて保存」のダイアログを開く際、前回使ったファイルと同じフォルダを
+// 初期位置にする(毎回別の場所から探し直さずに済むように)。前回のハンドルをIndexedDBに
+// 保存しておき、File System Access APIのstartInオプション(ファイルハンドルを渡すと、
+// その保存先フォルダが初期位置になる)に渡す。
+async function getStartInHandle(){
+  try{ return await idbGet('lastFileHandle'); }catch(e){ return undefined; }
+}
+async function rememberLastFileHandle(handle){
+  try{ await idbSet('lastFileHandle', handle); }catch(e){}
+}
 async function doSaveAs(){
   if(!editUnlocked) return;
   if(supportsFSA){
     try{
+      const startIn = await getStartInHandle();
       const handle = await window.showSaveFilePicker({
         suggestedName: (state.meta.schoolName||'行事予定') + '.dat',
-        types: [{ description:'行事予定データ', accept:{'application/json':['.dat']} }]
+        types: [{ description:'行事予定データ', accept:{'application/json':['.dat']} }],
+        ...(startIn ? {startIn} : {})
       });
       fileHandle = handle;
+      await rememberLastFileHandle(handle);
       await writeToHandle(handle);
       document.getElementById('btnSave').disabled = !editUnlocked;
       document.getElementById('currentFileName').textContent = handle.name;
@@ -1382,6 +1407,14 @@ function buildSheetXml(grid, merges, colWidths, pageOpts){
       const s = cell.style!=null ? ` s="${cell.style}"` : '';
       if(cell.num){
         xml += `<c r="${ref}"${s}><v>${cell.v}</v></c>`;
+      } else if(cell.runs){
+        // 1つのセルの中で、一部分だけ文字サイズ等を変えたい場合(例: タイトルの後ろに付ける
+        // 小さい注釈)に使う。runsは{text, sz, bold}の配列で、それぞれ別のtext runとして書き出す。
+        const runsXml = cell.runs.map(r=>{
+          const boldTag = r.bold ? '<b/>' : '';
+          return `<r><rPr>${boldTag}<sz val="${r.sz}"/><name val="Yu Mincho"/></rPr><t xml:space="preserve">${xmlEscape(r.text)}</t></r>`;
+        }).join('');
+        xml += `<c r="${ref}"${s} t="inlineStr"><is>${runsXml}</is></c>`;
       } else {
         const v = cell.v==null ? '' : String(cell.v);
         xml += `<c r="${ref}"${s} t="inlineStr"><is><t xml:space="preserve">${xmlEscape(v)}</t></is></c>`;
@@ -1766,10 +1799,15 @@ function downloadFallback(){
 async function doOpen(){
   if(supportsFSA){
     try{
-      const [handle] = await window.showOpenFilePicker({ types:[{ description:'行事予定データ', accept:{'application/json':['.dat']} }] });
+      const startIn = await getStartInHandle();
+      const [handle] = await window.showOpenFilePicker({
+        types:[{ description:'行事予定データ', accept:{'application/json':['.dat']} }],
+        ...(startIn ? {startIn} : {})
+      });
       const file = await handle.getFile();
       loadStateFromText(await file.text());
       fileHandle = handle;
+      await rememberLastFileHandle(handle);
       document.getElementById('btnSave').disabled = !editUnlocked;
       document.getElementById('currentFileName').textContent = handle.name;
       document.getElementById('noFileBanner').style.display='none';
@@ -1837,7 +1875,7 @@ const COLS = [
   {key:'planningMeeting', label:'企画会議', w:30, type:'checkbox', vertical:true},
   {key:'staffMeeting', label:'職員会議', w:30, type:'checkbox', vertical:true},
   {key:'cleaning', label:'掃除', w:30, type:'checkbox', vertical:true, hint:'既定は平日「あり」・土日祝「なし」。月間予定表の「掃除」欄には「なし」の日だけ×が表示されます'},
-  {key:'club', label:'部活動', w:52, dl:'dl-club', placeholder:'空欄=あり', hint:'空欄は「活動あり」の意味になります。活動なしの日や、再登校時刻などの特記事項がある日だけ入力してください(例: ×、再登校15:00〜)'},
+  {key:'club', label:'放課後', w:52, dl:'dl-club', placeholder:'空欄=あり', hint:'空欄は「活動あり」の意味になります。活動なしの日や、再登校時刻などの特記事項がある日だけ入力してください(例: ×、再登校15:00〜)'},
   {key:'lunchG1', label:'1年', w:36, type:'checkbox', grpLunch:true},
   {key:'lunchG2', label:'2年', w:36, type:'checkbox', grpLunch:true},
   {key:'lunchG3', label:'3年', w:36, type:'checkbox', grpLunch:true},
@@ -2280,7 +2318,7 @@ const PV_COLS_TEACHER = [
   {key:'events', label:'学\u3000校\u3000行\u3000事\u3000等', w:315},
   {key:'meeting', label:'会議・出張・研修', w:100},
   {key:'cleaning', label:'掃除', w:30, vertical:true},
-  {key:'club', label:'部活動', w:40},
+  {key:'club', label:'放課後', w:40},
   {key:'lunchG1', label:'1年', grpLunch:true, w:22},
   {key:'lunchG2', label:'2年', grpLunch:true, w:22},
   {key:'lunchG3', label:'3年', grpLunch:true, w:22},
@@ -2294,7 +2332,7 @@ PV_COLS_TEACHER.push({key:'weeklyDuty', label:'週番', w:26, vertical:true});
 const PV_COLS_FAMILY = [
   {key:'events', label:'学\u3000校\u3000行\u3000事\u3000等', w:390},
   {key:'cleaning', label:'掃除', w:30, vertical:true},
-  {key:'club', label:'部活動', w:40},
+  {key:'club', label:'放課後', w:40},
   {key:'lunchG1', label:'1年', grpLunch:true, w:22},
   {key:'lunchG2', label:'2年', grpLunch:true, w:22},
   {key:'lunchG3', label:'3年', grpLunch:true, w:22},
@@ -2381,8 +2419,15 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
   const titleRow = new Array(grandTotalCols).fill(null);
   titleRow[0] = {v:`令和${reiwa}年度　${schoolNameWithVersion('monthly')}`, style:refStyle};
   const subtitleRow = new Array(grandTotalCols).fill(null);
-  subtitleRow[0] = {v:refMark+`${year}年${month}月　行事予定(${audienceLabel})`, style:refStyle};
-  subtitleRow[0].v += '(●特別時間割　○学年時間割)'; // ①〜⑥欄の記号の意味を添える
+  // 「(●特別時間割　○学年時間割)」の注釈だけ、本文より小さい文字で添える(1セル内で
+  // 文字サイズを分けるため、runsで別テキストランとして書き出す)。
+  subtitleRow[0] = {
+    style: refStyle,
+    runs: [
+      {text: refMark+`${year}年${month}月　行事予定(${audienceLabel})`, sz:14, bold:true},
+      {text: '(●特別時間割　○学年時間割)', sz:9, bold:false}
+    ]
+  };
   // 出力日のスタンプは1列だけだと狭すぎて、左の結合セルに隣接しているため右にはみ出せず欠けて見えてしまう。
   // 右端の数列をまとめて確保することで、はみ出さずに全部表示できるようにする(主表側の右端に置く。翌月欄とは別)。
   const dateSpan = Math.min(5, totalCols-1);
@@ -2573,10 +2618,11 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
   }
   const colWidths = [3,3].concat(cols.map(c=>{
     if(c.key==='events') return 60;
-    if(c.key==='meeting') return 22;
+    if(c.key==='meeting') return 14;
     if(c.key==='cleaning' || c.key==='weeklyDuty') return 4;
-    if(c.grpLunch) return 4;
-    if(c.grade) return 3;
+    if(c.key==='club') return 6;
+    if(c.grpLunch) return 3;
+    if(c.grade) return 2.5;
     return 9;
   }));
   if(extraCols>0) colWidths.push(3,3,40);
@@ -2939,7 +2985,6 @@ function computeStatsForRange(monthList){
     periodTally: {1:{},2:{},3:{}},       // 学年別、コード別のコマ数集計
     weekdaySchoolDays: {1:{},2:{},3:{}}, // 学年別、曜日別(0=日〜6=土)の登校日数
     periodByWeekday: {1:{},2:{},3:{}},   // 学年別、曜日別の①〜⑥それぞれの実施回数(6要素配列)
-    eventDays: 0,                        // 学校行事等(共通・年間/共通・月間のみ)が入力されている日数
     teacherEventDays: 0                  // 学校行事等(教員のみ・月間のみ/教員のみ・年間)が入力されている日数
   };
   monthList.forEach(({year,month})=>{
@@ -2966,7 +3011,6 @@ function computeStatsForRange(monthList){
         if(v==='○') result.lunchOn[gg]++;
         else if(v==='×') result.lunchOff[gg]++;
       });
-      if(rec.eventsAnnual || rec.eventsMonthly) result.eventDays++;
       if(rec.eventsTeacherOnly || rec.eventsTeacherOnlyAnnual) result.teacherEventDays++;
     }
   });
@@ -2986,16 +3030,16 @@ function computeAnnualMealSummary(){
       const rec = migrateDayRecord(state.days[key]);
       const dow = new Date(year,month-1,d).getDay();
       const ov = state.mealCountOverrides[key];
-      const affected = [];
+      const noLunchGrades = []; // 給食○ではない学年(チェックで例外扱いにした後も一覧に残すため、対象学年はここで確定させる)
       [1,2,3].forEach(g=>{
         if(!isSchoolDay(year,month,d,g)) return;
         result.schoolDays[g]++;
         const overridden = !!(ov && ov['g'+g]);
         if(rec.lunch['g'+g]==='○' || overridden) result.effMealCount[g]++;
-        else affected.push(g);
+        if(rec.lunch['g'+g]!=='○') noLunchGrades.push(g);
       });
-      if(affected.length){
-        result.noLunchDays.push({ year, month, d, key, dow, grades:affected, reason: rec.eventsAnnual || rec.eventsMonthly || '' });
+      if(noLunchGrades.length){
+        result.noLunchDays.push({ year, month, d, key, dow, grades:noLunchGrades, reason: rec.eventsAnnual || rec.eventsMonthly || '' });
       }
     }
   });
@@ -3103,11 +3147,26 @@ function renderStats(){
   html += '<small class="hint">修学旅行など宿泊を伴う行事で、給食(学校給食)は提供されないが食事はしている日は、該当する学年にチェックを入れると「給食のない日」から除外され、上の喫食数に加算されます。</small>';
   html += '</div>';
 
-  // 学校行事の回数
+  // 学校行事の回数(「行事のある日数」は、授業枠(①〜⑥)に入力された「行」の合計時数として集計する。
+  // 授業枠に記録されない行事の時数は、下の自由記述欄に手入力して年間計に合算できる)
+  const eventHourEntriesSum = state.eventHourEntries.reduce((s,e)=>s+(Number(e.hours)||0),0);
   html += '<div class="panel"><h2>学校行事の回数</h2><table class="stats-table"><thead><tr><th></th>'+cols.map(c=>`<th>${c.label}</th>`).join('')+'</tr></thead><tbody>';
-  html += '<tr><td>行事のある日数(年間行事+月のみ)</td>'+cols.map(c=>`<td${c.total?' class="stats-total"':''}>${c.s.eventDays}</td>`).join('')+'</tr>';
+  html += '<tr><td>行事による時数(授業枠の「行」の合計'+(eventHourEntriesSum?'＋自由記述分':'')+')</td>'+cols.map(c=>{
+    const autoHours = (c.s.periodTally[1]['行']||0)+(c.s.periodTally[2]['行']||0)+(c.s.periodTally[3]['行']||0);
+    const total = autoHours + (c.total ? eventHourEntriesSum : 0);
+    return `<td${c.total?' class="stats-total"':''}>${total}</td>`;
+  }).join('')+'</tr>';
   html += '<tr><td>教員のみの内容がある日数</td>'+cols.map(c=>`<td${c.total?' class="stats-total"':''}>${c.s.teacherEventDays}</td>`).join('')+'</tr>';
-  html += '</tbody></table></div>';
+  html += '</tbody></table>';
+  html += '<p class="hint" style="margin:8px 0 6px;">授業枠(①〜⑥)に記録されない行事の時数は、下に名称と時数を自由入力すると年間計に合算されます。</p>';
+  html += '<table class="stats-table event-hour-entries-table"><thead><tr><th>内容</th><th>時数</th><th></th></tr></thead><tbody>';
+  state.eventHourEntries.forEach(e=>{
+    html += `<tr><td><input type="text" class="event-hour-label" data-id="${e.id}" value="${escapeHtml(e.label)}" style="width:100%;box-sizing:border-box;" placeholder="例: 職場体験学習(引率)"></td><td><input type="number" min="0" step="0.5" class="event-hour-value" data-id="${e.id}" value="${e.hours}" style="width:64px;"></td><td><button type="button" class="ghost tiny danger event-hour-delete" data-id="${e.id}">削除</button></td></tr>`;
+  });
+  if(state.eventHourEntries.length===0) html += '<tr><td colspan="3" class="preview-empty" style="text-align:left;">まだ項目がありません。</td></tr>';
+  html += '</tbody></table>';
+  html += '<button type="button" class="ghost tiny" id="btnAddEventHourEntry">＋ 項目を追加</button>';
+  html += '</div>';
 
   // 授業日課の内訳(コマ数)
   html += '<div class="panel"><h2>授業日課の内訳(コマ数)</h2>';
@@ -3238,6 +3297,43 @@ function renderStats(){
     btnToggleMealList.addEventListener('click', ()=>{
       mealListExpanded = !mealListExpanded;
       renderStats();
+    });
+  }
+  wrap.querySelectorAll('.event-hour-label').forEach(inp=>{
+    inp.disabled = !editUnlocked;
+    inp.addEventListener('change', (e)=>{
+      if(!editUnlocked) return;
+      const entry = state.eventHourEntries.find(x=>x.id===e.target.dataset.id);
+      if(entry){ entry.label = e.target.value; markDirty(); renderStats(); }
+    });
+  });
+  wrap.querySelectorAll('.event-hour-value').forEach(inp=>{
+    inp.disabled = !editUnlocked;
+    inp.addEventListener('change', (e)=>{
+      if(!editUnlocked) return;
+      const entry = state.eventHourEntries.find(x=>x.id===e.target.dataset.id);
+      if(entry){
+        const v = Number(e.target.value);
+        entry.hours = isNaN(v) || v<0 ? 0 : v;
+        markDirty(); renderStats();
+      }
+    });
+  });
+  wrap.querySelectorAll('.event-hour-delete').forEach(btn=>{
+    btn.disabled = !editUnlocked;
+    btn.addEventListener('click', ()=>{
+      if(!editUnlocked) return;
+      state.eventHourEntries = state.eventHourEntries.filter(x=>x.id!==btn.dataset.id);
+      markDirty(); renderStats();
+    });
+  });
+  const btnAddEventHourEntry = document.getElementById('btnAddEventHourEntry');
+  if(btnAddEventHourEntry){
+    btnAddEventHourEntry.disabled = !editUnlocked;
+    btnAddEventHourEntry.addEventListener('click', ()=>{
+      if(!editUnlocked) return;
+      state.eventHourEntries.push({id:genId(), label:'', hours:0});
+      markDirty(); renderStats();
     });
   }
 }
@@ -3589,7 +3685,7 @@ const SEARCH_FIELDS = [
   ['eventsTeacherOnlyAnnual','学校行事等(教員のみ・年間)'],
   ['eventsTeacherOnly','学校行事等(教員のみ・月間のみ)'],
   ['meeting','会議・出張・研修'],
-  ['club','部活動'],
+  ['club','放課後'],
   ['weeklyDuty','週番'],
   ['memo','メモ(根拠等)']
 ];
@@ -3757,6 +3853,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-08</strong>: 一括で9件の改善を実施。①「開く」「名前を付けて保存」で前回と同じフォルダが初期位置になるように。②前年度の行事を候補に追加する機能が「共通・月間のみ」等の欄の内容も対象にするよう修正(以前は「共通・年間」欄しか見ていなかった)。③保存状態の表示文字数が変わってもツールバー全体がずれないよう幅を固定。④給食のない日一覧で「給食扱い」にチェックすると一覧から消えていたのを、常に一覧に残るよう修正。⑤「学校行事の回数」を、授業枠(①〜⑥)の「行」の合計時数に変更し、授業枠に記録されない行事の時数を自由記述で追加集計できる欄を新設。⑥「●特別時間割」等の注釈をより小さい文字に。⑦月間予定表Excel出力の会議・放課後・給食・授業列を狭く。⑧「部活動」欄の名称を「放課後」に変更。⑨「欠」の網掛けの初期色を薄く。</li>
     <li><strong>2026-09-08</strong>: 学校行事等4欄の名称を「学校行事等(共通・月間のみ)」「学校行事等(教員のみ・年間)」「学校行事等(教員のみ・月間のみ)」に調整(「月間」→「月間のみ」、「教員」→「教員のみ」)し、対象を絞った欄であることをより分かりやすくした。並び順・動作に変更なし。</li>
     <li><strong>2026-09-08</strong>: 学校行事等4欄の並び順を「共通・年間→共通・月間→教員・年間→教員・月間」に変更し、名称も分かりやすく統一(学校行事等(年間行事)→学校行事等(共通・年間)、学校行事等(月のみ)→学校行事等(共通・月間)、学校行事等(教員のみ)→学校行事等(教員・月間)、学校行事等(教員のみ・年間用)→学校行事等(教員・年間))。動作(どの予定表に載るか)に変更はなく、表示上の並びと名前だけの変更。</li>
     <li><strong>2026-09-08</strong>: 「学校行事等(教員のみ・年間用)」欄を新設。月間予定表には表示されず、教員用の年間予定表にのみ常に表示される(既存の「学校行事等(教員のみ)」欄の挙動は変更なし)。</li>
@@ -3800,12 +3897,12 @@ document.getElementById('helpBody').innerHTML = `
     <li>複数マスを選択した状態で <strong>Delete</strong> キーを押すと、選択範囲をまとめて空にできます。</li>
     <li>列見出しの右端をドラッグすると列の幅を変えられます(画面に入りきらない場合に調整してください)。「設定」タブの「列幅をリセット」で既定の幅に戻せます。</li>
     <li>「週番をまとめて入力」ボタンから、現在表示中の月にかかる週を一覧から選び、内容を入力すると、その週の月〜金(休業日を除く)にまとめて同じ週番を入力できます。入力候補は「設定」タブの入力候補編集と共通です。どの日に反映されるかは画面上で確認してから適用できます。「月全体に順番で割り当て」を選ぶと、「1年、2年、3年」のように読点区切りで指定した内容を、今月の各週に順番(足りなくなったら最初に戻る)で一括入力できます。なお、年間予定入力のマス自体は常に1日ずつ分かれています(結合されるのは「月間予定表(教員用)」の画面表示とExcel出力のみです)。</li>
-    <li>年間予定入力タブの月選択の右にある検索欄に文字を入力すると、「体育祭」のように入力した文字を含む行事等・会議・部活動・週番・メモを、年度内のすべての月から探して一覧表示します。結果をクリックするとその日・その欄までジャンプします。</li>
-    <li>部活動・給食・授業日課・週番の入力候補(クリックした時に出る候補)は「設定」タブの「入力候補(プリセット)の編集」から自由に変更できます。</li>
-    <li>学校行事等は3つの欄に分かれています。「年間行事」(年間予定表にも掲載予定、太字の緑で表示)、「月のみ」(月の予定表のみに掲載)、「教員のみ」(教員用にのみ掲載、オレンジで表示)。載せたい範囲に応じて入力する欄を選んでください。</li>
+    <li>年間予定入力タブの月選択の右にある検索欄に文字を入力すると、「体育祭」のように入力した文字を含む行事等・会議・放課後・週番・メモを、年度内のすべての月から探して一覧表示します。結果をクリックするとその日・その欄までジャンプします。</li>
+    <li>放課後・給食・授業日課・週番の入力候補(クリックした時に出る候補)は「設定」タブの「入力候補(プリセット)の編集」から自由に変更できます。</li>
+    <li>学校行事等は4つの欄に分かれています。「共通・年間」(年間予定表にも掲載予定、太字の緑で表示)、「共通・月間のみ」(月の予定表のみに掲載)、「教員のみ・年間」(教員用の年間予定表にのみ掲載)、「教員のみ・月間のみ」(教員用にのみ掲載、オレンジで表示)。載せたい範囲に応じて入力する欄を選んでください。</li>
     <li>「企画会議」「職員会議」はチェックボックスで入れられます。チェックすると、教員用の会議・出張・研修欄に自動的に「企画会議」「職員会議」の文字が追加されます(自由入力の内容と合わせて表示されます)。</li>
     <li>「掃除」もチェックボックスです。何もしなければ平日は「あり」、土曜・日曜・祝日は「なし」に自動でなります。手動でチェックを変更した場合はその状態が優先されます。月間予定表(教員用・家庭用)には「掃除」欄があり、いずれかの学年が登校日で、かつ「なし」の日だけ×が表示されます(それ以外は空欄。全学年とも登校日でない日は、掃除の有無にかかわらず空欄になります)。</li>
-    <li>「部活動」欄も、空欄のまま=「活動あり」として扱われます。活動がない日や、再登校の時刻など特記事項がある日だけ「×」「再登校15:00〜」のように入力してください。従来通り自由な文章の入力もできます。</li>
+    <li>「放課後」欄も、空欄のまま=「活動あり」として扱われます。活動がない日や、再登校の時刻など特記事項がある日だけ「×」「再登校15:00〜」のように入力してください。従来通り自由な文章の入力もできます。</li>
     <li>「学校行事等(共通・年間/共通・月間のみ/教員のみ・年間/教員のみ・月間のみ)」欄はクリックすると入力用のウィンドウが開きます。枠は最初1つですが「＋ 枠を追加」で増やせるので、複数の行事をそれぞれ別の枠に入力してから、保存時に1つにまとめられます。「候補から選ぶ」で日程が決まっていない行事などをあらかじめ「候補に追加」しておき、日程が決まったら選んで(空いている枠、無ければ新しい枠に)反映できます。候補は削除するまで残り、複数の日で繰り返し使えます(使用済みの候補は薄く表示され、使用回数も確認できます)。</li>
     <li>「設定」タブの年度の下にある「(前年度)の行事を候補に追加」ボタンを押すと、前年度分の「学校行事等(共通・年間)」に入力済みの内容をまとめて候補に登録できます。年度を切り替えて新しい年度の予定を組む際に便利です(既にある候補と同じ内容は追加されません)。</li>
     <li>列の並びは元のExcel(4月職・4月生シート)を基本にしつつ、上記の欄を追加しています。「給食」の右にある「登校日」列は、学年ごとに登校日かどうかを判定するためのチェックボックスです(このアプリで追加した列です)。</li>
@@ -3826,7 +3923,7 @@ document.getElementById('helpBody').innerHTML = `
   <ul>
     <li>給食実施日数(学年別の給食○・×の日数、給食ない日)</li>
     <li>年間給食喫食数と、給食のない日の一覧(年間・登校日ベース。土日祝など登校日でない日は含みません)</li>
-    <li>学校行事の回数(行事のある日数、教員のみの内容がある日数)</li>
+    <li>学校行事の回数(授業枠(①〜⑥)に入力された「行」の合計時数、教員のみの内容がある日数)。授業枠に記録されない行事の時数は、名称と時数を自由入力すると年間計に合算されます。</li>
     <li>授業日課の内訳(①〜⑥時限に入力した「道」「総」「学」「1」〜「6」などの記号ごとのコマ数)</li>
   </ul>
   <p>選択した月の数値と、年度全体の累計を並べて表示します。</p>
@@ -4049,21 +4146,27 @@ document.getElementById('eventPickerSave').addEventListener('click', ()=>{
   renderAgenda();
 });
 
-// 前年度の「学校行事等(共通・年間)」の内容を候補プールへ一括登録する(重複する内容は追加しない)
+// 前年度の学校行事等(4欄すべて)の内容を候補プールへ一括登録する(重複する内容は追加しない)。
+// 以前は「共通・年間」欄だけを見ていたが、行事の内容が「共通・月間のみ」等の欄に入っている
+// ことも多いため、4欄すべてを対象にする。
 function importPreviousYearEventsToCandidates(){
   const prevFY = state.meta.fiscalYear - 1;
   const seen = new Set((state.eventCandidates||[]).map(c=>c.text));
   let added = 0;
+  const fields = ['eventsAnnual','eventsMonthly','eventsTeacherOnlyAnnual','eventsTeacherOnly'];
   fiscalMonthList(prevFY).forEach(({year,month})=>{
     const dim = daysInMonth(year,month);
     for(let d=1; d<=dim; d++){
       const rec = state.days[dkey(year,month,d)];
-      const text = rec && rec.eventsAnnual ? rec.eventsAnnual.trim() : '';
-      if(!text || seen.has(text)) continue;
-      seen.add(text);
-      if(!state.eventCandidates) state.eventCandidates = [];
-      state.eventCandidates.push({id:genId(), text, useCount:0});
-      added++;
+      if(!rec) continue;
+      fields.forEach(f=>{
+        const text = rec[f] ? String(rec[f]).trim() : '';
+        if(!text || seen.has(text)) return;
+        seen.add(text);
+        if(!state.eventCandidates) state.eventCandidates = [];
+        state.eventCandidates.push({id:genId(), text, useCount:0});
+        added++;
+      });
     }
   });
   return {added, prevFY};
@@ -4090,7 +4193,7 @@ document.getElementById('setColorAbsent').addEventListener('input', (e)=>{
 });
 document.getElementById('btnResetColors').addEventListener('click', ()=>{
   if(!editUnlocked) return;
-  state.colors = { holiday:'D9D9D9', absent:'808080' };
+  state.colors = { holiday:'D9D9D9', absent:'BFBFBF' };
   applyColorSettings();
   markDirty();
   renderSettingsTab();
