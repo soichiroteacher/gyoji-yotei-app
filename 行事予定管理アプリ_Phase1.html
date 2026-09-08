@@ -966,7 +966,7 @@ function normalizeState(obj){
 }
 function emptyDayRecord(){
   return {
-    eventsAnnual:'', eventsMonthly:'', eventsTeacherOnly:'', meeting:'',
+    eventsAnnual:'', eventsMonthly:'', eventsTeacherOnly:'', eventsTeacherOnlyAnnual:'', meeting:'',
     planningMeeting:false, staffMeeting:false,
     cleaning:null, club:'', // 掃除はnull=未設定(土日祝は既定オフ、それ以外は既定オン)。明示的にtrue/falseを入れると常にその値を使う
     lunch:{g1:'',g2:'',g3:''},
@@ -1832,6 +1832,7 @@ const COLS = [
   {key:'eventsAnnual', label:'学校行事等(年間行事)', w:190, hint:'年間予定表にも掲載されます'},
   {key:'eventsMonthly', label:'学校行事等(月のみ)', w:190, hint:'月の予定表のみに掲載されます'},
   {key:'eventsTeacherOnly', label:'学校行事等(教員のみ)', w:170},
+  {key:'eventsTeacherOnlyAnnual', label:'学校行事等(教員のみ・年間用)', w:170, hint:'年間予定表(教員用)にのみ掲載されます(月間予定表には表示されません)'},
   {key:'meeting', label:'会議・出張・研修', w:110},
   {key:'planningMeeting', label:'企画会議', w:30, type:'checkbox', vertical:true},
   {key:'staffMeeting', label:'職員会議', w:30, type:'checkbox', vertical:true},
@@ -1892,7 +1893,7 @@ function setFieldValue(dateKey, key, value){
     const gm = key.match(/^g([123])p([1-6])$/);
     if(gm) rec.periods['g'+gm[1]][Number(gm[2])-1] = String(value).trim();
     else {
-      const noTrim = (key==='memo'||key==='eventsAnnual'||key==='eventsMonthly'||key==='eventsTeacherOnly'||key==='meeting');
+      const noTrim = (key==='memo'||key==='eventsAnnual'||key==='eventsMonthly'||key==='eventsTeacherOnly'||key==='eventsTeacherOnlyAnnual'||key==='meeting');
       rec[key] = noTrim ? String(value) : String(value).trim();
     }
   }
@@ -1901,7 +1902,7 @@ function setFieldValue(dateKey, key, value){
 function pruneIfEmpty(dateKey){
   const rec = state.days[dateKey];
   if(!rec) return;
-  const empty = !rec.eventsAnnual && !rec.eventsMonthly && !rec.eventsTeacherOnly && !rec.meeting &&
+  const empty = !rec.eventsAnnual && !rec.eventsMonthly && !rec.eventsTeacherOnly && !rec.eventsTeacherOnlyAnnual && !rec.meeting &&
     !rec.planningMeeting && !rec.staffMeeting && rec.cleaning===null && !rec.club &&
     !rec.lunch.g1 && !rec.lunch.g2 && !rec.lunch.g3 && !rec.weeklyDuty && !rec.memo &&
     rec.schoolDay.g1===null && rec.schoolDay.g2===null && rec.schoolDay.g3===null &&
@@ -2024,7 +2025,7 @@ function renderAgenda(){
         html += `<td class="cell ${memoCls} ${gsCls}" data-row="${d-1}" data-col="${colIdx}">`+
           `<button type="button" class="memo-btn ${val?'has-memo':''}" data-key="${key}" data-field="memo" data-daylabel="${escapeHtml(String(d))}日(${DOW[dow]})">${preview || '＋メモ'}</button>`+
           `</td>`;
-      } else if(c.key==='eventsAnnual' || c.key==='eventsMonthly' || c.key==='eventsTeacherOnly'){
+      } else if(c.key==='eventsAnnual' || c.key==='eventsMonthly' || c.key==='eventsTeacherOnly' || c.key==='eventsTeacherOnlyAnnual'){
         const evPreview = val ? escapeHtml(val.split('\n')[0]).slice(0,60) + (val.length>60||val.includes('\n') ? '…' : '') : '';
         html += `<td class="cell ${gsCls}" data-row="${d-1}" data-col="${colIdx}">`+
           `<button type="button" class="field-btn ${val?'has-content':''}" ${dis} data-key="${key}" data-field="${c.key}" data-fieldlabel="${escapeHtml(c.label)}" data-daylabel="${escapeHtml(String(d))}日(${DOW[dow]})">${evPreview || '＋入力'}</button>`+
@@ -2720,7 +2721,7 @@ function buildAnnualExportGrid(fy, audience){
       const lS = shaded ? XSTYLE.HOLIDAY_LEFT : XSTYLE.LEFT;
       grid[rIdx][base] = {v:d, num:true, style:cS};
       grid[rIdx][base+1] = {v:DOW[dow], style:cS};
-      grid[rIdx][base+2] = {v:annualEventText(rec, opts, status), style:lS};
+      grid[rIdx][base+2] = {v:annualEventText(rec, opts, status, audience), style:lS};
     }
     const sumRowBase = r0+2+maxDim;
     const [y1,y2,y3] = yearCum[i], [t1,t2,t3] = termCum[i], [mo1,mo2,mo3] = monthly[i];
@@ -2966,7 +2967,7 @@ function computeStatsForRange(monthList){
         else if(v==='×') result.lunchOff[gg]++;
       });
       if(rec.eventsAnnual || rec.eventsMonthly) result.eventDays++;
-      if(rec.eventsTeacherOnly) result.teacherEventDays++;
+      if(rec.eventsTeacherOnly || rec.eventsTeacherOnlyAnnual) result.teacherEventDays++;
     }
   });
   return result;
@@ -3241,19 +3242,21 @@ function renderStats(){
   }
 }
 
-function buildAnnualEventParts(rec, opts, status){
+function buildAnnualEventParts(rec, opts, status, audience){
   const parts = [];
   const effAnnual = effectiveEventsAnnual(rec, status);
   if(effAnnual) parts.push({text:effAnnual, cls:'annual'});
   if(opts.includeMonthly && rec.eventsMonthly) parts.push({text:rec.eventsMonthly, cls:null});
   if(opts.includeTeacherOnly && rec.eventsTeacherOnly) parts.push({text:rec.eventsTeacherOnly, cls:'teacheronly'});
+  // 「学校行事等(教員のみ・年間用)」は月間には出さず、年間予定表(教員用)にのみ常に表示する
+  if(audience==='teacher' && rec.eventsTeacherOnlyAnnual) parts.push({text:rec.eventsTeacherOnlyAnnual, cls:'teacheronly'});
   if(opts.includeMeeting && rec.staffMeeting){
     parts.push({text:'職員会議', cls:'meeting'});
   }
   return parts;
 }
-function annualEventHtml(rec, opts, status){
-  return buildAnnualEventParts(rec, opts, status).map(p=>{
+function annualEventHtml(rec, opts, status, audience){
+  return buildAnnualEventParts(rec, opts, status, audience).map(p=>{
     const t = escapeHtml(p.text);
     if(p.cls==='annual') return `<span class="pv-annual">${t}</span>`;
     if(p.cls==='teacheronly') return `<span class="pv-teacheronly">${t}</span>`;
@@ -3261,8 +3264,8 @@ function annualEventHtml(rec, opts, status){
     return t;
   }).join('\u3000');
 }
-function annualEventText(rec, opts, status){
-  return buildAnnualEventParts(rec, opts, status).map(p=>{
+function annualEventText(rec, opts, status, audience){
+  return buildAnnualEventParts(rec, opts, status, audience).map(p=>{
     if(p.cls==='annual') return p.text;
     if(p.cls==='teacheronly') return p.text;
     if(p.cls==='meeting') return `◆${p.text}`;
@@ -3313,7 +3316,7 @@ function renderAnnualPreview(audience){
       const dow = new Date(year,month-1,d).getDay();
       const rec = migrateDayRecord(state.days[dkey(year,month,d)]);
       const rowCls = isShadedDay(status, dow) ? 'pv-holiday' : '';
-      html += `<tr class="${rowCls}"><td class="pv-daynum">${d}</td><td class="pv-dow">${DOW[dow]}</td><td class="pv-events">${annualEventHtml(rec, opts, status)}</td></tr>`;
+      html += `<tr class="${rowCls}"><td class="pv-daynum">${d}</td><td class="pv-dow">${DOW[dow]}</td><td class="pv-events">${annualEventHtml(rec, opts, status, audience)}</td></tr>`;
     }
     const [y1,y2,y3] = yearCum[i];
     const [t1,t2,t3] = termCum[i];
@@ -3584,6 +3587,7 @@ const SEARCH_FIELDS = [
   ['eventsAnnual','学校行事等(年間行事)'],
   ['eventsMonthly','学校行事等(月のみ)'],
   ['eventsTeacherOnly','学校行事等(教員のみ)'],
+  ['eventsTeacherOnlyAnnual','学校行事等(教員のみ・年間用)'],
   ['meeting','会議・出張・研修'],
   ['club','部活動'],
   ['weeklyDuty','週番'],
@@ -3753,6 +3757,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-08</strong>: 「学校行事等(教員のみ・年間用)」欄を新設。月間予定表には表示されず、教員用の年間予定表にのみ常に表示される(既存の「学校行事等(教員のみ)」欄の挙動は変更なし)。</li>
     <li><strong>2026-09-08</strong>: 月間予定表(家庭用)のExcel出力で、「翌月の予定」を下に積み増すのではなく右側の列に並べる形に変更(元のExcelと同じ配置)。行数が増えなくなり、A4横1ページに収まるようになった。</li>
     <li><strong>2026-09-08</strong>: 月間予定表(教員用・家庭用)のExcel出力ボタンを1つに統合。出力する月を選ぶウィンドウが開き、チェックした月をシートごとに分けて1つのファイルに出力できるように(「今月のみ」「今月+翌月」「全12か月」ですぐ選択可)。2枚目以降のシートを「参考」として色分けする機能も追加し、今月分・翌月分を並べて印刷して見比べる際に一目で区別できるようにした。</li>
     <li><strong>2026-09-08</strong>: 最終確認・配布はExcel出力ベースで行う運用のため、月間・年間予定表の「🖨 PDFで保存/印刷」ボタンを非表示に変更(紛らわしさの解消)。</li>
@@ -3811,7 +3816,7 @@ document.getElementById('helpBody').innerHTML = `
   <p>「月間予定表(家庭用)」タブでは、同じデータから会議・出張・研修や週番、教員のみの行事を除いた家庭向けの表示を確認できます。表の右側には元のExcelと同様に、翌月の予定(学校行事等のみ)が一覧表示されます。こちらも「Excelに出力」で出力できます(翌月ボックスもExcel出力に含まれます。元のExcelと同じく、翌月分は行を増やさず右側の列に並べて出力するため、A4横1ページに収まります)。</p>
 
   <h4>年間予定表(教員用・家庭用)の確認・Excel出力</h4>
-  <p>「年間予定表(教員用)」「年間予定表(家庭用)」の2つのタブに分かれています。どちらも基本は「学校行事等(年間行事)」欄の内容を表示しますが、上部のチェックボックスで「学校行事等(月のみ)も含める」「学校行事等(教員のみ)も含める」「職員会議のあった日を含める」をそれぞれ個別にオン・オフできます(既定値: 教員用は月のみ・教員のみをオン、家庭用は月のみだけオン)。教員のみの内容はオレンジ、職員会議は青字で「職員会議」とだけ表示されます(会議の詳細な内容や企画会議・出張などは年間予定表には表示されません)。各月の下部には元のExcelと同様に「年計」「学期計」「月計」として学年別の授業日数を表示します。学期の区切り(2学期・3学期の開始月)は「設定」タブで変更できます。「Excelに出力」ボタンで、A3横1ページに収まる形でその時点のチェック設定のまま年間分をまとめてダウンロードできます(元のExcelと同じくA3サイズ)。</p>
+  <p>「年間予定表(教員用)」「年間予定表(家庭用)」の2つのタブに分かれています。どちらも基本は「学校行事等(年間行事)」欄の内容を表示しますが、上部のチェックボックスで「学校行事等(月のみ)も含める」「学校行事等(教員のみ)も含める」「職員会議のあった日を含める」をそれぞれ個別にオン・オフできます(既定値: 教員用は月のみ・教員のみをオン、家庭用は月のみだけオン)。教員のみの内容はオレンジ、職員会議は青字で「職員会議」とだけ表示されます(会議の詳細な内容や企画会議・出張などは年間予定表には表示されません)。「学校行事等(教員のみ・年間用)」欄に入力した内容は、この設定に関わらず教員用の年間予定表にのみ常に表示されます(月間予定表には表示されません。「学校行事等(教員のみ)」と違って年間だけに載せたい内容専用の欄です)。各月の下部には元のExcelと同様に「年計」「学期計」「月計」として学年別の授業日数を表示します。学期の区切り(2学期・3学期の開始月)は「設定」タブで変更できます。「Excelに出力」ボタンで、A3横1ページに収まる形でその時点のチェック設定のまま年間分をまとめてダウンロードできます(元のExcelと同じくA3サイズ)。</p>
   <p style="font-size:12px;color:var(--ink-soft);">※PDF保存・印刷ボタンは、最終的な確認・配布をExcel出力ベースで行う運用のため、現在は非表示にしています。</p>
 
   <h4>時数・集計の確認</h4>
