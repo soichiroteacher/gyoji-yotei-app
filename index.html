@@ -1847,6 +1847,42 @@ function loadStateFromText(text){
   }catch(e){ alert('読み込みに失敗しました: '+e.message); }
 }
 
+//////////////////////// 前回のファイルを起動時に開く ////////////////////////
+// 「開く」または「名前を付けて保存」で使ったファイルのハンドルを起動時にも参照し、
+// 許可が残っていればそのまま読み込む(=最新のデータが最初から表示される)。
+// ブラウザの仕様上、許可が切れている場合はボタンを1回押してもらう必要がある。
+async function openHandleAsCurrentFile(handle){
+  const file = await handle.getFile();
+  loadStateFromText(await file.text());
+  fileHandle = handle;
+  await rememberLastFileHandle(handle);
+  document.getElementById('btnSave').disabled = !editUnlocked;
+  document.getElementById('currentFileName').textContent = handle.name;
+  document.getElementById('noFileBanner').style.display = 'none';
+}
+async function tryAutoLoadLastFile(){
+  if(!supportsFSA) return;
+  let handle;
+  try{ handle = await getStartInHandle(); }catch(e){ return; }
+  if(!handle) return;
+  let perm;
+  try{ perm = await handle.queryPermission({mode:'readwrite'}); }catch(e){ return; }
+  if(perm === 'granted'){
+    try{ await openHandleAsCurrentFile(handle); }catch(e){ /* ファイルが移動・削除された等の場合は何もせず通常起動にする */ }
+    return;
+  }
+  const b = document.getElementById('noFileBanner');
+  b.innerHTML = `前回開いていたファイル「${handle.name}」を開くには、下のボタンを押してください(ブラウザの仕様上、起動のたびに1回だけ許可が必要です)。 <button id="btnAutoOpenLast">前回のファイルを開く</button>`;
+  b.style.display = 'block'; b.className = 'banner info';
+  document.getElementById('btnAutoOpenLast').addEventListener('click', async ()=>{
+    try{
+      const p = await handle.requestPermission({mode:'readwrite'});
+      if(p !== 'granted') return;
+      await openHandleAsCurrentFile(handle);
+    }catch(e){ alert('開けませんでした: '+e.message); }
+  });
+}
+
 //////////////////////// タブ切替 ////////////////////////
 document.querySelectorAll('nav.tabs .tab').forEach(btn=>{
   btn.addEventListener('click', ()=>{
@@ -3861,6 +3897,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-09</strong>: 本体ファイル名を「index.html」に統一(旧「行事予定管理アプリ_Phase1.html」)。アプリを開いたときに、前回「開く」または「保存」で使ったファイルを自動的に読み込むように変更。許可が残っていればファイルを選び直さずそのまま最新のデータが表示され、許可が切れている場合だけ画面上部のボタンを1回押せば開ける(ブラウザの仕様上、許可を毎回自動で行うことはできません)。</li>
     <li><strong>2026-09-08</strong>: 「給食」欄をチェックボックスから自由入力(候補選択つき)に変更。これまでチェックボックスでは○しか入力できず、×・弁(お弁当)は画面から入力できなかったが、他の自由入力欄と同じ方式にしたことで○・×・弁のいずれも入力できるようになった。「設定」タブの「入力候補(プリセット)の編集」にも給食の候補一覧を追加。</li>
     <li><strong>2026-09-08</strong>: Excel出力右上の日付表示から「出力日」の文字を消し、日付だけを残すように変更。授業枠の「●」が数字より目立ちすぎて圧迫感があったため、●の時だけ少し小さいフォントサイズで表示するように変更。</li>
     <li><strong>2026-09-08</strong>: 一括で9件の改善を実施。①「開く」「名前を付けて保存」で前回と同じフォルダが初期位置になるように。②前年度の行事を候補に追加する機能が「共通・月間のみ」等の欄の内容も対象にするよう修正(以前は「共通・年間」欄しか見ていなかった)。③保存状態の表示文字数が変わってもツールバー全体がずれないよう幅を固定。④給食のない日一覧で「給食扱い」にチェックすると一覧から消えていたのを、常に一覧に残るよう修正。⑤「学校行事の回数」を、授業枠(①〜⑥)の「行」の合計時数に変更し、授業枠に記録されない行事の時数を自由記述で追加集計できる欄を新設。⑥「●特別時間割」等の注釈をより小さい文字に。⑦月間予定表Excel出力の会議・放課後・給食・授業列を狭く。⑧「部活動」欄の名称を「放課後」に変更。⑨「欠」の網掛けの初期色を薄く。</li>
@@ -3946,6 +3983,7 @@ document.getElementById('helpBody').innerHTML = `
     <li>既存のデータがある場合は「開く」で読み込みます。</li>
     <li>Chrome / Edge では、以降の変更は自動的に同じファイルへ上書き保存されます(画面右上の表示で確認できます)。</li>
     <li>それ以外のブラウザでは、変更のたびに「保存」ボタンでダウンロードし、次回は「開く」で読み込んでください。</li>
+    <li>Chrome / Edge では、次回アプリを開いたときに前回のファイルを自動的に読み込みます。ブラウザの許可が切れている場合だけ、画面上部に表示されるボタンを1回押してください。</li>
   </ol>
 
   <h4>時数・集計 - 必要時数との比較</h4>
@@ -4357,6 +4395,7 @@ renderDatalists();
 applyLockUI();
 applyColorSettings();
 renderAgenda();
+tryAutoLoadLastFile();
 
 document.getElementById('btnResetWidths').addEventListener('click', ()=>{
   if(!editUnlocked){ openPasswordModal(); return; }
