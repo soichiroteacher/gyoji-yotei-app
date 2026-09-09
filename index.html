@@ -174,6 +174,7 @@
   td.chk{text-align:center;width:36px;min-width:36px;}
   td.cell.chk{text-align:center;}
   td.cell.chk input[type=checkbox]{width:15px;height:15px;margin:0;vertical-align:middle;cursor:pointer;}
+  td.cell.chk input.attend-chk{accent-color:#767676;}
   td.clearcell{width:30px;min-width:30px;text-align:center;}
   .g1col{background:#fbfdfc;}
   .g2col{background:#fdfcf9;}
@@ -224,8 +225,8 @@
   tr.pv-holiday td{background:var(--holiday-color);}
   tr.pv-holiday td.pv-daynum{color:#a12626;}
   tr.pv-nonschool td{background:var(--nonschool-color);}
-  .pv-teacheronly{color:#8a4b00;}
-  .pv-annual{font-weight:700;color:#155c34;}
+  .pv-teacheronly{}
+  .pv-annual{font-weight:700;}
   .pv-meetingnote{color:#3949ab;font-style:italic;}
   .preview-memolist{margin-top:14px;font-size:12.5px;}
   .preview-memolist h4{font-size:13px;color:var(--accent);margin:0 0 6px;}
@@ -246,7 +247,6 @@
   .annual-opts{display:flex;gap:16px;align-items:center;flex-wrap:wrap;background:var(--accent-soft);border:1px solid #bcd8d5;border-radius:6px;padding:7px 12px;margin-bottom:10px;font-size:12.5px;}
   .annual-opts-label{font-weight:600;color:var(--accent);white-space:nowrap;}
   .annual-opts label{display:flex;align-items:center;gap:4px;white-space:nowrap;cursor:pointer;}
-  .annual-month-title{background:#eaeaea;color:#1f3b3d;font-size:13px;font-weight:700;text-align:center;padding:5px 6px;border-bottom:1px solid #999;}
   /* 日ごとの行を1.5〜2倍程度に広げ、日・曜・年間行事の内容が上端でそろうようにする(縦中央だと
      複数行にわたる内容の時に日付が浮いて見えてずれて見えるため) */
   table.annual-tbl td{height:40px;}
@@ -347,7 +347,9 @@
     <div class="month-head">
       <span style="font-size:13px;color:var(--ink-soft);">年度: <strong id="pvFyDisplay">-</strong>(設定タブで変更)</span>
       <label style="font-size:13px;color:var(--ink-soft);margin-left:8px;">月</label>
+      <button id="btnPrevMonthTeacher" class="ghost tiny" title="前の月" style="font-size:14px;padding:4px 10px;">◀</button>
       <select id="pvMonthSelect"></select>
+      <button id="btnNextMonthTeacher" class="ghost tiny" title="次の月" style="font-size:14px;padding:4px 10px;">▶</button>
       <div class="spacer"></div>
       <label style="font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:4px;"><input type="checkbox" id="includeMemoInExport"> メモも出力に含める</label>
       <button id="btnPrintTeacher" hidden>🖨 PDFで保存/印刷</button>
@@ -362,7 +364,9 @@
     <div class="month-head">
       <span style="font-size:13px;color:var(--ink-soft);">年度: <strong id="pvFamilyFyDisplay">-</strong>(設定タブで変更)</span>
       <label style="font-size:13px;color:var(--ink-soft);margin-left:8px;">月</label>
+      <button id="btnPrevMonthFamily" class="ghost tiny" title="前の月" style="font-size:14px;padding:4px 10px;">◀</button>
       <select id="pvFamilyMonthSelect"></select>
+      <button id="btnNextMonthFamily" class="ghost tiny" title="次の月" style="font-size:14px;padding:4px 10px;">▶</button>
       <div class="spacer"></div>
       <button id="btnPrintFamily" hidden>🖨 PDFで保存/印刷</button>
       <button id="btnExportFamilyXlsx">Excelに出力</button>
@@ -1282,7 +1286,10 @@ let autosaveTimer = null;
 function scheduleAutosave(){
   if(!fileHandle) return;
   clearTimeout(autosaveTimer);
-  autosaveTimer = setTimeout(()=>{ writeToHandle(fileHandle).catch(e=>{ setStatus('自動保存に失敗しました: '+e.message, 'dirty'); }); }, 700);
+  // 入力のたびにディスクへ書き込むと、ファイルの保存先がGoogleドライブ等の同期フォルダの場合に
+  // 同期処理と競合してカクつき・フリーズの原因になることがあるため、間隔を長めにして
+  // 書き込み回数自体を減らす(以前は700ms)。
+  autosaveTimer = setTimeout(()=>{ writeToHandle(fileHandle).catch(e=>{ setStatus('自動保存に失敗しました: '+e.message, 'dirty'); }); }, 2500);
 }
 async function writeToHandle(handle){
   stampSaveMeta();
@@ -1464,7 +1471,7 @@ function buildXlsxStyles(){
 <borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>
 <border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border></borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="19">
+<cellXfs count="26">
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
@@ -1484,12 +1491,20 @@ function buildXlsxStyles(){
 <xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="3" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="top" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="top" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="top" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
 }
 
-const XSTYLE = { HEADER:1, CENTER:2, LEFT:3, HOLIDAY_CENTER:4, HOLIDAY_LEFT:5, SUMMARY:6, TITLE:7, DATE:8, HEADER_VERT:9, LEFT_SMALL:10, HOLIDAY_LEFT_SMALL:11, CENTER_VERT:12, HOLIDAY_CENTER_VERT:13, ABSENT_CENTER:14, TITLE_REF:15, NONSCHOOL_CENTER:16, NONSCHOOL_LEFT:17, NONSCHOOL_LEFT_SMALL:18 };
+const XSTYLE = { HEADER:1, CENTER:2, LEFT:3, HOLIDAY_CENTER:4, HOLIDAY_LEFT:5, SUMMARY:6, TITLE:7, DATE:8, HEADER_VERT:9, LEFT_SMALL:10, HOLIDAY_LEFT_SMALL:11, CENTER_VERT:12, HOLIDAY_CENTER_VERT:13, ABSENT_CENTER:14, TITLE_REF:15, NONSCHOOL_CENTER:16, NONSCHOOL_LEFT:17, NONSCHOOL_LEFT_SMALL:18,
+  CENTER_TOP:19, LEFT_TOP:20, HOLIDAY_CENTER_TOP:21, HOLIDAY_LEFT_TOP:22, NONSCHOOL_CENTER_TOP:23, NONSCHOOL_LEFT_TOP:24, TITLE_WRAP:25 };
 
 function buildWorkbookXml(sheetNames){
   const sheets = sheetNames.map((name,i)=>`<sheet name="${xmlEscape(name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('');
@@ -1524,7 +1539,9 @@ function buildSheetXml(grid, merges, colWidths, pageOpts){
     // タイトル・サブタイトル行(先頭2行)は14pt太字を含むため、既定の15ptだと文字が
     // はみ出して次の行(出力日など)に重なって隠れてしまう。行の高さを広げて防ぐ。
     // 3・4行目(見出し帯)は「掃除」「週番」などの縦書き見出しが窮屈にならないよう少し広げる。
-    const rowHeight = ri<2 ? 22 : (ri<4 ? 20 : 15);
+    // タイトル行(2行に折り返す場合)・本文行(年間予定表で行を広げたい場合)は、
+    // 呼び出し側からpageOpts.titleRowHeight / pageOpts.bodyRowHeightで個別に上書きできる。
+    const rowHeight = ri===0 ? (pageOpts.titleRowHeight || 22) : (ri<2 ? 22 : (ri<4 ? 20 : (pageOpts.bodyRowHeight || 15)));
     xml += `<row r="${ri+1}" ht="${rowHeight}" customHeight="1">`;
     row.forEach((cell,ci)=>{
       if(cell==null) return;
@@ -2219,7 +2236,7 @@ function renderAgenda(){
       if(c.schoolDayGrade){
         const checked = effSchoolDay[c.schoolDayGrade];
         html += `<td class="cell chk ${gsCls}" data-row="${d-1}" data-col="${colIdx}">`+
-          `<input type="checkbox" ${dis} data-row="${d-1}" data-col="${colIdx}" data-key="${key}" data-field="${c.key}" ${checked?'checked':''}>`+
+          `<input type="checkbox" class="attend-chk" ${dis} data-row="${d-1}" data-col="${colIdx}" data-key="${key}" data-field="${c.key}" ${checked?'checked':''}>`+
           `</td>`;
       } else if(c.type==='checkbox'){
         html += `<td class="cell chk ${gcls} ${gsCls}" data-row="${d-1}" data-col="${colIdx}">`+
@@ -2935,7 +2952,10 @@ function buildAnnualExportGrid(fy, audience){
   const today = new Date();
   const stamp = formatWarekiDate(today);
   const audienceLabel = audience==='teacher' ? '教職員用' : '家庭用';
-  grid[0][0] = {v:`令和${reiwa}年度\u3000${schoolNameWithVersion('annual')}\u3000年間行事予定(${audienceLabel})`, style:XSTYLE.TITLE};
+  const annualVersionLabel = (state.meta.versionLabelAnnual||'').trim();
+  const titleLine1 = `令和${reiwa}年度\u3000${state.meta.schoolName || '(学校名未設定)'}`;
+  const titleLine2 = `年間行事予定(${audienceLabel})` + (annualVersionLabel ? `\u3000${annualVersionLabel}` : '');
+  grid[0][0] = {v:`${titleLine1}\n${titleLine2}`, style:XSTYLE.TITLE_WRAP};
   merges.push(`${colLetter(1)}1:${colLetter(totalCols)}1`);
   grid[1][0] = {v:'', style:XSTYLE.TITLE};
   // 出力日のスタンプは1列だけだと狭すぎて、左の結合セルに隣接しているためはみ出せず欠けて見えてしまう。
@@ -2972,8 +2992,9 @@ function buildAnnualExportGrid(fy, audience){
       const rec = migrateDayRecord(state.days[dkey(m.year,m.month,d)]);
       const shaded = isShadedDay(status, dow);
       const nonschool = !shaded && isNonSchoolDay(status, dow, m.year, m.month, d);
-      const cS = shaded ? XSTYLE.HOLIDAY_CENTER : nonschool ? XSTYLE.NONSCHOOL_CENTER : XSTYLE.CENTER;
-      const lS = shaded ? XSTYLE.HOLIDAY_LEFT : nonschool ? XSTYLE.NONSCHOOL_LEFT : XSTYLE.LEFT;
+      // 行の高さを広げたぶん、日・曜・年間行事は上端そろえにする(画面表示と同じ考え方)
+      const cS = shaded ? XSTYLE.HOLIDAY_CENTER_TOP : nonschool ? XSTYLE.NONSCHOOL_CENTER_TOP : XSTYLE.CENTER_TOP;
+      const lS = shaded ? XSTYLE.HOLIDAY_LEFT_TOP : nonschool ? XSTYLE.NONSCHOOL_LEFT_TOP : XSTYLE.LEFT_TOP;
       grid[rIdx][base] = {v:d, num:true, style:cS};
       grid[rIdx][base+1] = {v:DOW[dow], style:cS};
       grid[rIdx][base+2] = {v:annualEventText(rec, opts, status, audience), style:lS};
@@ -3008,7 +3029,8 @@ function exportAnnualXlsx(audience){
   const {grid, merges, colWidths} = buildAnnualExportGrid(fy, audience);
   const label = audience==='teacher' ? '教員用' : '家庭用';
   // A3いっぱいに収まるよう、横長ではなく縦長(portrait)で出力する。日・曜の列は狭くして年間行事欄を広く見せる。
-  const bytes = buildXlsxBytes([{name:'年間予定表', grid, merges, colWidths, pageOpts:{paperSize:8, orientation:'portrait'}}]);
+  // タイトルは2行になるため行の高さを広げ、日ごとの行も画面表示と同程度(約1.8倍)に広げる。
+  const bytes = buildXlsxBytes([{name:'年間予定表', grid, merges, colWidths, pageOpts:{paperSize:8, orientation:'portrait', titleRowHeight:44, bodyRowHeight:26}}]);
   downloadBytes(bytes, `${state.meta.schoolName||'行事予定'}_年間予定表_${label}.xlsx`);
 }
 
@@ -3613,7 +3635,7 @@ function renderAnnualPreview(audience){
   html += `<div class="grid-topscroll" id="${tableId}TopScroll"><div id="${tableId}TopScrollInner"></div></div>`;
   html += `<div class="preview-scroll" id="${tableId}ScrollOuter"><div class="annual-row" id="${tableId}">`;
   months.forEach(({year,month}, i)=>{
-    html += `<div class="annual-month"><div class="annual-month-title">${month}月</div><table class="preview nmb-table annual-tbl"><thead><tr><th>日</th><th>曜</th><th>年間行事</th></tr></thead><tbody>`;
+    html += `<div class="annual-month"><table class="preview nmb-table annual-tbl"><thead><tr><th>日</th><th>曜</th><th>${month}月行事</th></tr></thead><tbody>`;
     const dim = daysInMonth(year,month);
     for(let d=1; d<=maxDim; d++){
       if(d>dim){ html += '<tr class="annual-pad"><td></td><td></td><td></td></tr>'; continue; }
@@ -3866,6 +3888,18 @@ function stepMonth(delta){
 }
 document.getElementById('btnPrevMonth').addEventListener('click', ()=> stepMonth(-1));
 document.getElementById('btnNextMonth').addEventListener('click', ()=> stepMonth(1));
+// 月間予定表(教員用・家庭用)タブにも同じ「◀」「▶」で月を移動する機能を持たせる。
+function stepMonthFor(selectId, renderFn, delta){
+  const sel = document.getElementById(selectId);
+  const newIdx = sel.selectedIndex + delta;
+  if(newIdx < 0 || newIdx >= sel.options.length) return;
+  sel.selectedIndex = newIdx;
+  renderFn();
+}
+document.getElementById('btnPrevMonthTeacher').addEventListener('click', ()=> stepMonthFor('pvMonthSelect', renderTeacherPreview, -1));
+document.getElementById('btnNextMonthTeacher').addEventListener('click', ()=> stepMonthFor('pvMonthSelect', renderTeacherPreview, 1));
+document.getElementById('btnPrevMonthFamily').addEventListener('click', ()=> stepMonthFor('pvFamilyMonthSelect', renderFamilyPreview, -1));
+document.getElementById('btnNextMonthFamily').addEventListener('click', ()=> stepMonthFor('pvFamilyMonthSelect', renderFamilyPreview, 1));
 
 // 年間予定入力タブへ切り替えて、指定した日(・欄)を表示してフォーカスする。
 // 祝日一覧の「この日を開く」や、検索結果のジャンプで共通して使う。
@@ -4067,6 +4101,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-09</strong>: 自動保存の書き込み間隔を延長(700ms→2.5秒)。保存先がGoogleドライブ等の同期フォルダの場合、入力のたびに書き込みが走ると同期処理と競合してカクつき・フリーズすることがあるため、書き込み回数自体を減らした。年間予定表(教員用・家庭用)の見出しを「日・曜・◯月行事」の3列だけにし、上にあった「◯月」の行を削除。年間行事・月間行事の文字色(緑・茶色)と、年間予定入力タブの「登校日」チェックの色を外し、標準的な見た目に変更。月間予定表(教員用・家庭用)にも「◀」「▶」で月を移動するボタンを追加。年間予定表のExcel出力について、行の高さを画面表示と同程度(約1.8倍)に拡大、タイトルを学校名の後で改行して2行表示(1行目: 年度・学校名、2行目: 年間行事予定・版表記)に変更、日・曜の位置を内容の上端にそろえるよう修正。</li>
     <li><strong>2026-09-09</strong>: 年間予定入力タブに、元に戻す(<strong>Ctrl+Z</strong>)・やり直す(<strong>Ctrl+Y</strong>)機能を追加。入力・貼り付け・削除・週番一括入力・メモ・学校行事等の入力など、日ごとのデータの変更を最大50回分さかのぼれます。</li>
     <li><strong>2026-09-09</strong>: 給食・放課後・週番・時間割など候補一覧(datalist)付きの欄で、すでに何か入力済みのセルを選択すると、ブラウザの仕様でその文字列に前方一致する候補しか表示されない不具合を修正(例: 給食欄に「○」が入っていると「×」「弁」が出てこない)。セルを選択した時に一旦表示を空にして全候補を出し、何も選ばず離れた場合は元の内容に自動で戻すようにした。</li>
     <li><strong>2026-09-09</strong>: 複数の見た目・使い勝手の改善をまとめて実施。
