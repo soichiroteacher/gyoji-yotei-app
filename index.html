@@ -163,6 +163,7 @@
     width:100%;height:28px;border:none;background:transparent;text-align:left;padding:3px 6px;
     font-size:12.5px;color:#b3bac1;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
+  .field-btn{font-size:11px;} /* 学校行事等の欄は内容が増えると読みにくくなるため、列幅は変えずフォントを少し小さくする */
   .memo-btn.has-memo, .field-btn.has-content{color:var(--ink);}
   .memo-btn:hover, .field-btn:hover{background:var(--accent-soft);}
   .memo-btn:disabled, .field-btn:disabled{cursor:default;color:#ccc;}
@@ -222,6 +223,7 @@
   td.cell input.period-absent{background:var(--absent-color);color:#fff;}
   tr.pv-holiday td{background:var(--holiday-color);}
   tr.pv-holiday td.pv-daynum{color:#a12626;}
+  tr.pv-nonschool td{background:var(--nonschool-color);}
   .pv-teacheronly{color:#8a4b00;}
   .pv-annual{font-weight:700;color:#155c34;}
   .pv-meetingnote{color:#3949ab;font-style:italic;}
@@ -240,11 +242,18 @@
   table.nmb-table td.pv-dow{width:20px;text-align:center;}
   table.nmb-table th:nth-child(1),table.nmb-table th:nth-child(2){width:20px;}
   .annual-row{display:flex;gap:8px;}
-  .annual-month{flex-shrink:0;width:190px;border:1px solid #999;border-radius:4px;overflow:hidden;}
+  .annual-month{flex-shrink:0;width:190px;border:1px solid #999;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;}
   .annual-opts{display:flex;gap:16px;align-items:center;flex-wrap:wrap;background:var(--accent-soft);border:1px solid #bcd8d5;border-radius:6px;padding:7px 12px;margin-bottom:10px;font-size:12.5px;}
   .annual-opts-label{font-weight:600;color:var(--accent);white-space:nowrap;}
   .annual-opts label{display:flex;align-items:center;gap:4px;white-space:nowrap;cursor:pointer;}
   .annual-month-title{background:#eaeaea;color:#1f3b3d;font-size:13px;font-weight:700;text-align:center;padding:5px 6px;border-bottom:1px solid #999;}
+  /* 日ごとの行を1.5〜2倍程度に広げ、日・曜・年間行事の内容が上端でそろうようにする(縦中央だと
+     複数行にわたる内容の時に日付が浮いて見えてずれて見えるため) */
+  table.annual-tbl td{height:40px;}
+  table.annual-tbl td.pv-daynum, table.annual-tbl td.pv-dow, table.annual-tbl td.pv-events{vertical-align:top;padding-top:5px;}
+  /* 年計・学期計・月計は別テーブルにして各月の一番下に固定する(月ごとに行事の文字数が違い、
+     日ごとの表の高さがまちまちになるため、これを別立てにしないと数字の位置が月ごとにずれてしまう) */
+  table.annual-summary-tbl{margin-top:auto;}
   tr.annual-pad td{background:#fafafa;border-color:#eee;}
   tr.annual-summary td{background:#ececec;font-size:10.5px;font-weight:600;color:var(--ink-soft);padding:3px 6px 3px 2px;white-space:nowrap;}
   tr.annual-summary-month td{background:#d7d7d7;color:#1f3b3d;font-weight:700;}
@@ -722,7 +731,13 @@
         <span id="eventPickerAddMsg" style="font-size:12px;color:var(--warn);"></span>
       </div>
       <h4 style="margin:16px 0 4px;font-size:13px;color:var(--accent);">候補から選ぶ</h4>
-      <p style="font-size:12px;color:var(--ink-soft);margin:0 0 8px;">日程が決まっていない行事などを候補として一次保存しておき、日程が決まったらここから選べます。選ぶと、空いている枠(無ければ新しい枠)に反映されます(反映後は「保存して閉じる」を押してください)。使用済みの候補は薄く表示されます。</p>
+      <p style="font-size:12px;color:var(--ink-soft);margin:0 0 8px;">日程が決まっていない行事などを候補として一次保存しておき、日程が決まったらここから選べます。選ぶと、空いている枠(無ければ新しい枠)に反映されます(反映後は「保存して閉じる」を押してください)。使用済みの候補は薄く表示されます。「一斉委員会」のように何度も使う候補は、行の「くり返し使う」にチェックを入れておくと、使用済みでも一覧から隠れなくなります。</p>
+      <div class="field-row" style="margin-bottom:6px;gap:10px;">
+        <input type="text" id="eventPickerCandSearch" placeholder="候補を検索" style="flex:1;font-size:13px;padding:5px 7px;box-sizing:border-box;font-family:inherit;">
+        <label style="display:flex;align-items:center;gap:4px;font-size:12.5px;white-space:nowrap;">
+          <input type="checkbox" id="eventPickerHideUsed">使用済みを隠す
+        </label>
+      </div>
       <div class="holiday-list" id="eventPickerCandidateList" style="max-height:220px;"></div>
     </div>
     <div class="modal-foot">
@@ -1037,6 +1052,11 @@ let dirty = false;
 
 //////////////////////// 日付ユーティリティ ////////////////////////
 function pad2(n){ return String(n).padStart(2,'0'); }
+// 西暦の日付を「令和◯年◯月◯日」の和暦表記に変換する(この学校が使う年度は全て令和のため、令和のみ対応)。
+function formatWarekiDate(d){
+  const reiwa = d.getFullYear() - 2018;
+  return `令和${reiwa}年${d.getMonth()+1}月${d.getDate()}日`;
+}
 function dkey(y,m,d){ return `${y}-${pad2(m)}-${pad2(d)}`; }
 function daysInMonth(y,m){ return new Date(y, m, 0).getDate(); }
 function fiscalMonthList(fy){
@@ -1132,6 +1152,11 @@ function effectiveEventsAnnual(rec, status){
 // 予定表(プレビュー・Excel出力)で網掛け(休業日扱いの色)にする日かどうか。
 // 日曜・祝日に加えて土曜も同じ扱いにする(登校日の判定自体は変えない。表示上の網掛けのみ)。
 function isShadedDay(status, dow){ return status.isHoliday || dow===6; }
+// 平日(祝日・土曜ではない)なのに、明示的な設定で全学年とも登校日でなくなっている日かどうか。
+// 年間予定入力タブの行の網掛け(rownonschool)と同じ判定・同じ薄い色を、予定表(プレビュー・Excel出力)にも使う。
+function isNonSchoolDay(status, dow, year, month, d){
+  return !status.isHoliday && dow!==6 && !anySchoolDay(year, month, d);
+}
 // 掃除の実効値(未設定nullなら平日=あり、土日祝=なしを既定にする)。年間予定入力のチェックボックスと同じ考え方。
 function effectiveCleaning(rec, status, dow){
   return typeof rec.cleaning==='boolean' ? rec.cleaning : (!status.isHoliday && dow!==6);
@@ -1378,19 +1403,23 @@ const XLSX_RELS =
 function buildXlsxStyles(){
   const holidayRgb = 'FF' + (state.colors && state.colors.holiday || 'D9D9D9');
   const absentRgb = 'FF' + (state.colors && state.colors.absent || '808080');
+  // 「登校日でない日(平日だが全学年とも登校しない)」の網掛け色。予定入力タブの--nonschool-colorと
+  // 同じ考え方で、祝日色を薄めた色を使う。
+  const nonschoolRgb = 'FF' + lightenHex((state.colors && state.colors.holiday || 'D9D9D9'), 0.6);
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
 <fonts count="4"><font><sz val="10"/><name val="Yu Mincho"/></font><font><b/><sz val="10"/><name val="Yu Mincho"/></font><font><b/><sz val="14"/><name val="Yu Mincho"/></font><font><sz val="9"/><name val="Yu Mincho"/></font></fonts>
-<fills count="7"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>
+<fills count="8"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="FFEFEFEF"/><bgColor indexed="64"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="${holidayRgb}"/><bgColor indexed="64"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="FFECECEC"/><bgColor indexed="64"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="${absentRgb}"/><bgColor indexed="64"/></patternFill></fill>
-<fill><patternFill patternType="solid"><fgColor rgb="FFFBE0AE"/><bgColor indexed="64"/></patternFill></fill></fills>
+<fill><patternFill patternType="solid"><fgColor rgb="FFFBE0AE"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="${nonschoolRgb}"/><bgColor indexed="64"/></patternFill></fill></fills>
 <borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>
 <border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border></borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="16">
+<cellXfs count="19">
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
@@ -1407,12 +1436,15 @@ function buildXlsxStyles(){
 <xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" textRotation="255"/></xf>
 <xf numFmtId="0" fontId="0" fillId="5" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="2" fillId="6" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+<xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="3" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" shrinkToFit="1"/></xf>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
 }
 
-const XSTYLE = { HEADER:1, CENTER:2, LEFT:3, HOLIDAY_CENTER:4, HOLIDAY_LEFT:5, SUMMARY:6, TITLE:7, DATE:8, HEADER_VERT:9, LEFT_SMALL:10, HOLIDAY_LEFT_SMALL:11, CENTER_VERT:12, HOLIDAY_CENTER_VERT:13, ABSENT_CENTER:14, TITLE_REF:15 };
+const XSTYLE = { HEADER:1, CENTER:2, LEFT:3, HOLIDAY_CENTER:4, HOLIDAY_LEFT:5, SUMMARY:6, TITLE:7, DATE:8, HEADER_VERT:9, LEFT_SMALL:10, HOLIDAY_LEFT_SMALL:11, CENTER_VERT:12, HOLIDAY_CENTER_VERT:13, ABSENT_CENTER:14, TITLE_REF:15, NONSCHOOL_CENTER:16, NONSCHOOL_LEFT:17, NONSCHOOL_LEFT_SMALL:18 };
 
 function buildWorkbookXml(sheetNames){
   const sheets = sheetNames.map((name,i)=>`<sheet name="${xmlEscape(name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('');
@@ -2487,7 +2519,7 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
   const reiwa = state.meta.fiscalYear - 2018;
   const audienceLabel = audience==='teacher' ? '教職員用' : '家庭用';
   const today = new Date();
-  const stamp = `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
+  const stamp = formatWarekiDate(today);
 
   // 家庭用は「翌月の予定(先取り確認用)」を、行を下に積み増すのではなく右側の列に並べて表示する。
   // 元のExcel(4月生シート等)もこの配置でA4 1枚に収まっており、下に積み増すと行数がほぼ倍になって
@@ -2588,8 +2620,9 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
       const status = getDayStatus(year,month,d);
       const rec = migrateDayRecord(state.days[dkey(year,month,d)]);
       const shaded = isShadedDay(status, dow);
-      const cS = shaded ? XSTYLE.HOLIDAY_CENTER : XSTYLE.CENTER;
-      const lSsmall = shaded ? XSTYLE.HOLIDAY_LEFT_SMALL : XSTYLE.LEFT_SMALL; // 月間予定表の学校行事等は年間より少し小さめのフォントにする
+      const nonschool = !shaded && isNonSchoolDay(status, dow, year, month, d);
+      const cS = shaded ? XSTYLE.HOLIDAY_CENTER : nonschool ? XSTYLE.NONSCHOOL_CENTER : XSTYLE.CENTER;
+      const lSsmall = shaded ? XSTYLE.HOLIDAY_LEFT_SMALL : nonschool ? XSTYLE.NONSCHOOL_LEFT_SMALL : XSTYLE.LEFT_SMALL; // 月間予定表の学校行事等は年間より少し小さめのフォントにする
       row[0] = {v:d, num:true, style:cS};
       row[1] = {v:DOW[dow], style:cS};
       let ci = 2;
@@ -2643,9 +2676,11 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
         const nrec = migrateDayRecord(state.days[dkey(ny,nm,d)]);
         const nparts = [effectiveEventsAnnual(nrec, nstatus), nrec.eventsMonthly].filter(Boolean);
         const nshaded = isShadedDay(nstatus, ndow);
-        row[totalCols] = {v:d, num:true, style:nshaded?XSTYLE.HOLIDAY_CENTER:XSTYLE.CENTER};
-        row[totalCols+1] = {v:DOW[ndow], style:nshaded?XSTYLE.HOLIDAY_CENTER:XSTYLE.CENTER};
-        row[totalCols+2] = {v:nparts.join('　'), style:nshaded?XSTYLE.HOLIDAY_LEFT_SMALL:XSTYLE.LEFT_SMALL};
+        const nnonschool = !nshaded && isNonSchoolDay(nstatus, ndow, ny, nm, d);
+        const nCenterStyle = nshaded ? XSTYLE.HOLIDAY_CENTER : nnonschool ? XSTYLE.NONSCHOOL_CENTER : XSTYLE.CENTER;
+        row[totalCols] = {v:d, num:true, style:nCenterStyle};
+        row[totalCols+1] = {v:DOW[ndow], style:nCenterStyle};
+        row[totalCols+2] = {v:nparts.join('　'), style:nshaded?XSTYLE.HOLIDAY_LEFT_SMALL:(nnonschool?XSTYLE.NONSCHOOL_LEFT_SMALL:XSTYLE.LEFT_SMALL)};
       } else {
         for(let i=totalCols;i<grandTotalCols;i++) row[i] = {v:'', style:XSTYLE.CENTER};
       }
@@ -2814,11 +2849,11 @@ function buildAnnualExportGrid(fy, audience){
 
   const reiwa = fy - 2018;
   const today = new Date();
-  const stamp = `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
+  const stamp = formatWarekiDate(today);
   const audienceLabel = audience==='teacher' ? '教職員用' : '家庭用';
   grid[0][0] = {v:`令和${reiwa}年度\u3000${schoolNameWithVersion('annual')}\u3000年間行事予定(${audienceLabel})`, style:XSTYLE.TITLE};
   merges.push(`${colLetter(1)}1:${colLetter(totalCols)}1`);
-  grid[1][0] = {v:'※「学校行事等(共通・年間)」欄の内容を中心に表示', style:XSTYLE.TITLE};
+  grid[1][0] = {v:'', style:XSTYLE.TITLE};
   // 出力日のスタンプは1列だけだと狭すぎて、左の結合セルに隣接しているためはみ出せず欠けて見えてしまう。
   // 右端の数列をまとめて確保することで、はみ出さずに全部表示できるようにする。
   const dateSpan = Math.min(5, totalCols-1);
@@ -2852,8 +2887,9 @@ function buildAnnualExportGrid(fy, audience){
       const status = getDayStatus(m.year, m.month, d);
       const rec = migrateDayRecord(state.days[dkey(m.year,m.month,d)]);
       const shaded = isShadedDay(status, dow);
-      const cS = shaded ? XSTYLE.HOLIDAY_CENTER : XSTYLE.CENTER;
-      const lS = shaded ? XSTYLE.HOLIDAY_LEFT : XSTYLE.LEFT;
+      const nonschool = !shaded && isNonSchoolDay(status, dow, m.year, m.month, d);
+      const cS = shaded ? XSTYLE.HOLIDAY_CENTER : nonschool ? XSTYLE.NONSCHOOL_CENTER : XSTYLE.CENTER;
+      const lS = shaded ? XSTYLE.HOLIDAY_LEFT : nonschool ? XSTYLE.NONSCHOOL_LEFT : XSTYLE.LEFT;
       grid[rIdx][base] = {v:d, num:true, style:cS};
       grid[rIdx][base+1] = {v:DOW[dow], style:cS};
       grid[rIdx][base+2] = {v:annualEventText(rec, opts, status, audience), style:lS};
@@ -2941,7 +2977,7 @@ function renderMonthlyPreview(opts){
     const dow = new Date(year,month-1,d).getDay();
     const status = getDayStatus(year,month,d);
     const rec = migrateDayRecord(state.days[key]);
-    const rowCls = isShadedDay(status, dow) ? 'pv-holiday' : '';
+    const rowCls = isShadedDay(status, dow) ? 'pv-holiday' : (isNonSchoolDay(status, dow, year, month, d) ? 'pv-nonschool' : '');
     html += `<tr class="${rowCls}">`;
     html += `<td class="pv-daynum">${d}</td><td class="pv-dow">${DOW[dow]}</td>`;
     cols.forEach(c=>{
@@ -3013,7 +3049,7 @@ function renderMonthlyPreview(opts){
       const dow = new Date(ny,nm-1,d).getDay();
       const rec = migrateDayRecord(state.days[dkey(ny,nm,d)]);
       const parts = [effectiveEventsAnnual(rec, status), rec.eventsMonthly].filter(Boolean);
-      const rowCls = isShadedDay(status, dow) ? 'pv-holiday' : '';
+      const rowCls = isShadedDay(status, dow) ? 'pv-holiday' : (isNonSchoolDay(status, dow, ny, nm, d) ? 'pv-nonschool' : '');
       html += `<tr class="${rowCls}"><td class="pv-daynum">${d}</td><td class="pv-dow">${DOW[dow]}</td><td class="pv-events">${escapeHtml(parts.join('\u3000'))}</td></tr>`;
     }
     html += '</tbody></table></div>';
@@ -3500,13 +3536,15 @@ function renderAnnualPreview(audience){
       const status = getDayStatus(year,month,d);
       const dow = new Date(year,month-1,d).getDay();
       const rec = migrateDayRecord(state.days[dkey(year,month,d)]);
-      const rowCls = isShadedDay(status, dow) ? 'pv-holiday' : '';
+      const rowCls = isShadedDay(status, dow) ? 'pv-holiday' : (isNonSchoolDay(status, dow, year, month, d) ? 'pv-nonschool' : '');
       html += `<tr class="${rowCls}"><td class="pv-daynum">${d}</td><td class="pv-dow">${DOW[dow]}</td><td class="pv-events">${annualEventHtml(rec, opts, status, audience)}</td></tr>`;
     }
     const [y1,y2,y3] = yearCum[i];
     const [t1,t2,t3] = termCum[i];
     const [m1,m2,m3] = monthly[i];
     const asRow = (label, v1, v2, v3) => `<span class="as-row"><span class="as-label">${label}</span><span class="as-val">①${v1}</span><span class="as-val">②${v2}</span><span class="as-val">③${v3}</span></span>`;
+    html += '</tbody></table>';
+    html += '<table class="preview nmb-table annual-tbl annual-summary-tbl"><tbody>';
     html += `<tr class="annual-summary"><td colspan="3">${asRow('年計', y1, y2, y3)}</td></tr>`;
     html += `<tr class="annual-summary"><td colspan="3">${asRow('学期計', t1, t2, t3)}</td></tr>`;
     html += `<tr class="annual-summary annual-summary-month"><td colspan="3">${asRow('月計', m1, m2, m3)}</td></tr>`;
@@ -3945,6 +3983,16 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-09</strong>: 複数の見た目・使い勝手の改善をまとめて実施。
+      <ul>
+        <li>学校行事等の入力欄は、内容が増えても列幅は変えずフォントサイズを少し小さくして見やすく。</li>
+        <li>行事の入力ポップアップの「候補から選ぶ」に、候補の検索欄と「使用済みを隠す」チェックを追加。「一斉委員会」のように何度も使う候補は、行の「くり返し使う」にチェックしておくと使用済みでも一覧から隠れなくなる(例外指定)。</li>
+        <li>「◯年度の行事を候補に追加」で候補を作る際、祝日名がそのまま入力された行(祝日として毎年自動表示される)は候補に追加しないように変更。</li>
+        <li>年間予定表(教員用・家庭用)の画面表示を全面的に見直し: 日・曜の位置が内容の先頭行とそろうように修正、行の高さを約1.8倍に拡大、年計・学期計・月計の位置が月ごとにずれないよう固定表示に変更。</li>
+        <li>Excel出力(年間・月間)の右上の日付を、和暦(例: 令和8年9月9日)表示に変更。年間予定表Excel出力の「学校行事等(共通・年間)欄の内容を中心に表示」の注記文を削除。</li>
+        <li>年間・月間の予定表(画面表示・Excel出力とも)で、平日だが全学年とも登校しない日(明示的に設定した日)を、年間予定入力タブと同じ薄い網掛けで表示するように変更。</li>
+      </ul>
+    </li>
     <li><strong>2026-09-09</strong>: 画面右上に、現在開いているファイル名とアプリのバージョン(日付)を常に表示するように変更。「設定」タブの「データファイル」欄には、そのファイルが最後にどのバージョン・日時で保存されたかも表示されます。</li>
     <li><strong>2026-09-09</strong>: 本体ファイル名を「index.html」に統一(旧「行事予定管理アプリ_Phase1.html」)。アプリを開いたときに、前回「開く」または「保存」で使ったファイルを自動的に読み込むように変更。許可が残っていればファイルを選び直さずそのまま最新のデータが表示され、許可が切れている場合だけ画面上部のボタンを1回押せば開ける(ブラウザの仕様上、許可を毎回自動で行うことはできません)。</li>
     <li><strong>2026-09-08</strong>: 「給食」欄をチェックボックスから自由入力(候補選択つき)に変更。これまでチェックボックスでは○しか入力できず、×・弁(お弁当)は画面から入力できなかったが、他の自由入力欄と同じ方式にしたことで○・×・弁のいずれも入力できるようになった。「設定」タブの「入力候補(プリセット)の編集」にも給食の候補一覧を追加。</li>
@@ -4120,6 +4168,8 @@ document.getElementById('memoSave').addEventListener('click', ()=>{
 let eventPickerKey = null, eventPickerField = null, eventPickerBoxValues = [''];
 let eventPickerUsedCandidateIds = new Set(); // このモーダルを開いている間に候補から選んだもの(保存時にまとめて使用回数を増やす)
 let eventPickerInitialSnapshot = ''; // 開いた時点の内容(未保存で閉じようとした時の確認に使用)
+let eventPickerHideUsed = false; // 「使用済みを隠す」チェックの状態(モーダルを開くたびにリセット)
+let eventPickerCandSearch = ''; // 候補検索欄の入力内容(モーダルを開くたびにリセット)
 function openEventPickerModal(key, field, fieldLabel, dayLabel){
   eventPickerKey = key;
   eventPickerField = field;
@@ -4135,6 +4185,10 @@ function openEventPickerModal(key, field, fieldLabel, dayLabel){
   if(eventPickerBoxValues.length===0) eventPickerBoxValues = [''];
   eventPickerInitialSnapshot = JSON.stringify(eventPickerBoxValues.map(v=>v.trim()).filter(Boolean));
   document.getElementById('eventPickerAddMsg').textContent = '';
+  eventPickerHideUsed = false;
+  eventPickerCandSearch = '';
+  document.getElementById('eventPickerHideUsed').checked = false;
+  document.getElementById('eventPickerCandSearch').value = '';
   renderEventPickerBoxes();
   renderEventCandidateList();
   document.getElementById('eventPickerOverlay').classList.add('show');
@@ -4191,20 +4245,40 @@ document.getElementById('eventPickerAddBox').addEventListener('click', ()=>{
 });
 function renderEventCandidateList(){
   const wrap = document.getElementById('eventPickerCandidateList');
-  const list = state.eventCandidates || [];
-  if(list.length===0){ wrap.innerHTML = '<p style="padding:10px;font-size:12.5px;color:var(--ink-soft);">候補はまだありません。上の枠に内容を入れてから「候補に追加」で登録できます。</p>'; return; }
+  const all = state.eventCandidates || [];
+  if(all.length===0){ wrap.innerHTML = '<p style="padding:10px;font-size:12.5px;color:var(--ink-soft);">候補はまだありません。上の枠に内容を入れてから「候補に追加」で登録できます。</p>'; return; }
+  const q = eventPickerCandSearch.trim().toLowerCase();
+  const list = all.filter(c=>{
+    if(q && !c.text.toLowerCase().includes(q)) return false;
+    // 「くり返し使う」に指定した候補は、使用済みでも「使用済みを隠す」の対象にしない
+    if(eventPickerHideUsed && c.useCount>0 && !c.repeatable) return false;
+    return true;
+  });
+  if(list.length===0){ wrap.innerHTML = '<p style="padding:10px;font-size:12.5px;color:var(--ink-soft);">条件に一致する候補がありません。</p>'; return; }
   wrap.innerHTML = `<table><tbody>${
     list.map(c=>{
       const used = c.useCount>0;
       return `<tr class="candidate-row ${used?'used':''}">
         <td>${escapeHtml(c.text)}${used?`<span class="cand-count">✓ 使用済み(${c.useCount}回)</span>`:''}</td>
         <td style="white-space:nowrap;">
+          <label style="font-size:11.5px;color:var(--ink-soft);white-space:nowrap;margin-right:6px;">
+            <input type="checkbox" class="cand-repeat-toggle" data-id="${c.id}" ${c.repeatable?'checked':''} ${editUnlocked?'':'disabled'}>くり返し使う
+          </label>
           <button class="ghost tiny" data-selectcand="${c.id}" ${editUnlocked?'':'disabled'}>選択</button>
           <button class="ghost tiny danger" data-delcand="${c.id}" ${editUnlocked?'':'disabled'}>削除</button>
         </td>
       </tr>`;
     }).join('')
   }</tbody></table>`;
+  wrap.querySelectorAll('input.cand-repeat-toggle').forEach(cb=>{
+    cb.addEventListener('change', ()=>{
+      const cand = state.eventCandidates.find(c=>c.id===cb.dataset.id);
+      if(!cand) return;
+      cand.repeatable = cb.checked;
+      markDirty();
+      renderEventCandidateList();
+    });
+  });
   wrap.querySelectorAll('button[data-selectcand]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const cand = state.eventCandidates.find(c=>c.id===btn.dataset.selectcand);
@@ -4229,6 +4303,14 @@ function renderEventCandidateList(){
     });
   });
 }
+document.getElementById('eventPickerCandSearch').addEventListener('input', (e)=>{
+  eventPickerCandSearch = e.target.value;
+  renderEventCandidateList();
+});
+document.getElementById('eventPickerHideUsed').addEventListener('change', (e)=>{
+  eventPickerHideUsed = e.target.checked;
+  renderEventCandidateList();
+});
 document.getElementById('eventPickerClose').addEventListener('click', closeEventPickerModalWithConfirm);
 document.getElementById('eventPickerCancel').addEventListener('click', closeEventPickerModalWithConfirm);
 document.getElementById('eventPickerSave').addEventListener('click', ()=>{
@@ -4257,9 +4339,13 @@ function importPreviousYearEventsToCandidates(){
     for(let d=1; d<=dim; d++){
       const rec = state.days[dkey(year,month,d)];
       if(!rec) continue;
+      const status = getDayStatus(year,month,d);
       fields.forEach(f=>{
         const text = rec[f] ? String(rec[f]).trim() : '';
         if(!text || seen.has(text)) return;
+        // 祝日名がそのまま入力された「学校行事等(共通・年間)」欄は、祝日として毎年自動的に
+        // 予定表へ表示されるため(effectiveEventsAnnual参照)、候補としては登録しない。
+        if(f==='eventsAnnual' && status.source==='national' && text===status.label) return;
         seen.add(text);
         if(!state.eventCandidates) state.eventCandidates = [];
         state.eventCandidates.push({id:genId(), text, useCount:0});
