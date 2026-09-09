@@ -1050,6 +1050,51 @@ let state = emptyState();
 let fileHandle = null;
 let dirty = false;
 
+//////////////////////// 年間予定入力タブの元に戻す(Ctrl+Z)/やり直す(Ctrl+Y) ////////////////////////
+// 対象は日ごとのデータ(state.days)のみ。学校名などの設定タブの変更は対象外。
+// 連続した入力(コアレス時間内)は1回のUndoにまとめる(Excelのセル編集のような単位で戻せるように)。
+const UNDO_MAX = 50;
+const UNDO_COALESCE_MS = 800;
+let undoStack = [];
+let redoStack = [];
+let undoCoalesceActive = false;
+let undoCoalesceTimer = null;
+// 変更を加える直前に呼ぶ。コアレス時間内の連続呼び出しでは新しい記録を追加しない。
+function captureUndoPoint(){
+  if(!undoCoalesceActive){
+    undoStack.push(JSON.stringify(state.days));
+    if(undoStack.length>UNDO_MAX) undoStack.shift();
+    redoStack = [];
+    undoCoalesceActive = true;
+  }
+  clearTimeout(undoCoalesceTimer);
+  undoCoalesceTimer = setTimeout(()=>{ undoCoalesceActive = false; }, UNDO_COALESCE_MS);
+}
+function performUndo(){
+  if(undoStack.length===0) return;
+  clearTimeout(undoCoalesceTimer);
+  undoCoalesceActive = false;
+  redoStack.push(JSON.stringify(state.days));
+  if(redoStack.length>UNDO_MAX) redoStack.shift();
+  state.days = JSON.parse(undoStack.pop());
+  clearSelection();
+  markDirty();
+  renderAgenda();
+}
+function performRedo(){
+  if(redoStack.length===0) return;
+  undoStack.push(JSON.stringify(state.days));
+  if(undoStack.length>UNDO_MAX) undoStack.shift();
+  state.days = JSON.parse(redoStack.pop());
+  clearSelection();
+  markDirty();
+  renderAgenda();
+}
+function resetUndoHistory(){
+  undoStack = []; redoStack = []; undoCoalesceActive = false;
+  clearTimeout(undoCoalesceTimer);
+}
+
 //////////////////////// 日付ユーティリティ ////////////////////////
 function pad2(n){ return String(n).padStart(2,'0'); }
 // 西暦の日付を「令和◯年◯月◯日」の和暦表記に変換する(この学校が使う年度は全て令和のため、令和のみ対応)。
@@ -1708,6 +1753,7 @@ function loadSampleDataInMemory(){
   state = generateSampleState();
   holidayCache = {};
   clearSelection();
+  resetUndoHistory();
   // 重要: 実ファイルとの紐付けを解除する。これを怠ると、保存操作で元のファイルに
   // サンプルデータが誤って上書きされてしまう恐れがあるため。
   fileHandle = null;
@@ -1916,6 +1962,7 @@ function loadStateFromText(text){
     state = obj;
     holidayCache = {};
     clearSelection();
+    resetUndoHistory();
     editUnlocked = false;
     applyLockUI();
     applyColorSettings();
@@ -2244,6 +2291,7 @@ function attachGridHandlers(){
     const key = inp.dataset.key, field = inp.dataset.field;
     if(!key || !field) return;
     const val = (inp.type==='checkbox') ? inp.checked : inp.value;
+    captureUndoPoint();
     setFieldValue(key, field, val);
     markDirty();
     if(/^g[123]SchoolDay$/.test(field)){
@@ -2391,6 +2439,7 @@ document.addEventListener('paste', (e)=>{
   const text = (e.clipboardData || window.clipboardData).getData('text');
   if(text.indexOf('\t')===-1 && text.indexOf('\n')===-1) return; // 単一値は既定のペーストに任せる
   e.preventDefault();
+  captureUndoPoint();
   const startRow = Number(active.dataset.row), startCol = Number(active.dataset.col);
   const rows = text.replace(/\r/g,'').split('\n');
   while(rows.length && rows[rows.length-1]==='') rows.pop();
@@ -2425,6 +2474,7 @@ document.addEventListener('keydown', (e)=>{
     // 複数セル選択中はまとめてクリア
   } else { return; }
   e.preventDefault();
+  captureUndoPoint();
   for(let r=b.r0;r<=b.r1;r++){
     for(let c=b.c0;c<=b.c1;c++){
       const inp = document.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
@@ -2436,6 +2486,20 @@ document.addEventListener('keydown', (e)=>{
   }
   markDirty();
   renderAgenda();
+});
+
+// Ctrl+Z(元に戻す)/ Ctrl+Y・Ctrl+Shift+Z(やり直す)。年間予定入力タブが表示され、
+// 編集モードで、モーダルが開いていない時だけ有効(モーダル内では通常のブラウザ操作を優先)。
+document.addEventListener('keydown', (e)=>{
+  if(!(e.ctrlKey || e.metaKey)) return;
+  const k = e.key.toLowerCase();
+  if(k!=='z' && k!=='y') return;
+  if(!editUnlocked) return;
+  if(document.getElementById('mainSchedule').style.display==='none') return;
+  if(document.querySelector('.overlay.show')) return;
+  e.preventDefault();
+  if(k==='y' || (k==='z' && e.shiftKey)) performRedo();
+  else performUndo();
 });
 
 document.getElementById('monthSelect').addEventListener('change', ()=>{ clearSelection(); renderAgenda(); });
@@ -4003,6 +4067,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-09</strong>: 年間予定入力タブに、元に戻す(<strong>Ctrl+Z</strong>)・やり直す(<strong>Ctrl+Y</strong>)機能を追加。入力・貼り付け・削除・週番一括入力・メモ・学校行事等の入力など、日ごとのデータの変更を最大50回分さかのぼれます。</li>
     <li><strong>2026-09-09</strong>: 給食・放課後・週番・時間割など候補一覧(datalist)付きの欄で、すでに何か入力済みのセルを選択すると、ブラウザの仕様でその文字列に前方一致する候補しか表示されない不具合を修正(例: 給食欄に「○」が入っていると「×」「弁」が出てこない)。セルを選択した時に一旦表示を空にして全候補を出し、何も選ばず離れた場合は元の内容に自動で戻すようにした。</li>
     <li><strong>2026-09-09</strong>: 複数の見た目・使い勝手の改善をまとめて実施。
       <ul>
@@ -4060,6 +4125,7 @@ document.getElementById('helpBody').innerHTML = `
     <li>マスをクリックするとその場で入力できます(モーダル画面は開きません)。</li>
     <li>マスをドラッグすると複数マスを選択できます。選択後 <strong>Ctrl+C</strong> でコピー、別の開始位置をクリックして <strong>Ctrl+V</strong> で貼り付けできます。Excelの表をコピーしてそのまま貼り付けることもできます。</li>
     <li>複数マスを選択した状態で <strong>Delete</strong> キーを押すと、選択範囲をまとめて空にできます。</li>
+    <li><strong>Ctrl+Z</strong>で直前の入力・貼り付け・削除・週番一括入力・メモ・学校行事等の入力を1つ前に戻せます(最大50回分)。<strong>Ctrl+Y</strong>(または<strong>Ctrl+Shift+Z</strong>)でやり直せます。対象は年間予定入力タブの日ごとのデータのみで、学校名などの「設定」タブの内容は対象外です。ファイルを開き直す・保存先を切り替えると履歴はリセットされます。</li>
     <li>列見出しの右端をドラッグすると列の幅を変えられます(画面に入りきらない場合に調整してください)。「設定」タブの「列幅をリセット」で既定の幅に戻せます。</li>
     <li>「週番をまとめて入力」ボタンから、現在表示中の月にかかる週を一覧から選び、内容を入力すると、その週の月〜金(休業日を除く)にまとめて同じ週番を入力できます。入力候補は「設定」タブの入力候補編集と共通です。どの日に反映されるかは画面上で確認してから適用できます。「月全体に順番で割り当て」を選ぶと、「1年、2年、3年」のように読点区切りで指定した内容を、今月の各週に順番(足りなくなったら最初に戻る)で一括入力できます。なお、年間予定入力のマス自体は常に1日ずつ分かれています(結合されるのは「月間予定表(教員用)」の画面表示とExcel出力のみです)。</li>
     <li>年間予定入力タブの月選択の右にある検索欄に文字を入力すると、「体育祭」のように入力した文字を含む行事等・会議・放課後・週番・メモを、年度内のすべての月から探して一覧表示します。結果をクリックするとその日・その欄までジャンプします。</li>
@@ -4178,6 +4244,7 @@ document.getElementById('memoCancel').addEventListener('click', closeMemoModal);
 document.getElementById('memoSave').addEventListener('click', ()=>{
   if(!memoModalKey || !editUnlocked) return;
   const val = document.getElementById('memoModalTextarea').value;
+  captureUndoPoint();
   setFieldValue(memoModalKey, 'memo', val);
   markDirty();
   closeMemoModal();
@@ -4337,6 +4404,7 @@ document.getElementById('eventPickerCancel').addEventListener('click', closeEven
 document.getElementById('eventPickerSave').addEventListener('click', ()=>{
   if(!eventPickerKey || !editUnlocked) return;
   const val = eventPickerBoxValues.map(v=>v.trim()).filter(Boolean).join('　');
+  captureUndoPoint();
   setFieldValue(eventPickerKey, eventPickerField, val);
   eventPickerUsedCandidateIds.forEach(id=>{
     const cand = state.eventCandidates.find(c=>c.id===id);
@@ -4676,6 +4744,7 @@ document.getElementById('weeklyDutyApply').addEventListener('click', ()=>{
     if(!value.trim()){ alert('週番として入力する内容を入力してください。'); return; }
     const [yy,mm,dd] = sel.value.split('-').map(Number);
     const monday = new Date(yy, mm-1, dd);
+    captureUndoPoint();
     const {filled, skipped} = applyWeeklyDutyToWeek(monday, value);
     markDirty();
     renderAgenda();
@@ -4686,6 +4755,7 @@ document.getElementById('weeklyDutyApply').addEventListener('click', ()=>{
     const weeks = getWeeksForMonth(year,month);
     const list = document.getElementById('weeklyDutyRotationInput').value.split(/[、,]/).map(s=>s.trim()).filter(Boolean);
     if(!list.length){ alert('週ごとに繰り返す内容を入力してください。'); return; }
+    captureUndoPoint();
     let totalFilled=0, totalSkipped=0;
     weeks.forEach((monday,i)=>{
       const value = list[i % list.length];
