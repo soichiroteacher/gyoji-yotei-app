@@ -2210,15 +2210,18 @@ function renderAgenda(){
     const rec = migrateDayRecord(state.days[key]);
     const rowClasses = [];
     if(status.isHoliday) rowClasses.push('rowholiday');
-    if(dow===6) rowClasses.push('rowsat'); if(dow===0) rowClasses.push('rowsun');
+    if(dow===0) rowClasses.push('rowsun');
     const autoSchoolDay = !status.isHoliday && dow!==6; // 土曜は既定では休業日。必要な日だけ個別にチェックする
     const effSchoolDay = {
       1: typeof rec.schoolDay.g1==='boolean' ? rec.schoolDay.g1 : autoSchoolDay,
       2: typeof rec.schoolDay.g2==='boolean' ? rec.schoolDay.g2 : autoSchoolDay,
       3: typeof rec.schoolDay.g3==='boolean' ? rec.schoolDay.g3 : autoSchoolDay
     };
+    const anyAttend = effSchoolDay[1] || effSchoolDay[2] || effSchoolDay[3];
+    // 土曜の青い網掛けは、いずれかの学年が登校日にチェックされている(=実際に登校する)日には付けない
+    if(dow===6 && !anyAttend) rowClasses.push('rowsat');
     // 土日祝ではない(平日)のに、明示的な設定で全学年とも登校日でなくなっている行は、土日祝より薄い色で網掛けする
-    if(!status.isHoliday && dow!==6 && !effSchoolDay[1] && !effSchoolDay[2] && !effSchoolDay[3]){
+    if(!status.isHoliday && dow!==6 && !anyAttend){
       rowClasses.push('rownonschool');
     }
 
@@ -4101,6 +4104,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-09</strong>: 土曜日でも、いずれかの学年の「登校日」にチェックが入っている(=実際に登校する)日は、青い網掛けを付けないように修正。以前はチェックの有無にかかわらず、土曜は一律で青い網掛けになっていた。</li>
     <li><strong>2026-09-09</strong>: 自動保存の書き込み間隔を延長(700ms→2.5秒)。保存先がGoogleドライブ等の同期フォルダの場合、入力のたびに書き込みが走ると同期処理と競合してカクつき・フリーズすることがあるため、書き込み回数自体を減らした。年間予定表(教員用・家庭用)の見出しを「日・曜・◯月行事」の3列だけにし、上にあった「◯月」の行を削除。年間行事・月間行事の文字色(緑・茶色)と、年間予定入力タブの「登校日」チェックの色を外し、標準的な見た目に変更。月間予定表(教員用・家庭用)にも「◀」「▶」で月を移動するボタンを追加。年間予定表のExcel出力について、行の高さを画面表示と同程度(約1.8倍)に拡大、タイトルを学校名の後で改行して2行表示(1行目: 年度・学校名、2行目: 年間行事予定・版表記)に変更、日・曜の位置を内容の上端にそろえるよう修正。</li>
     <li><strong>2026-09-09</strong>: 年間予定入力タブに、元に戻す(<strong>Ctrl+Z</strong>)・やり直す(<strong>Ctrl+Y</strong>)機能を追加。入力・貼り付け・削除・週番一括入力・メモ・学校行事等の入力など、日ごとのデータの変更を最大50回分さかのぼれます。</li>
     <li><strong>2026-09-09</strong>: 給食・放課後・週番・時間割など候補一覧(datalist)付きの欄で、すでに何か入力済みのセルを選択すると、ブラウザの仕様でその文字列に前方一致する候補しか表示されない不具合を修正(例: 給食欄に「○」が入っていると「×」「弁」が出てこない)。セルを選択した時に一旦表示を空にして全候補を出し、何も選ばず離れた場合は元の内容に自動で戻すようにした。</li>
