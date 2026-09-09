@@ -9,7 +9,7 @@ Claude(claude.aiおよびClaude Code)での対話を通じて開発してきた�
 ## どこに何があるか(最重要)
 
 - **ローカル作業フォルダ**: `C:\Users\idolo\Documents\projects\myapp\行事予定アプリ\`
-- **本体ファイル**: `行事予定管理アプリ_Phase1.html`(単一HTMLファイル、ビルド不要)
+- **本体ファイル**: `index.html`(単一HTMLファイル、ビルド不要。旧ファイル名`行事予定管理アプリ_Phase1.html`から2026-09-09にリネーム。GitHub Pagesでリダイレクトなしにそのまま開けるようindex.htmlに統一した)
 - **GitHubリポジトリ(バックアップ・履歴管理)**: https://github.com/soichiroteacher/gyoji-yotei-app (Private、`origin`、ブランチ`master`)
   - アプリファイルを編集するたびに自動で`git add`→`commit`→`push`する運用(ユーザーの`C:\Users\idolo\.claude\CLAUDE.md`のグローバル指示)。force pushはしない。
   - つまり、ローカルのファイルが万一失われても、このGitHubリポジトリの最新コミットに全履歴が残っている。
@@ -127,7 +127,7 @@ Claude(claude.aiおよびClaude Code)での対話を通じて開発してきた�
 自動テストフレームワークは導入していない。Claude Codeの Browser pane(MCP: `mcp__Claude_Browser__*`)を使い、その場でJavaScriptを書いて動作検証するスタイル。典型的なパターン:
 
 ```js
-// preview_start({name:'static-server'}) → navigate({url:'http://localhost:8791/行事予定管理アプリ_Phase1.html'}) の後
+// preview_start({name:'static-server'}) → navigate({url:'http://localhost:8791/index.html'}) の後
 loadSampleDataInMemory();       // サンプルデータを読み込む(内部でeditUnlockedがfalseにリセットされる)
 editUnlocked = true;            // ★必ずサンプルデータ読込の"後"に true にすること
 applyLockUI();
