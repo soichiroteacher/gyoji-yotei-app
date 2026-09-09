@@ -40,6 +40,8 @@
   .lock-badge.locked{background:#f3f5f4;color:var(--ink-soft);}
   .lock-badge.unlocked{background:#e4f3e8;color:#1f7a3d;}
   .edit-lock-warning{font-size:12px;padding:3px 9px;border-radius:12px;white-space:nowrap;font-weight:600;background:#fbe9d0;color:#8a5a00;}
+  .file-tag{font-size:12.5px;color:var(--ink-soft);white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis;}
+  .version-tag{font-size:11px;color:var(--ink-soft);white-space:nowrap;opacity:.7;}
   .spacer{flex:1;}
   .btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
   button{
@@ -283,6 +285,7 @@
   <span class="school-tag" id="schoolTag">(未設定)</span>
   <span id="lockBadge" class="lock-badge locked">🔒 閲覧のみ</span>
   <span id="editLockWarning" class="edit-lock-warning" hidden></span>
+  <span id="currentFileTag" class="file-tag" title="現在開いているファイル">📄 (未保存)</span>
   <div class="spacer"></div>
   <div class="btnrow">
     <span id="status">未保存</span>
@@ -291,6 +294,7 @@
     <button id="btnSave" class="primary" disabled>保存</button>
     <button id="btnUnlock">🔒 編集する</button>
     <button id="btnHelp" class="ghost">使い方 / マニュアル</button>
+    <span id="appVersionTag" class="version-tag" title="アプリのバージョン"></span>
   </div>
 </header>
 
@@ -575,6 +579,8 @@
       <h2>データファイル</h2>
       <p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">
         現在のファイル: <strong id="currentFileName">(未保存)</strong><br>
+        このファイルの最終保存: <span id="fileSavedVersionInfo">-</span><br>
+        現在使用中のアプリのバージョン: <strong>v<span id="settingsAppVersion"></span></strong><br>
         Chrome / Edge では、一度保存先を選ぶとその後の変更は自動的に同じファイルへ上書き保存されます。
       </p>
     </div>
@@ -768,6 +774,11 @@
    ・祝日/振替休日を年度から自動計算(先頭列で個別に上書き可)
    ・File System Access API でローカルの .dat(JSON)に保存/自動保存
    ============================================================ */
+
+// アプリのバージョン表示用。日付形式(YYYY-MM-DD)で、機能追加・修正のたびに更新する。
+// 画面右上のバッジに表示するほか、保存時に.datファイルのmetaにも書き込まれるため、
+// 「このファイルはいつの時点のアプリで保存されたか」も後から確認できる。
+const APP_VERSION = '2026-09-09';
 
 const DOW = ['日','月','火','水','木','金','土'];
 
@@ -1142,6 +1153,36 @@ function anySchoolDay(y,m,d){
 //////////////////////// ファイル入出力 ////////////////////////
 const supportsFSA = 'showSaveFilePicker' in window;
 
+// 「設定」タブ内の表示と、常に見える画面右上のバッジの両方に、現在開いているファイル名を反映する。
+function setCurrentFileDisplay(text){
+  document.getElementById('currentFileName').textContent = text;
+  const tag = document.getElementById('currentFileTag');
+  if(tag) tag.textContent = '📄 ' + text;
+}
+// 保存するたびに、.datファイル自体にもアプリのバージョンと保存日時を記録しておく。
+// これにより、後からファイルを開いたときに「いつの時点のアプリで保存されたか」が分かる。
+function stampSaveMeta(){
+  if(!state.meta) return;
+  state.meta.savedAppVersion = APP_VERSION;
+  state.meta.savedAt = new Date().toISOString();
+}
+// 「設定」タブに、このファイルが最後にどのアプリのバージョンで保存されたかを表示する。
+function updateFileVersionInfo(){
+  const el = document.getElementById('fileSavedVersionInfo');
+  const verEl = document.getElementById('settingsAppVersion');
+  if(verEl) verEl.textContent = APP_VERSION;
+  if(!el) return;
+  const v = state.meta && state.meta.savedAppVersion;
+  const at = state.meta && state.meta.savedAt;
+  if(!v){ el.textContent = '(このファイルはまだ保存されていないか、バージョン情報のない古い保存です)'; return; }
+  let atText = '';
+  if(at){
+    const d = new Date(at);
+    if(!isNaN(d.getTime())) atText = ` (${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())})`;
+  }
+  el.textContent = `v${v}${atText}`;
+}
+
 function setStatus(text, cls){
   const el = document.getElementById('status');
   el.textContent = text; el.className = cls||''; el.title = text;
@@ -1174,10 +1215,12 @@ function scheduleAutosave(){
   autosaveTimer = setTimeout(()=>{ writeToHandle(fileHandle).catch(e=>{ setStatus('自動保存に失敗しました: '+e.message, 'dirty'); }); }, 700);
 }
 async function writeToHandle(handle){
+  stampSaveMeta();
   const writable = await handle.createWritable();
   await writable.write(JSON.stringify(state));
   await writable.close();
   markSaved();
+  updateFileVersionInfo();
   maybeRunBackup();
 }
 // 「開く」「名前を付けて保存」のダイアログを開く際、前回使ったファイルと同じフォルダを
@@ -1204,7 +1247,7 @@ async function doSaveAs(){
       await rememberLastFileHandle(handle);
       await writeToHandle(handle);
       document.getElementById('btnSave').disabled = !editUnlocked;
-      document.getElementById('currentFileName').textContent = handle.name;
+      setCurrentFileDisplay(handle.name);
       document.getElementById('noFileBanner').style.display='none';
     }catch(e){ if(e.name!=='AbortError') alert('保存できませんでした: '+e.message); }
   } else { downloadFallback(); }
@@ -1639,7 +1682,8 @@ function loadSampleDataInMemory(){
   editUnlocked = false;
   dirty = false;
   setStatus('サンプルデータ(未保存・保存先は未設定です)', 'dirty');
-  document.getElementById('currentFileName').textContent = '(サンプルデータ・保存先未設定)';
+  setCurrentFileDisplay('(サンプルデータ・保存先未設定)');
+  updateFileVersionInfo();
   applyLockUI();
   applyColorSettings();
   renderDatalists();
@@ -1793,6 +1837,7 @@ async function maybeRunBackup(){
 setInterval(maybeRunBackup, 5*60*1000); // 長時間操作がない場合にも対応するため5分おきに確認
 
 function downloadFallback(){
+  stampSaveMeta();
   const blob = new Blob([JSON.stringify(state)], {type:'application/octet-stream'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1800,6 +1845,7 @@ function downloadFallback(){
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
   markSaved();
+  updateFileVersionInfo();
 }
 async function doOpen(){
   if(supportsFSA){
@@ -1814,7 +1860,7 @@ async function doOpen(){
       fileHandle = handle;
       await rememberLastFileHandle(handle);
       document.getElementById('btnSave').disabled = !editUnlocked;
-      document.getElementById('currentFileName').textContent = handle.name;
+      setCurrentFileDisplay(handle.name);
       document.getElementById('noFileBanner').style.display='none';
     }catch(e){ if(e.name!=='AbortError') alert('開けませんでした: '+e.message); }
   } else {
@@ -1823,7 +1869,7 @@ async function doOpen(){
     inp.onchange = async ()=>{
       if(!inp.files[0]) return;
       loadStateFromText(await inp.files[0].text());
-      document.getElementById('currentFileName').textContent = inp.files[0].name + '(自動上書き不可・保存し直してください)';
+      setCurrentFileDisplay(inp.files[0].name + '(自動上書き不可・保存し直してください)');
       document.getElementById('noFileBanner').style.display='none';
     };
     inp.click();
@@ -1842,6 +1888,7 @@ function loadStateFromText(text){
     applyLockUI();
     applyColorSettings();
     markSaved();
+    updateFileVersionInfo();
     renderDatalists();
     refreshAll();
   }catch(e){ alert('読み込みに失敗しました: '+e.message); }
@@ -1857,7 +1904,7 @@ async function openHandleAsCurrentFile(handle){
   fileHandle = handle;
   await rememberLastFileHandle(handle);
   document.getElementById('btnSave').disabled = !editUnlocked;
-  document.getElementById('currentFileName').textContent = handle.name;
+  setCurrentFileDisplay(handle.name);
   document.getElementById('noFileBanner').style.display = 'none';
 }
 async function tryAutoLoadLastFile(){
@@ -3494,6 +3541,7 @@ function fitPreviewCells(wrapId){
 
 //////////////////////// 設定タブ ////////////////////////
 function renderSettingsTab(){
+  updateFileVersionInfo();
   document.getElementById('setSchoolName').value = state.meta.schoolName || '';
   document.getElementById('setVersionLabelMonthly').value = state.meta.versionLabelMonthly || '';
   document.getElementById('setVersionLabelAnnual').value = state.meta.versionLabelAnnual || '';
@@ -3897,6 +3945,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-09</strong>: 画面右上に、現在開いているファイル名とアプリのバージョン(日付)を常に表示するように変更。「設定」タブの「データファイル」欄には、そのファイルが最後にどのバージョン・日時で保存されたかも表示されます。</li>
     <li><strong>2026-09-09</strong>: 本体ファイル名を「index.html」に統一(旧「行事予定管理アプリ_Phase1.html」)。アプリを開いたときに、前回「開く」または「保存」で使ったファイルを自動的に読み込むように変更。許可が残っていればファイルを選び直さずそのまま最新のデータが表示され、許可が切れている場合だけ画面上部のボタンを1回押せば開ける(ブラウザの仕様上、許可を毎回自動で行うことはできません)。</li>
     <li><strong>2026-09-08</strong>: 「給食」欄をチェックボックスから自由入力(候補選択つき)に変更。これまでチェックボックスでは○しか入力できず、×・弁(お弁当)は画面から入力できなかったが、他の自由入力欄と同じ方式にしたことで○・×・弁のいずれも入力できるようになった。「設定」タブの「入力候補(プリセット)の編集」にも給食の候補一覧を追加。</li>
     <li><strong>2026-09-08</strong>: Excel出力右上の日付表示から「出力日」の文字を消し、日付だけを残すように変更。授業枠の「●」が数字より目立ちすぎて圧迫感があったため、●の時だけ少し小さいフォントサイズで表示するように変更。</li>
@@ -4395,6 +4444,8 @@ renderDatalists();
 applyLockUI();
 applyColorSettings();
 renderAgenda();
+document.getElementById('appVersionTag').textContent = 'v'+APP_VERSION;
+updateFileVersionInfo();
 tryAutoLoadLastFile();
 
 document.getElementById('btnResetWidths').addEventListener('click', ()=>{
