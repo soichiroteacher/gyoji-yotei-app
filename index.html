@@ -851,7 +851,7 @@
 // 同じ日に複数回更新した場合に見分けがつくよう、時刻まで含める。
 // 画面右上のバッジに表示するほか、保存時に.datファイルのmetaにも書き込まれるため、
 // 「このファイルはいつの時点のアプリで保存されたか」も後から確認できる。
-const APP_VERSION = '2026-09-10 13:34';
+const APP_VERSION = '2026-09-10 13:38';
 
 const DOW = ['日','月','火','水','木','金','土'];
 
@@ -3218,10 +3218,10 @@ function buildAnnualExportGrid(fy, audience){
     const base = i*3;
     const r0 = HEAD;
     // 画面表示(年間予定表タブ)と同じく、見出しは「日・曜・◯月行事」の1行にまとめる(◯月だけの行は作らない)
-    grid[r0][base] = {v:'日', style:XSTYLE.HEADER};
-    grid[r0][base+1] = {v:'曜', style:XSTYLE.HEADER};
-    // 見出しの下は左揃えの行事欄(LEFT_WRAP系)のため、見出し自体も左揃えにして縦のずれを無くす
-    grid[r0][base+2] = {v:`${m.month}月行事`, style:XSTYLE.HEADER_LEFT};
+    // 見出しラベルの揃え: 日・曜は左揃え、◯月行事は中央揃え(ユーザー指定、2026-09-10)
+    grid[r0][base] = {v:'日', style:XSTYLE.HEADER_LEFT};
+    grid[r0][base+1] = {v:'曜', style:XSTYLE.HEADER_LEFT};
+    grid[r0][base+2] = {v:`${m.month}月行事`, style:XSTYLE.HEADER};
 
     const dim = daysInMonth(m.year, m.month);
     for(let d=1; d<=maxDim; d++){
@@ -4405,6 +4405,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-10</strong>: 年間予定表Excel出力の見出しラベル(「日」「曜」「◯月行事」)の揃えを調整。「日」「曜」は左揃え、「◯月行事」は中央揃えに変更(見出し行のみ。日付・曜日のデータ欄は従来通り中央揃えのまま)。</li>
     <li><strong>2026-09-10</strong>: 年間予定表Excel出力で、月見出しの「◯月行事」ラベルが中央揃えのままその下の行事欄(左揃え)とずれて見えていた不具合を修正(見出しも左揃えに変更)。日・曜のデータ自体は元から正しく出力されていたことを確認済み。</li>
     <li><strong>2026-09-10</strong>: TODOにためていた項目をさらにまとめて対応。
       <ul>
