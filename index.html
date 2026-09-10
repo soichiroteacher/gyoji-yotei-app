@@ -786,7 +786,7 @@
         <span id="eventPickerAddMsg" style="font-size:12px;color:var(--warn);"></span>
       </div>
       <h4 style="margin:16px 0 4px;font-size:13px;color:var(--accent);">候補から選ぶ</h4>
-      <p style="font-size:12px;color:var(--ink-soft);margin:0 0 8px;">日程が決まっていない行事などを候補として一次保存しておき、日程が決まったらここから選べます。選ぶと、空いている枠(無ければ新しい枠)に反映されます(反映後は「保存して閉じる」を押してください)。使用済みの候補は薄く表示されます。「一斉委員会」のように何度も使う候補は、行の「くり返し使う」にチェックを入れておくと、使用済みでも一覧から隠れなくなります。</p>
+      <p style="font-size:12px;color:var(--ink-soft);margin:0 0 8px;">日程が決まっていない行事などを候補として一次保存しておき、日程が決まったらここから選べます。選ぶと、空いている枠(無ければ新しい枠)に反映されます(反映後は「保存して閉じる」を押してください)。一度選んだ候補は、既定では一覧から自動的に隠れます。「使用済みを隠す」のチェックを外すと、使用済みの候補も薄く表示されて確認できます。「一斉委員会」のように何度も使う候補は、行の「くり返し使う」にチェックを入れておくと、使用済みでも一覧から隠れなくなります。</p>
       <div class="field-row" style="margin-bottom:6px;gap:10px;">
         <input type="text" id="eventPickerCandSearch" placeholder="候補を検索" style="flex:1;font-size:13px;padding:5px 7px;box-sizing:border-box;font-family:inherit;">
         <label style="display:flex;align-items:center;gap:4px;font-size:12.5px;white-space:nowrap;">
@@ -849,7 +849,7 @@
 // 同じ日に複数回更新した場合に見分けがつくよう、時刻まで含める。
 // 画面右上のバッジに表示するほか、保存時に.datファイルのmetaにも書き込まれるため、
 // 「このファイルはいつの時点のアプリで保存されたか」も後から確認できる。
-const APP_VERSION = '2026-09-10 16:15';
+const APP_VERSION = '2026-09-10 19:35';
 
 const DOW = ['日','月','火','水','木','金','土'];
 
@@ -4426,6 +4426,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-10</strong>: 学校行事等の入力ウィンドウで、「候補から選ぶ」の「使用済みを隠す」を既定でONに変更。一度選んだ候補は自動的に一覧から隠れ、チェックを外せば従来通り薄い表示で確認できる。</li>
     <li><strong>2026-09-10</strong>: 登校日チェック済みの土曜日の網掛けを外す条件を、「いずれかの学年が登校」から「全学年が登校」に変更(年間・月間の画面表示・Excel出力とも)。一部の学年だけ登校する土曜(修学旅行等)は、網掛けを残すようにした。</li>
     <li><strong>2026-09-10</strong>: 「時数・集計」タブの「必要時数との比較」から「その他(手入力)」欄を削除。「教科(数字入力分の合計)」は①〜⑥の「1」〜「6」に加えて「●」も集計するように変更し、学年の標準時数合計との比較行を追加。</li>
     <li><strong>2026-09-10</strong>: 「給食」タブの給食実施日数パネルを、4月〜3月の月ごと+学期ごとの給食実施日数のみを表示するシンプルな形に変更(給食×・授業日数・給食ない日の内訳行と、月選択は廃止)。</li>
@@ -4537,7 +4538,7 @@ document.getElementById('helpBody').innerHTML = `
     <li>「企画会議」「職員会議」はチェックボックスで入れられます。チェックすると、教員用の会議・出張・研修欄に自動的に「企画会議」「職員会議」の文字が追加されます(自由入力の内容と合わせて表示されます)。</li>
     <li>「掃除」もチェックボックスです。何もしなければ平日は「あり」、土曜・日曜・祝日は「なし」に自動でなります。手動でチェックを変更した場合はその状態が優先されます。月間予定表(教員用・家庭用)には「掃除」欄があり、いずれかの学年が登校日で、かつ「なし」の日だけ×が表示されます(それ以外は空欄。全学年とも登校日でない日は、掃除の有無にかかわらず空欄になります)。</li>
     <li>「放課後」欄も、空欄のまま=「活動あり」として扱われます。活動がない日や、再登校の時刻など特記事項がある日だけ「×」「再登校15:00〜」のように入力してください。従来通り自由な文章の入力もできます。</li>
-    <li>「学校行事等(共通・年間/共通・月間のみ/教員のみ・年間/教員のみ・月間のみ)」欄はクリックすると入力用のウィンドウが開きます。枠は最初1つですが「＋ 枠を追加」で増やせるので、複数の行事をそれぞれ別の枠に入力してから、保存時に1つにまとめられます。「候補から選ぶ」で日程が決まっていない行事などをあらかじめ「候補に追加」しておき、日程が決まったら選んで(空いている枠、無ければ新しい枠に)反映できます。候補は削除するまで残り、複数の日で繰り返し使えます(使用済みの候補は薄く表示され、使用回数も確認できます)。</li>
+    <li>「学校行事等(共通・年間/共通・月間のみ/教員のみ・年間/教員のみ・月間のみ)」欄はクリックすると入力用のウィンドウが開きます。枠は最初1つですが「＋ 枠を追加」で増やせるので、複数の行事をそれぞれ別の枠に入力してから、保存時に1つにまとめられます。「候補から選ぶ」で日程が決まっていない行事などをあらかじめ「候補に追加」しておき、日程が決まったら選んで(空いている枠、無ければ新しい枠に)反映できます。候補は削除するまで残り、複数の日で繰り返し使えます(一度選んだ候補は既定では一覧から隠れますが、「使用済みを隠す」のチェックを外せば薄い表示で確認でき、使用回数も分かります)。</li>
     <li>「設定」タブの年度の下にある「(前年度)の行事を候補に追加」ボタンを押すと、前年度分の「学校行事等(共通・年間)」に入力済みの内容をまとめて候補に登録できます。年度を切り替えて新しい年度の予定を組む際に便利です(既にある候補と同じ内容は追加されません)。</li>
     <li>列の並びは元のExcel(4月職・4月生シート)を基本にしつつ、上記の欄を追加しています。「給食」の右にある「登校日」列は、学年ごとに登校日かどうかを判定するためのチェックボックスです(このアプリで追加した列です)。</li>
     <li>「給食」欄は自由入力です(○・×・弁の3パターンに対応するため、チェックボックスではなく「放課後」欄などと同じ自由入力+候補選択の方式にしています)。クリックすると出る候補から選ぶか、直接入力してください。候補の内容は「設定」タブの「入力候補(プリセット)の編集」から変更できます。</li>
@@ -4664,7 +4665,7 @@ document.getElementById('memoSave').addEventListener('click', ()=>{
 let eventPickerKey = null, eventPickerField = null, eventPickerBoxValues = [''];
 let eventPickerUsedCandidateIds = new Set(); // このモーダルを開いている間に候補から選んだもの(保存時にまとめて使用回数を増やす)
 let eventPickerInitialSnapshot = ''; // 開いた時点の内容(未保存で閉じようとした時の確認に使用)
-let eventPickerHideUsed = false; // 「使用済みを隠す」チェックの状態(モーダルを開くたびにリセット)
+let eventPickerHideUsed = true; // 「使用済みを隠す」チェックの状態(モーダルを開くたびにリセット。既定でON)
 let eventPickerCandSearch = ''; // 候補検索欄の入力内容(モーダルを開くたびにリセット)
 function openEventPickerModal(key, field, fieldLabel, dayLabel){
   eventPickerKey = key;
@@ -4681,9 +4682,9 @@ function openEventPickerModal(key, field, fieldLabel, dayLabel){
   if(eventPickerBoxValues.length===0) eventPickerBoxValues = [''];
   eventPickerInitialSnapshot = JSON.stringify(eventPickerBoxValues.map(v=>v.trim()).filter(Boolean));
   document.getElementById('eventPickerAddMsg').textContent = '';
-  eventPickerHideUsed = false;
+  eventPickerHideUsed = true;
   eventPickerCandSearch = '';
-  document.getElementById('eventPickerHideUsed').checked = false;
+  document.getElementById('eventPickerHideUsed').checked = true;
   document.getElementById('eventPickerCandSearch').value = '';
   renderEventPickerBoxes();
   renderEventCandidateList();
