@@ -333,6 +333,7 @@
           <div id="scheduleSearchResults" class="search-results"></div>
         </div>
         <div class="spacer"></div>
+        <button id="btnBulkAttendFill" class="ghost tiny" style="font-size:12px;padding:5px 10px;">登校日へまとめて入力</button>
         <button id="btnResetWidths" class="ghost tiny" style="font-size:12px;padding:5px 10px;">列幅をリセット</button>
       </div>
       <div class="grid-topscroll" id="gridTopScroll"><div id="gridTopScrollInner"></div></div>
@@ -656,6 +657,40 @@
     <div class="modal-foot">
       <button id="weeklyDutyCancel">キャンセル</button>
       <button class="primary" id="weeklyDutyApply">この週に適用</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="bulkAttendFillOverlay">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head">
+      <h3>登校日へまとめて入力</h3>
+      <button class="ghost" id="bulkAttendFillClose">✕ 閉じる</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">現在表示中の月で、いずれかの学年の「登校日」にチェックが入っている日に、まとめて入力します。入れる項目にチェックを入れてから「この内容で適用」を押してください。</p>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13.5px;margin-bottom:6px;">
+        <input type="checkbox" id="bafPeriods" checked>授業を入れる(①〜⑥。登校する学年のみ。すでに入力済みのマスは変更しません)
+      </label>
+      <div id="bafPeriodsInputs" style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:0 0 14px 26px;">
+        <input type="text" class="baf-period-input" data-idx="0" list="dl-period" placeholder="①" style="width:100%;padding:6px 4px;font-size:13px;box-sizing:border-box;text-align:center;">
+        <input type="text" class="baf-period-input" data-idx="1" list="dl-period" placeholder="②" style="width:100%;padding:6px 4px;font-size:13px;box-sizing:border-box;text-align:center;">
+        <input type="text" class="baf-period-input" data-idx="2" list="dl-period" placeholder="③" style="width:100%;padding:6px 4px;font-size:13px;box-sizing:border-box;text-align:center;">
+        <input type="text" class="baf-period-input" data-idx="3" list="dl-period" placeholder="④" style="width:100%;padding:6px 4px;font-size:13px;box-sizing:border-box;text-align:center;">
+        <input type="text" class="baf-period-input" data-idx="4" list="dl-period" placeholder="⑤" style="width:100%;padding:6px 4px;font-size:13px;box-sizing:border-box;text-align:center;">
+        <input type="text" class="baf-period-input" data-idx="5" list="dl-period" placeholder="⑥" style="width:100%;padding:6px 4px;font-size:13px;box-sizing:border-box;text-align:center;">
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13.5px;margin-bottom:6px;">
+        <input type="checkbox" id="bafCleaning" checked>掃除を「あり」にする
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13.5px;margin-bottom:14px;">
+        <input type="checkbox" id="bafLunch" checked>給食を「あり(○)」にする(登校する学年のみ)
+      </label>
+      <div id="bafPreview" style="font-size:12.5px;color:var(--ink-soft);background:var(--accent-soft);border-radius:6px;padding:8px 10px;"></div>
+    </div>
+    <div class="modal-foot">
+      <button id="bafCancel">キャンセル</button>
+      <button class="primary" id="bafApply">この内容で適用</button>
     </div>
   </div>
 </div>
@@ -1460,7 +1495,7 @@ function buildXlsxStyles(){
   const nonschoolRgb = 'FF' + lightenHex((state.colors && state.colors.holiday || 'D9D9D9'), 0.6);
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<fonts count="4"><font><sz val="10"/><name val="Yu Mincho"/></font><font><b/><sz val="10"/><name val="Yu Mincho"/></font><font><b/><sz val="14"/><name val="Yu Mincho"/></font><font><sz val="9"/><name val="Yu Mincho"/></font></fonts>
+<fonts count="5"><font><sz val="10"/><name val="Yu Mincho"/></font><font><b/><sz val="10"/><name val="Yu Mincho"/></font><font><b/><sz val="14"/><name val="Yu Mincho"/></font><font><sz val="9"/><name val="Yu Mincho"/></font><font><b/><sz val="10"/><name val="MS Gothic"/></font></fonts>
 <fills count="8"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="FFEFEFEF"/><bgColor indexed="64"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="${holidayRgb}"/><bgColor indexed="64"/></patternFill></fill>
@@ -1471,14 +1506,14 @@ function buildXlsxStyles(){
 <borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>
 <border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border></borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="26">
+<cellXfs count="29">
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" shrinkToFit="1"/></xf>
-<xf numFmtId="0" fontId="1" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="4" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" textRotation="255"/></xf>
@@ -1498,13 +1533,17 @@ function buildXlsxStyles(){
 <xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="top" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
 }
 
 const XSTYLE = { HEADER:1, CENTER:2, LEFT:3, HOLIDAY_CENTER:4, HOLIDAY_LEFT:5, SUMMARY:6, TITLE:7, DATE:8, HEADER_VERT:9, LEFT_SMALL:10, HOLIDAY_LEFT_SMALL:11, CENTER_VERT:12, HOLIDAY_CENTER_VERT:13, ABSENT_CENTER:14, TITLE_REF:15, NONSCHOOL_CENTER:16, NONSCHOOL_LEFT:17, NONSCHOOL_LEFT_SMALL:18,
-  CENTER_TOP:19, LEFT_TOP:20, HOLIDAY_CENTER_TOP:21, HOLIDAY_LEFT_TOP:22, NONSCHOOL_CENTER_TOP:23, NONSCHOOL_LEFT_TOP:24, TITLE_WRAP:25 };
+  CENTER_TOP:19, LEFT_TOP:20, HOLIDAY_CENTER_TOP:21, HOLIDAY_LEFT_TOP:22, NONSCHOOL_CENTER_TOP:23, NONSCHOOL_LEFT_TOP:24, TITLE_WRAP:25,
+  LEFT_WRAP:26, HOLIDAY_LEFT_WRAP:27, NONSCHOOL_LEFT_WRAP:28 };
 
 function buildWorkbookXml(sheetNames){
   const sheets = sheetNames.map((name,i)=>`<sheet name="${xmlEscape(name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('');
@@ -1538,10 +1577,13 @@ function buildSheetXml(grid, merges, colWidths, pageOpts){
   grid.forEach((row,ri)=>{
     // タイトル・サブタイトル行(先頭2行)は14pt太字を含むため、既定の15ptだと文字が
     // はみ出して次の行(出力日など)に重なって隠れてしまう。行の高さを広げて防ぐ。
-    // 3・4行目(見出し帯)は「掃除」「週番」などの縦書き見出しが窮屈にならないよう少し広げる。
+    // 見出し帯(既定2行。「掃除」「週番」などの縦書き見出しが窮屈にならないよう少し広げる)は、
+    // 呼び出し側からpageOpts.headerRowCountで行数を変更できる(年間予定表は見出し1行のため)。
     // タイトル行(2行に折り返す場合)・本文行(年間予定表で行を広げたい場合)は、
     // 呼び出し側からpageOpts.titleRowHeight / pageOpts.bodyRowHeightで個別に上書きできる。
-    const rowHeight = ri===0 ? (pageOpts.titleRowHeight || 22) : (ri<2 ? 22 : (ri<4 ? 20 : (pageOpts.bodyRowHeight || 15)));
+    const headerRowCount = pageOpts.headerRowCount!=null ? pageOpts.headerRowCount : 2;
+    const headerBandEnd = 2 + headerRowCount;
+    const rowHeight = ri===0 ? (pageOpts.titleRowHeight || 22) : (ri<2 ? 22 : (ri<headerBandEnd ? 20 : (pageOpts.bodyRowHeight || 15)));
     xml += `<row r="${ri+1}" ht="${rowHeight}" customHeight="1">`;
     row.forEach((cell,ci)=>{
       if(cell==null) return;
@@ -2849,8 +2891,9 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
     if(c.key==='meeting') return 14;
     if(c.key==='cleaning' || c.key==='weeklyDuty') return 4;
     if(c.key==='club') return 6;
-    if(c.grpLunch) return 3;
-    if(c.grade) return 2.5;
+    // 「1年」「2年」「3年」(給食)の見出しが2文字あるため、給食欄はセルからはみ出さない幅を確保する
+    if(c.grpLunch) return 4.5;
+    if(c.grade) return 2.8;
     return 9;
   }));
   if(extraCols>0) colWidths.push(3,3,40);
@@ -2946,7 +2989,7 @@ function buildAnnualExportGrid(fy, audience){
 
   const totalCols = months.length*3;
   const HEAD = 2; // タイトル2行分のオフセット
-  const totalRows = HEAD + 2 + maxDim + 3; // タイトル2行 + 見出し2行 + 日付31行 + 年計/学期計/月計
+  const totalRows = HEAD + 1 + maxDim + 3; // タイトル2行 + 見出し1行(日・曜・◯月行事) + 日付31行 + 年計/学期計/月計
   const grid = [];
   for(let r=0;r<totalRows;r++) grid.push(new Array(totalCols).fill(null));
   const merges = [];
@@ -2956,8 +2999,8 @@ function buildAnnualExportGrid(fy, audience){
   const stamp = formatWarekiDate(today);
   const audienceLabel = audience==='teacher' ? '教職員用' : '家庭用';
   const annualVersionLabel = (state.meta.versionLabelAnnual||'').trim();
-  const titleLine1 = `令和${reiwa}年度\u3000${state.meta.schoolName || '(学校名未設定)'}`;
-  const titleLine2 = `年間行事予定(${audienceLabel})` + (annualVersionLabel ? `\u3000${annualVersionLabel}` : '');
+  const titleLine1 = `令和${reiwa}年度　${state.meta.schoolName || '(学校名未設定)'}`;
+  const titleLine2 = `年間行事予定(${audienceLabel})` + (annualVersionLabel ? `　${annualVersionLabel}` : '');
   grid[0][0] = {v:`${titleLine1}\n${titleLine2}`, style:XSTYLE.TITLE_WRAP};
   merges.push(`${colLetter(1)}1:${colLetter(totalCols)}1`);
   grid[1][0] = {v:'', style:XSTYLE.TITLE};
@@ -2972,17 +3015,14 @@ function buildAnnualExportGrid(fy, audience){
   months.forEach((m,i)=>{
     const base = i*3;
     const r0 = HEAD;
-    grid[r0][base] = {v:`${m.month}月`, style:XSTYLE.HEADER};
-    grid[r0][base+1] = {v:'', style:XSTYLE.HEADER}; // 結合セルの陰。罫線を揃えるために空セルを置く
-    grid[r0][base+2] = {v:'', style:XSTYLE.HEADER};
-    merges.push(`${colLetter(base+1)}${r0+1}:${colLetter(base+3)}${r0+1}`);
-    grid[r0+1][base] = {v:'日', style:XSTYLE.HEADER};
-    grid[r0+1][base+1] = {v:'曜', style:XSTYLE.HEADER};
-    grid[r0+1][base+2] = {v:'年間行事', style:XSTYLE.HEADER};
+    // 画面表示(年間予定表タブ)と同じく、見出しは「日・曜・◯月行事」の1行にまとめる(◯月だけの行は作らない)
+    grid[r0][base] = {v:'日', style:XSTYLE.HEADER};
+    grid[r0][base+1] = {v:'曜', style:XSTYLE.HEADER};
+    grid[r0][base+2] = {v:`${m.month}月行事`, style:XSTYLE.HEADER};
 
     const dim = daysInMonth(m.year, m.month);
     for(let d=1; d<=maxDim; d++){
-      const rIdx = r0+1+d;
+      const rIdx = r0+d;
       if(d>dim){
         // その月には存在しない日。罫線だけ揃えて空セルにする(原本と同様、枠だけ残す)
         grid[rIdx][base] = {v:'', style:XSTYLE.CENTER};
@@ -2993,19 +3033,23 @@ function buildAnnualExportGrid(fy, audience){
       const dow = new Date(m.year, m.month-1, d).getDay();
       const status = getDayStatus(m.year, m.month, d);
       const rec = migrateDayRecord(state.days[dkey(m.year,m.month,d)]);
-      const shaded = isShadedDay(status, dow);
+      let shaded = isShadedDay(status, dow);
+      // 登校日にチェックが入っている(実際に登校する学年がある)土曜は、休業日と同じ網掛けにしない
+      if(shaded && !status.isHoliday && dow===6 && anySchoolDay(m.year, m.month, d)) shaded = false;
       const nonschool = !shaded && isNonSchoolDay(status, dow, m.year, m.month, d);
-      // 行の高さを広げたぶん、日・曜・年間行事は上端そろえにする(画面表示と同じ考え方)
-      const cS = shaded ? XSTYLE.HOLIDAY_CENTER_TOP : nonschool ? XSTYLE.NONSCHOOL_CENTER_TOP : XSTYLE.CENTER_TOP;
-      const lS = shaded ? XSTYLE.HOLIDAY_LEFT_TOP : nonschool ? XSTYLE.NONSCHOOL_LEFT_TOP : XSTYLE.LEFT_TOP;
+      // 日・曜は上下左右中央揃え、年間行事欄は折り返し表示にする
+      const cS = shaded ? XSTYLE.HOLIDAY_CENTER : nonschool ? XSTYLE.NONSCHOOL_CENTER : XSTYLE.CENTER;
+      const lS = shaded ? XSTYLE.HOLIDAY_LEFT_WRAP : nonschool ? XSTYLE.NONSCHOOL_LEFT_WRAP : XSTYLE.LEFT_WRAP;
       grid[rIdx][base] = {v:d, num:true, style:cS};
       grid[rIdx][base+1] = {v:DOW[dow], style:cS};
       grid[rIdx][base+2] = {v:annualEventText(rec, opts, status, audience), style:lS};
     }
-    const sumRowBase = r0+2+maxDim;
+    const sumRowBase = r0+1+maxDim;
     const [y1,y2,y3] = yearCum[i], [t1,t2,t3] = termCum[i], [mo1,mo2,mo3] = monthly[i];
     // ラベルの文字数(2字/3字)と数値の桁数がそろわないと①②③の位置がずれるため、
     // ラベルは3字幅(全角スペースで埋める)、数値は3桁幅(半角スペースで埋める)にそろえる。
+    // このセルはプロポーショナルフォントだと空白の幅が数字と揃わずずれて見えるため、
+    // XSTYLE.SUMMARYは等幅系フォント(MS Gothic)を使うようにしてある。
     const padLabel3 = s => s.length<3 ? s+'　'.repeat(3-s.length) : s;
     const padNum3 = n => String(n).padStart(3,' ');
     const sumLine = (label,v1,v2,v3) => `${padLabel3(label)} ①${padNum3(v1)}②${padNum3(v2)}③${padNum3(v3)}`;
@@ -3031,9 +3075,9 @@ function exportAnnualXlsx(audience){
   const fy = state.meta.fiscalYear;
   const {grid, merges, colWidths} = buildAnnualExportGrid(fy, audience);
   const label = audience==='teacher' ? '教員用' : '家庭用';
-  // A3いっぱいに収まるよう、横長ではなく縦長(portrait)で出力する。日・曜の列は狭くして年間行事欄を広く見せる。
+  // 印刷の既定を横向き(landscape)にする。日・曜の列は狭くして年間行事欄を広く見せる。
   // タイトルは2行になるため行の高さを広げ、日ごとの行も画面表示と同程度(約1.8倍)に広げる。
-  const bytes = buildXlsxBytes([{name:'年間予定表', grid, merges, colWidths, pageOpts:{paperSize:8, orientation:'portrait', titleRowHeight:44, bodyRowHeight:26}}]);
+  const bytes = buildXlsxBytes([{name:'年間予定表', grid, merges, colWidths, pageOpts:{paperSize:8, orientation:'landscape', titleRowHeight:44, bodyRowHeight:26, headerRowCount:1}}]);
   downloadBytes(bytes, `${state.meta.schoolName||'行事予定'}_年間予定表_${label}.xlsx`);
 }
 
@@ -3645,7 +3689,10 @@ function renderAnnualPreview(audience){
       const status = getDayStatus(year,month,d);
       const dow = new Date(year,month-1,d).getDay();
       const rec = migrateDayRecord(state.days[dkey(year,month,d)]);
-      const rowCls = isShadedDay(status, dow) ? 'pv-holiday' : (isNonSchoolDay(status, dow, year, month, d) ? 'pv-nonschool' : '');
+      let shaded = isShadedDay(status, dow);
+      // 登校日にチェックが入っている(実際に登校する学年がある)土曜は、休業日と同じ網掛けにしない
+      if(shaded && !status.isHoliday && dow===6 && anySchoolDay(year, month, d)) shaded = false;
+      const rowCls = shaded ? 'pv-holiday' : (isNonSchoolDay(status, dow, year, month, d) ? 'pv-nonschool' : '');
       html += `<tr class="${rowCls}"><td class="pv-daynum">${d}</td><td class="pv-dow">${DOW[dow]}</td><td class="pv-events">${annualEventHtml(rec, opts, status, audience)}</td></tr>`;
     }
     const [y1,y2,y3] = yearCum[i];
@@ -4104,6 +4151,13 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-10</strong>: TODOにためていた項目をまとめて対応。
+      <ul>
+        <li>年間予定表Excel出力: 印刷の既定を横向きに変更。見出しを画面表示と同じ「日・曜・◯月行事」の3列にまとめ、上の「◯月」だけの行を削除。日・曜セルは上下左右中央揃えに、年間行事欄は文字を縮小せず折り返して表示するように変更。年計・学期計・月計の①②③の数字がずれる問題を、等幅系フォントに変更して解消。登校日にチェックが入っている(実際に登校する)土曜日は、画面表示と同じく休業日の網掛けを付けないように修正。</li>
+        <li>月間予定表Excel出力: 「給食」の下の「1年・2年・3年」見出しがセルからはみ出す問題を、列幅を広げて修正(授業コマの列幅も少し広げた)。</li>
+        <li>年間予定入力タブに「登校日へまとめて入力」ボタンを追加。現在表示中の月で、いずれかの学年の登校日にチェックが入っている日に、授業(登校する学年の空欄のみ)・掃除・給食をまとめて入力できる。対象日数を確認してから項目を選んで適用する(Ctrl+Zで一括して元に戻せる)。</li>
+      </ul>
+    </li>
     <li><strong>2026-09-09</strong>: 土曜日でも、いずれかの学年の「登校日」にチェックが入っている(=実際に登校する)日は、青い網掛けを付けないように修正。以前はチェックの有無にかかわらず、土曜は一律で青い網掛けになっていた。</li>
     <li><strong>2026-09-09</strong>: 自動保存の書き込み間隔を延長(700ms→2.5秒)。保存先がGoogleドライブ等の同期フォルダの場合、入力のたびに書き込みが走ると同期処理と競合してカクつき・フリーズすることがあるため、書き込み回数自体を減らした。年間予定表(教員用・家庭用)の見出しを「日・曜・◯月行事」の3列だけにし、上にあった「◯月」の行を削除。年間行事・月間行事の文字色(緑・茶色)と、年間予定入力タブの「登校日」チェックの色を外し、標準的な見た目に変更。月間予定表(教員用・家庭用)にも「◀」「▶」で月を移動するボタンを追加。年間予定表のExcel出力について、行の高さを画面表示と同程度(約1.8倍)に拡大、タイトルを学校名の後で改行して2行表示(1行目: 年度・学校名、2行目: 年間行事予定・版表記)に変更、日・曜の位置を内容の上端にそろえるよう修正。</li>
     <li><strong>2026-09-09</strong>: 年間予定入力タブに、元に戻す(<strong>Ctrl+Z</strong>)・やり直す(<strong>Ctrl+Y</strong>)機能を追加。入力・貼り付け・削除・週番一括入力・メモ・学校行事等の入力など、日ごとのデータの変更を最大50回分さかのぼれます。</li>
@@ -4167,6 +4221,7 @@ document.getElementById('helpBody').innerHTML = `
     <li><strong>Ctrl+Z</strong>で直前の入力・貼り付け・削除・週番一括入力・メモ・学校行事等の入力を1つ前に戻せます(最大50回分)。<strong>Ctrl+Y</strong>(または<strong>Ctrl+Shift+Z</strong>)でやり直せます。対象は年間予定入力タブの日ごとのデータのみで、学校名などの「設定」タブの内容は対象外です。ファイルを開き直す・保存先を切り替えると履歴はリセットされます。</li>
     <li>列見出しの右端をドラッグすると列の幅を変えられます(画面に入りきらない場合に調整してください)。「設定」タブの「列幅をリセット」で既定の幅に戻せます。</li>
     <li>「週番をまとめて入力」ボタンから、現在表示中の月にかかる週を一覧から選び、内容を入力すると、その週の月〜金(休業日を除く)にまとめて同じ週番を入力できます。入力候補は「設定」タブの入力候補編集と共通です。どの日に反映されるかは画面上で確認してから適用できます。「月全体に順番で割り当て」を選ぶと、「1年、2年、3年」のように読点区切りで指定した内容を、今月の各週に順番(足りなくなったら最初に戻る)で一括入力できます。なお、年間予定入力のマス自体は常に1日ずつ分かれています(結合されるのは「月間予定表(教員用)」の画面表示とExcel出力のみです)。</li>
+    <li>月選択の右にある「登校日へまとめて入力」ボタンから、現在表示中の月で、いずれかの学年の「登校日」にチェックが入っている日に、授業(①〜⑥)・掃除・給食をまとめて入力できます。対象になる日数はボタンを押すと表示されるので、確認してから項目を選んで適用してください。授業は登校する学年の欄にのみ、かつ既に何か入力済みのマスは変更せず空欄だけに入力します。掃除・給食は対象の日・学年に一律で「あり」を設定します。</li>
     <li>年間予定入力タブの月選択の右にある検索欄に文字を入力すると、「体育祭」のように入力した文字を含む行事等・会議・放課後・週番・メモを、年度内のすべての月から探して一覧表示します。結果をクリックするとその日・その欄までジャンプします。</li>
     <li>放課後・給食・授業日課・週番の入力候補(クリックした時に出る候補)は「設定」タブの「入力候補(プリセット)の編集」から自由に変更できます。</li>
     <li>学校行事等は4つの欄に分かれています。「共通・年間」(年間予定表にも掲載予定、太字の緑で表示)、「共通・月間のみ」(月の予定表のみに掲載)、「教員のみ・年間」(教員用の年間予定表にのみ掲載)、「教員のみ・月間のみ」(教員用にのみ掲載、オレンジで表示)。載せたい範囲に応じて入力する欄を選んでください。</li>
@@ -4806,6 +4861,83 @@ document.getElementById('weeklyDutyApply').addEventListener('click', ()=>{
     closeWeeklyDutyModal();
     alert(`${weeks.length}週・${totalFilled}日に入力しました。${totalSkipped>0 ? `(休業日 ${totalSkipped}日は対象外にしました)`:''}`);
   }
+});
+
+//////////////////////// 登校日へまとめて入力(授業・掃除・給食) ////////////////////////
+// 現在表示中の月で、いずれかの学年の「登校日」にチェックが入っている日を対象に、
+// 授業(登校する学年のみ・空欄のマスだけ)・掃除・給食をまとめて入力する。
+function bulkAttendFillTargetDays(){
+  const {year,month} = currentSelectedYM();
+  const dim = daysInMonth(year,month);
+  const days = [];
+  for(let d=1; d<=dim; d++){
+    const grades = [1,2,3].filter(g=>isSchoolDay(year,month,d,g));
+    if(grades.length) days.push({year,month,d,grades});
+  }
+  return days;
+}
+function renderBulkAttendFillPreview(){
+  const days = bulkAttendFillTargetDays();
+  const perGrade = {1:0,2:0,3:0};
+  days.forEach(day=> day.grades.forEach(g=> perGrade[g]++));
+  const el = document.getElementById('bafPreview');
+  if(days.length===0){
+    el.textContent = '対象: 現在表示中の月に、登校日にチェックが入っている日がありません。';
+    return;
+  }
+  el.textContent = `対象: ${days.length}日(1年:${perGrade[1]}日 2年:${perGrade[2]}日 3年:${perGrade[3]}日)`;
+}
+function openBulkAttendFillModal(){
+  document.getElementById('bafPeriods').checked = true;
+  document.getElementById('bafCleaning').checked = true;
+  document.getElementById('bafLunch').checked = true;
+  document.querySelectorAll('.baf-period-input').forEach(inp=> inp.value = '');
+  renderBulkAttendFillPreview();
+  document.getElementById('bulkAttendFillOverlay').classList.add('show');
+}
+function closeBulkAttendFillModal(){ document.getElementById('bulkAttendFillOverlay').classList.remove('show'); }
+document.getElementById('btnBulkAttendFill').addEventListener('click', ()=>{
+  if(!editUnlocked){ openPasswordModal(); return; }
+  openBulkAttendFillModal();
+});
+document.getElementById('bulkAttendFillClose').addEventListener('click', closeBulkAttendFillModal);
+document.getElementById('bafCancel').addEventListener('click', closeBulkAttendFillModal);
+document.getElementById('bafApply').addEventListener('click', ()=>{
+  if(!editUnlocked) return;
+  const doPeriods = document.getElementById('bafPeriods').checked;
+  const doCleaning = document.getElementById('bafCleaning').checked;
+  const doLunch = document.getElementById('bafLunch').checked;
+  if(!doPeriods && !doCleaning && !doLunch){ alert('入れる項目を1つ以上選んでください。'); return; }
+  const periodValues = Array.from(document.querySelectorAll('.baf-period-input')).map(inp=>inp.value.trim());
+  const days = bulkAttendFillTargetDays();
+  if(days.length===0){ alert('対象の日(登校日にチェックが入っている日)がありません。'); return; }
+  captureUndoPoint();
+  let periodsFilled=0, cleaningFilled=0, lunchFilled=0;
+  days.forEach(({year,month,d,grades})=>{
+    const key = dkey(year,month,d);
+    const rec = migrateDayRecord(state.days[key]);
+    if(doCleaning){ setFieldValue(key, 'cleaning', true); cleaningFilled++; }
+    grades.forEach(g=>{
+      if(doLunch){ setFieldValue(key, 'lunchG'+g, '○'); lunchFilled++; }
+      if(doPeriods){
+        for(let i=0;i<6;i++){
+          const v = periodValues[i];
+          if(!v) continue;
+          const fieldKey = 'g'+g+'p'+(i+1);
+          if(getFieldValue(rec, null, fieldKey)) continue; // すでに入力済みのマスは変更しない
+          setFieldValue(key, fieldKey, v);
+          periodsFilled++;
+        }
+      }
+    });
+  });
+  markDirty();
+  renderAgenda();
+  closeBulkAttendFillModal();
+  alert(`${days.length}日に反映しました。${doCleaning?`(掃除: ${cleaningFilled}日)`:''}${doLunch?`(給食: ${lunchFilled}件)`:''}${doPeriods?`(授業: ${periodsFilled}コマ、入力済みのマスは変更していません)`:''}`);
+});
+document.getElementById('bafPeriods').addEventListener('change', (e)=>{
+  document.getElementById('bafPeriodsInputs').style.display = e.target.checked ? '' : 'none';
 });
 
 document.getElementById('btnChooseBackupFolder').addEventListener('click', chooseBackupFolder);
