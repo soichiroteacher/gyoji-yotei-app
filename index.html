@@ -849,7 +849,7 @@
 // 同じ日に複数回更新した場合に見分けがつくよう、時刻まで含める。
 // 画面右上のバッジに表示するほか、保存時に.datファイルのmetaにも書き込まれるため、
 // 「このファイルはいつの時点のアプリで保存されたか」も後から確認できる。
-const APP_VERSION = '2026-09-10 15:59';
+const APP_VERSION = '2026-09-10 16:12';
 
 const DOW = ['日','月','火','水','木','金','土'];
 
@@ -3772,7 +3772,7 @@ function renderStats(){
 
   // 必要時数との比較(学習指導要領)
   html += '<div class="panel"><h2>必要時数との比較(年間累計)</h2>';
-  html += '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">道徳・総合的な学習の時間・特別活動・音楽は①〜⑥欄の記号から自動集計、教科(国語・数学など)は上の「教科別実績の入力」の手入力値、「教科(数字入力分の合計)」は①〜⑥に数字(1〜6)を入力した回数の単純合計です(教科別の手入力とは別集計につき、目安としてご覧ください)。「設定」タブの「必要時数の編集」で必要時数を変更できます。</p>';
+  html += '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">道徳・総合的な学習の時間・特別活動・音楽は①〜⑥欄の記号から自動集計、教科(国語・数学など)は上の「教科別実績の入力」の手入力値、「教科等(数字・●入力分の合計)」は①〜⑥に「1」〜「6」または「●」を入力した回数の合計です(教科別の手入力とは別集計につき、目安としてご覧ください)。一番下の「合計」は、上記の自動集計分(道徳・総合・特別活動・音楽・数字/●入力分)を合わせた、学年の標準時数全体との比較です。「設定」タブの「必要時数の編集」で必要時数を変更できます。</p>';
   html += '<table class="stats-table"><thead><tr><th></th><th>1年 実績</th><th>1年 必要</th><th>1年 過不足</th><th>2年 実績</th><th>2年 必要</th><th>2年 過不足</th><th>3年 実績</th><th>3年 必要</th><th>3年 過不足</th></tr></thead><tbody>';
   function compareRow(label, actualFn, requiredKey){
     let row = `<tr><td>${label}</td>`;
@@ -3782,6 +3782,9 @@ function renderStats(){
       if(requiredKey==='__subjectTotal__'){
         const rh = state.requiredHours['g'+g];
         required = REQUIRED_HOURS_SUBJECTS.filter(s=>!['道徳','総合','特別活動'].includes(s)).reduce((s,sub)=>s+(Number(rh[sub])||0),0);
+      } else if(requiredKey==='__grandTotal__'){
+        const rh = state.requiredHours['g'+g];
+        required = REQUIRED_HOURS_SUBJECTS.reduce((s,sub)=>s+(Number(rh[sub])||0),0);
       } else {
         required = state.requiredHours['g'+g][requiredKey] || 0;
       }
@@ -3792,7 +3795,10 @@ function renderStats(){
     row += '</tr>';
     return row;
   }
-  const subjectSum = g => ['1','2','3','4','5','6'].reduce((s,code)=>s+(yearStats.periodTally[g][code]||0),0);
+  // ①〜⑥に「1」〜「6」または「●」(特別時間割)を入力した回数の合計。「行」(行事によるカット)・
+  // 「弁」(弁当)・「欠」(欠課)は授業時数ではないため含めない
+  const subjectSum = g => ['1','2','3','4','5','6','●'].reduce((s,code)=>s+(yearStats.periodTally[g][code]||0),0);
+  const autoTotal = g => (yearStats.periodTally[g]['道']||0) + (yearStats.periodTally[g]['総']||0) + (yearStats.periodTally[g]['学']||0) + (yearStats.periodTally[g]['音']||0) + subjectSum(g);
   html += compareRow('道徳', g=>yearStats.periodTally[g]['道']||0, '道徳');
   html += compareRow('総合的な学習の時間', g=>yearStats.periodTally[g]['総']||0, '総合');
   html += compareRow('特別活動(学級活動等)', g=>yearStats.periodTally[g]['学']||0, '特別活動');
@@ -3800,12 +3806,10 @@ function renderStats(){
   SUBJECT_ACTUAL_SUBJECTS.forEach(sub=>{
     html += compareRow(sub, g=>state.subjectActuals['g'+g][sub]||0, sub);
   });
-  html += compareRow('教科(数字入力分の合計)', subjectSum, '__subjectTotal__');
-  html += '<tr><td>その他(行事予定にのらない分・手入力)</td>' + ['g1','g2','g3'].map(g=>
-    `<td><input type="number" min="0" step="1" class="extra-hours-input" data-grade="${g}" style="width:56px;" value="${state.extraHours[g]}"></td><td>―</td><td>―</td>`
-  ).join('') + '</tr>';
+  html += compareRow('教科等(数字・●入力分の合計)', subjectSum, '__subjectTotal__');
+  html += compareRow('合計(標準時数との比較)', autoTotal, '__grandTotal__');
   html += '</tbody></table>';
-  html += '<small class="hint">「教科」必要時数は、必要時数合計から道徳・総合的な学習の時間・特別活動を除いた値(各教科の合計)です。「その他」は、行事予定として記録していない時間数(例: 記録に残していない準備時間など)を手入力で合算するための欄です(必要時数との比較対象ではありません)。</small>';
+  html += '<small class="hint">「教科」必要時数は、必要時数合計から道徳・総合的な学習の時間・特別活動を除いた値(各教科の合計)です。</small>';
   html += '</div>';
 
   wrap.innerHTML = html;
@@ -3816,17 +3820,6 @@ function renderStats(){
       const g = e.target.dataset.grade, sub = e.target.dataset.subject;
       const v = Number(e.target.value);
       state.subjectActuals[g][sub] = isNaN(v) || v<0 ? 0 : v;
-      markDirty();
-      renderStats();
-    });
-  });
-  wrap.querySelectorAll('.extra-hours-input').forEach(inp=>{
-    inp.disabled = !editUnlocked;
-    inp.addEventListener('change', (e)=>{
-      if(!editUnlocked) return;
-      const g = e.target.dataset.grade;
-      const v = Number(e.target.value);
-      state.extraHours[g] = isNaN(v) || v<0 ? 0 : v;
       markDirty();
       renderStats();
     });
@@ -4428,6 +4421,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-10</strong>: 「時数・集計」タブの「必要時数との比較」から「その他(手入力)」欄を削除。「教科(数字入力分の合計)」は①〜⑥の「1」〜「6」に加えて「●」も集計するように変更し、学年の標準時数合計との比較行を追加。</li>
     <li><strong>2026-09-10</strong>: 「給食」タブの給食実施日数パネルを、4月〜3月の月ごと+学期ごとの給食実施日数のみを表示するシンプルな形に変更(給食×・授業日数・給食ない日の内訳行と、月選択は廃止)。</li>
     <li><strong>2026-09-10</strong>: 基本的に白黒印刷になるとのことで、直前に追加した見出し・集計行の背景色(青・緑)を除去し、太字・罫線のみで区別するように変更(画面表示・Excelとも)。休業日・欠席の網掛けや参考ページのタイトル帯は従来通り。</li>
     <li><strong>2026-09-10</strong>: TODOにためていた項目をさらにまとめて対応。
@@ -4579,7 +4573,7 @@ document.getElementById('helpBody').innerHTML = `
   </ol>
 
   <h4>時数・集計 - 必要時数との比較</h4>
-  <p>「設定」タブの「必要時数(学習指導要領)の編集」には、中学校学習指導要領の年間標準授業時数が初期値として入っています(学年・教科ごとにコマ数を自由に編集できます)。「時数・集計」タブの「必要時数との比較」では、道徳・総合的な学習の時間・特別活動(学級活動等)、および①〜⑥に数字(1〜6)を入力した分をまとめた「教科」について、実績と必要時数の差(不足はオレンジ〜赤、超過は緑)を確認できます。個々の教科(国語・数学など)ごとの内訳は、時間割の教科までは記録していないため区別できません。表の一番下の「その他(行事予定にのらない分・手入力)」欄には、行事予定として記録していない時間数(準備時間など)を学年ごとに直接入力でき、必要時数との比較とは別に記録だけしておけます。</p>
+  <p>「設定」タブの「必要時数(学習指導要領)の編集」には、中学校学習指導要領の年間標準授業時数が初期値として入っています(学年・教科ごとにコマ数を自由に編集できます)。「時数・集計」タブの「必要時数との比較」では、道徳・総合的な学習の時間・特別活動(学級活動等)・音楽、および①〜⑥に「1」〜「6」または「●」(特別時間割)を入力した分をまとめた「教科等」について、実績と必要時数の差(不足はオレンジ〜赤、超過は緑)を確認できます。個々の教科(国語・数学など)ごとの内訳は、時間割の教科までは記録していないため区別できませんが、必要であれば「教科別実績の入力」に手入力できます。表の一番下の「合計」は、これら自動集計分をすべて合わせた、学年の標準時数全体との比較です。</p>
 
   <h4>印刷部数の記録</h4>
   <p>「設定」タブの「印刷部数の記録」では、行事予定などを印刷して配布した部数を、日付・区分(職員配布/生徒配布)・誰に(または対象学年など)・枚数・メモとして記録できます。一覧の「編集」でその内容を入力欄に呼び出して再保存、「削除」で記録を削除できます。職員配布・生徒配布それぞれの合計枚数が一覧の上部に表示されます。</p>
