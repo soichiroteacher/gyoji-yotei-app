@@ -277,6 +277,11 @@
   .weekly-duty-preview .wd-row:last-child{border-bottom:none;}
   .weekly-duty-preview .wd-row.wd-skip{background:#fbf9f2;color:var(--warn);}
   .weekly-duty-preview .wd-row.wd-current{color:var(--ink-soft);}
+  table.baf-period-table{border-collapse:collapse;font-size:12.5px;}
+  table.baf-period-table th, table.baf-period-table td{border:1px solid var(--line-soft);padding:4px;text-align:center;}
+  table.baf-period-table th{background:var(--accent-soft);font-weight:600;color:var(--accent);}
+  table.baf-period-table td.baf-dow-label{background:var(--accent-soft);font-weight:600;color:var(--ink-soft);white-space:nowrap;padding:4px 8px;}
+  table.baf-period-table input.baf-period-input{width:34px;padding:4px 2px;font-size:12.5px;box-sizing:border-box;text-align:center;font-family:inherit;}
   @media print{
     body{background:#fff;}
     header.appbar, nav.tabs, .month-head, #noFileBanner, .grid-topscroll, .annual-opts{display:none !important;}
@@ -670,16 +675,9 @@
     <div class="modal-body">
       <p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">現在表示中の月で、いずれかの学年の「登校日」にチェックが入っている日に、まとめて入力します。入れる項目にチェックを入れてから「この内容で適用」を押してください。</p>
       <label style="display:flex;align-items:center;gap:6px;font-size:13.5px;margin-bottom:6px;">
-        <input type="checkbox" id="bafPeriods" checked>授業を入れる(①〜⑥。登校する学年のみ。すでに入力済みのマスは変更しません)
+        <input type="checkbox" id="bafPeriods" checked>授業を入れる(①〜⑥。曜日ごとに内容を指定できます。登校する学年のみ。すでに入力済みのマスは変更しません)
       </label>
-      <div id="bafPeriodsInputs" style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:0 0 14px 26px;">
-        <input type="text" class="baf-period-input" data-idx="0" list="dl-period" placeholder="①" style="width:100%;padding:6px 4px;font-size:13px;box-sizing:border-box;text-align:center;">
-        <input type="text" class="baf-period-input" data-idx="1" list="dl-period" placeholder="②" style="width:100%;padding:6px 4px;font-size:13px;box-sizing:border-box;text-align:center;">
-        <input type="text" class="baf-period-input" data-idx="2" list="dl-period" placeholder="③" style="width:100%;padding:6px 4px;font-size:13px;box-sizing:border-box;text-align:center;">
-        <input type="text" class="baf-period-input" data-idx="3" list="dl-period" placeholder="④" style="width:100%;padding:6px 4px;font-size:13px;box-sizing:border-box;text-align:center;">
-        <input type="text" class="baf-period-input" data-idx="4" list="dl-period" placeholder="⑤" style="width:100%;padding:6px 4px;font-size:13px;box-sizing:border-box;text-align:center;">
-        <input type="text" class="baf-period-input" data-idx="5" list="dl-period" placeholder="⑥" style="width:100%;padding:6px 4px;font-size:13px;box-sizing:border-box;text-align:center;">
-      </div>
+      <div id="bafPeriodsInputs" style="margin:0 0 14px 0;overflow-x:auto;"></div>
       <label style="display:flex;align-items:center;gap:6px;font-size:13.5px;margin-bottom:6px;">
         <input type="checkbox" id="bafCleaning" checked>掃除を「あり」にする
       </label>
@@ -4151,6 +4149,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-10</strong>: 「登校日へまとめて入力」の授業内容を、曜日ごと(月〜日)に別々に指定できるように変更。初期値は月:道2345、火:123456、水:12345、木:12345総、金:12345(土・日は初期値なし)。</li>
     <li><strong>2026-09-10</strong>: TODOにためていた項目をまとめて対応。
       <ul>
         <li>年間予定表Excel出力: 印刷の既定を横向きに変更。見出しを画面表示と同じ「日・曜・◯月行事」の3列にまとめ、上の「◯月」だけの行を削除。日・曜セルは上下左右中央揃えに、年間行事欄は文字を縮小せず折り返して表示するように変更。年計・学期計・月計の①②③の数字がずれる問題を、等幅系フォントに変更して解消。登校日にチェックが入っている(実際に登校する)土曜日は、画面表示と同じく休業日の網掛けを付けないように修正。</li>
@@ -4221,7 +4220,7 @@ document.getElementById('helpBody').innerHTML = `
     <li><strong>Ctrl+Z</strong>で直前の入力・貼り付け・削除・週番一括入力・メモ・学校行事等の入力を1つ前に戻せます(最大50回分)。<strong>Ctrl+Y</strong>(または<strong>Ctrl+Shift+Z</strong>)でやり直せます。対象は年間予定入力タブの日ごとのデータのみで、学校名などの「設定」タブの内容は対象外です。ファイルを開き直す・保存先を切り替えると履歴はリセットされます。</li>
     <li>列見出しの右端をドラッグすると列の幅を変えられます(画面に入りきらない場合に調整してください)。「設定」タブの「列幅をリセット」で既定の幅に戻せます。</li>
     <li>「週番をまとめて入力」ボタンから、現在表示中の月にかかる週を一覧から選び、内容を入力すると、その週の月〜金(休業日を除く)にまとめて同じ週番を入力できます。入力候補は「設定」タブの入力候補編集と共通です。どの日に反映されるかは画面上で確認してから適用できます。「月全体に順番で割り当て」を選ぶと、「1年、2年、3年」のように読点区切りで指定した内容を、今月の各週に順番(足りなくなったら最初に戻る)で一括入力できます。なお、年間予定入力のマス自体は常に1日ずつ分かれています(結合されるのは「月間予定表(教員用)」の画面表示とExcel出力のみです)。</li>
-    <li>月選択の右にある「登校日へまとめて入力」ボタンから、現在表示中の月で、いずれかの学年の「登校日」にチェックが入っている日に、授業(①〜⑥)・掃除・給食をまとめて入力できます。対象になる日数はボタンを押すと表示されるので、確認してから項目を選んで適用してください。授業は登校する学年の欄にのみ、かつ既に何か入力済みのマスは変更せず空欄だけに入力します。掃除・給食は対象の日・学年に一律で「あり」を設定します。</li>
+    <li>月選択の右にある「登校日へまとめて入力」ボタンから、現在表示中の月で、いずれかの学年の「登校日」にチェックが入っている日に、授業(①〜⑥)・掃除・給食をまとめて入力できます。対象になる日数はボタンを押すと表示されるので、確認してから項目を選んで適用してください。授業の内容は曜日ごと(月〜日)に別々に指定でき、初期値は月:道2345、火:123456、水:12345、木:12345総、金:12345です(土・日は初期値なし)。空欄にした欄はその曜日には入力されません。授業は登校する学年の欄にのみ、かつ既に何か入力済みのマスは変更せず空欄だけに入力します。掃除・給食は対象の日・学年に一律で「あり」を設定します。</li>
     <li>年間予定入力タブの月選択の右にある検索欄に文字を入力すると、「体育祭」のように入力した文字を含む行事等・会議・放課後・週番・メモを、年度内のすべての月から探して一覧表示します。結果をクリックするとその日・その欄までジャンプします。</li>
     <li>放課後・給食・授業日課・週番の入力候補(クリックした時に出る候補)は「設定」タブの「入力候補(プリセット)の編集」から自由に変更できます。</li>
     <li>学校行事等は4つの欄に分かれています。「共通・年間」(年間予定表にも掲載予定、太字の緑で表示)、「共通・月間のみ」(月の予定表のみに掲載)、「教員のみ・年間」(教員用の年間予定表にのみ掲載)、「教員のみ・月間のみ」(教員用にのみ掲載、オレンジで表示)。載せたい範囲に応じて入力する欄を選んでください。</li>
@@ -4866,6 +4865,33 @@ document.getElementById('weeklyDutyApply').addEventListener('click', ()=>{
 //////////////////////// 登校日へまとめて入力(授業・掃除・給食) ////////////////////////
 // 現在表示中の月で、いずれかの学年の「登校日」にチェックが入っている日を対象に、
 // 授業(登校する学年のみ・空欄のマスだけ)・掃除・給食をまとめて入力する。
+// 授業の内容は曜日ごとに指定できる(月〜日で別々のパターンを設定可能)。
+const BAF_DOW_LABELS = ['日','月','火','水','木','金','土']; // Date.getDay()の並び(0=日)に対応
+// 曜日ごとの既定値。1文字=1コマ分(①から順に)。空文字はその曜日の既定は「入力しない」を意味する。
+const BAF_WEEKDAY_DEFAULTS = {
+  1: ['道','2','3','4','5',''],   // 月: 道2345
+  2: ['1','2','3','4','5','6'],   // 火: 123456
+  3: ['1','2','3','4','5',''],    // 水: 12345
+  4: ['1','2','3','4','5','総'],  // 木: 12345総
+  5: ['1','2','3','4','5',''],    // 金: 12345
+  6: ['','','','','',''],         // 土(既定なし)
+  0: ['','','','','',''],         // 日(既定なし)
+};
+function renderBafPeriodsTable(){
+  const wrap = document.getElementById('bafPeriodsInputs');
+  const order = [1,2,3,4,5,6,0]; // 月〜日の順で表示
+  let html = '<table class="baf-period-table"><thead><tr><th></th><th>①</th><th>②</th><th>③</th><th>④</th><th>⑤</th><th>⑥</th></tr></thead><tbody>';
+  order.forEach(dow=>{
+    html += `<tr><td class="baf-dow-label">${BAF_DOW_LABELS[dow]}</td>`;
+    for(let i=0;i<6;i++){
+      const v = BAF_WEEKDAY_DEFAULTS[dow][i] || '';
+      html += `<td><input type="text" class="baf-period-input" data-dow="${dow}" data-idx="${i}" list="dl-period" value="${escapeHtml(v)}"></td>`;
+    }
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
 function bulkAttendFillTargetDays(){
   const {year,month} = currentSelectedYM();
   const dim = daysInMonth(year,month);
@@ -4891,7 +4917,8 @@ function openBulkAttendFillModal(){
   document.getElementById('bafPeriods').checked = true;
   document.getElementById('bafCleaning').checked = true;
   document.getElementById('bafLunch').checked = true;
-  document.querySelectorAll('.baf-period-input').forEach(inp=> inp.value = '');
+  document.getElementById('bafPeriodsInputs').style.display = '';
+  renderBafPeriodsTable();
   renderBulkAttendFillPreview();
   document.getElementById('bulkAttendFillOverlay').classList.add('show');
 }
@@ -4908,7 +4935,14 @@ document.getElementById('bafApply').addEventListener('click', ()=>{
   const doCleaning = document.getElementById('bafCleaning').checked;
   const doLunch = document.getElementById('bafLunch').checked;
   if(!doPeriods && !doCleaning && !doLunch){ alert('入れる項目を1つ以上選んでください。'); return; }
-  const periodValues = Array.from(document.querySelectorAll('.baf-period-input')).map(inp=>inp.value.trim());
+  const periodValuesByDow = {};
+  for(let dow=0; dow<=6; dow++){
+    periodValuesByDow[dow] = [];
+    for(let i=0;i<6;i++){
+      const inp = document.querySelector(`.baf-period-input[data-dow="${dow}"][data-idx="${i}"]`);
+      periodValuesByDow[dow].push(inp ? inp.value.trim() : '');
+    }
+  }
   const days = bulkAttendFillTargetDays();
   if(days.length===0){ alert('対象の日(登校日にチェックが入っている日)がありません。'); return; }
   captureUndoPoint();
@@ -4916,6 +4950,8 @@ document.getElementById('bafApply').addEventListener('click', ()=>{
   days.forEach(({year,month,d,grades})=>{
     const key = dkey(year,month,d);
     const rec = migrateDayRecord(state.days[key]);
+    const dow = new Date(year,month-1,d).getDay();
+    const periodValues = periodValuesByDow[dow];
     if(doCleaning){ setFieldValue(key, 'cleaning', true); cleaningFilled++; }
     grades.forEach(g=>{
       if(doLunch){ setFieldValue(key, 'lunchG'+g, '○'); lunchFilled++; }
