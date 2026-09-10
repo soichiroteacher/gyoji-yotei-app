@@ -851,7 +851,7 @@
 // 同じ日に複数回更新した場合に見分けがつくよう、時刻まで含める。
 // 画面右上のバッジに表示するほか、保存時に.datファイルのmetaにも書き込まれるため、
 // 「このファイルはいつの時点のアプリで保存されたか」も後から確認できる。
-const APP_VERSION = '2026-09-10 13:59';
+const APP_VERSION = '2026-09-10 14:04';
 
 const DOW = ['日','月','火','水','木','金','土'];
 
@@ -1533,17 +1533,17 @@ function buildXlsxStyles(){
 <fill><patternFill patternType="solid"><fgColor rgb="${nonschoolRgb}"/><bgColor indexed="64"/></patternFill></fill></fills>
 <borders count="10"><border><left/><right/><top/><bottom/><diagonal/></border>
 <border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
-<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="medium"><color rgb="FF000000"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
-<border><left style="medium"><color rgb="FF000000"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
-<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="medium"><color rgb="FF000000"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
-<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="medium"><color rgb="FF000000"/></bottom><diagonal/></border>
-<border><left style="medium"><color rgb="FF000000"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="medium"><color rgb="FF000000"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
-<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="medium"><color rgb="FF000000"/></right><top style="medium"><color rgb="FF000000"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
-<border><left style="medium"><color rgb="FF000000"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="medium"><color rgb="FF000000"/></bottom><diagonal/></border>
-<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="medium"><color rgb="FF000000"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="medium"><color rgb="FF000000"/></bottom><diagonal/></border>
+<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="thin"><color rgb="FF000000"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
+<border><left style="thin"><color rgb="FF000000"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
+<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
+<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>
+<border><left style="thin"><color rgb="FF000000"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
+<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
+<border><left style="thin"><color rgb="FF000000"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>
+<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="thin"><color rgb="FF000000"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>
 </borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="61">
+<cellXfs count="63">
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
@@ -1605,6 +1605,8 @@ function buildXlsxStyles(){
 <xf numFmtId="0" fontId="3" fillId="3" borderId="5" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="3" fillId="7" borderId="5" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="4" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="7" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -1621,7 +1623,10 @@ const XSTYLE = { HEADER:1, CENTER:2, LEFT:3, HOLIDAY_CENTER:4, HOLIDAY_LEFT:5, S
   ABSENT_CENTER_R:54, ABSENT_CENTER_B:55, ABSENT_CENTER_BR:56,
   LEFT_SMALL_B:57, HOLIDAY_LEFT_SMALL_B:58, NONSCHOOL_LEFT_SMALL_B:59,
   // 年間予定表の月見出し(◯月行事)を、その下のデータ(年間行事欄・左揃え)と揃えるための左揃え見出し
-  HEADER_LEFT:60 };
+  HEADER_LEFT:60,
+  // 月間excelの「会議・出張・研修」「放課後」見出しを、折り返し(wrapText)ではなく
+  // セルのサイズに合わせた縮小表示(shrinkToFit)にするための見出しスタイル
+  HEADER_T_SHRINK:61, HEADER_TR_SHRINK:62 };
 
 // 月間excelの境目強調線用: 既存スタイルの罫線だけを差し替えた派生スタイルに変換する
 function xstyleToLeft(s){
@@ -2801,7 +2806,7 @@ function groupHeaderForExport(cols){
     if(c.grade){ gkey='grade-'+c.grade; glabel=(c.gradeLabel||c.grade+'年')+'授業'; grouped=true; }
     else if(c.grpLunch){ gkey='lunch'; glabel='給食'; grouped=true; }
     else { gkey='single-'+c.key; glabel=c.label; grouped=false; }
-    if(gkey!==cur){ groups.push({label:glabel, span:0, grouped, vertical:c.vertical}); cur=gkey; }
+    if(gkey!==cur){ groups.push({label:glabel, span:0, grouped, vertical:c.vertical, key: grouped?null:c.key}); cur=gkey; }
     groups[groups.length-1].span++;
   });
   return groups;
@@ -2873,8 +2878,12 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
   merges.push(`${colLetter(1)}3:${colLetter(1)}4`);
   merges.push(`${colLetter(2)}3:${colLetter(2)}4`);
   let colIdx = 2;
+  // 「会議・出張・研修」「放課後」見出しは、折り返しではなくセルのサイズに合わせて
+  // 縮小表示する(2026-09-10、ユーザー指定)
+  const SHRINK_HEADER_KEYS = ['meeting','club'];
   groups.forEach(g=>{
-    row1[colIdx] = {v:g.label, style: g.vertical ? XSTYLE.HEADER_VERT_T : XSTYLE.HEADER_T};
+    const useShrink = !g.grouped && SHRINK_HEADER_KEYS.indexOf(g.key)!==-1;
+    row1[colIdx] = {v:g.label, style: g.vertical ? XSTYLE.HEADER_VERT_T : (useShrink ? XSTYLE.HEADER_T_SHRINK : XSTYLE.HEADER_T)};
     merges.push(g.grouped
       ? `${colLetter(colIdx+1)}3:${colLetter(colIdx+g.span)}3`
       : `${colLetter(colIdx+1)}3:${colLetter(colIdx+1)}4`);
@@ -2913,6 +2922,7 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
     if(row1[ci]){
       if(row1[ci].style===XSTYLE.HEADER_T) row1[ci] = {...row1[ci], style:XSTYLE.HEADER_TR};
       else if(row1[ci].style===XSTYLE.HEADER_VERT_T) row1[ci] = {...row1[ci], style:XSTYLE.HEADER_VERT_TR};
+      else if(row1[ci].style===XSTYLE.HEADER_T_SHRINK) row1[ci] = {...row1[ci], style:XSTYLE.HEADER_TR_SHRINK};
     }
     if(row2[ci]){
       if(row2[ci].style===XSTYLE.HEADER) row2[ci] = {...row2[ci], style:XSTYLE.HEADER_R};
@@ -2948,7 +2958,9 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
       const dow = new Date(year,month-1,d).getDay();
       const status = getDayStatus(year,month,d);
       const rec = migrateDayRecord(state.days[dkey(year,month,d)]);
-      const shaded = isShadedDay(status, dow);
+      let shaded = isShadedDay(status, dow);
+      // 登校日にチェックが入っている(実際に登校する学年がある)土曜は、休業日と同じ網掛けにしない(年間予定表と同じ扱い)
+      if(shaded && !status.isHoliday && dow===6 && anySchoolDay(year, month, d)) shaded = false;
       const nonschool = !shaded && isNonSchoolDay(status, dow, year, month, d);
       const cS = shaded ? XSTYLE.HOLIDAY_CENTER : nonschool ? XSTYLE.NONSCHOOL_CENTER : XSTYLE.CENTER;
       const lSsmall = shaded ? XSTYLE.HOLIDAY_LEFT_SMALL : nonschool ? XSTYLE.NONSCHOOL_LEFT_SMALL : XSTYLE.LEFT_SMALL; // 月間予定表の学校行事等は年間より少し小さめのフォントにする
@@ -3005,7 +3017,8 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
         const ndow = new Date(ny,nm-1,d).getDay();
         const nrec = migrateDayRecord(state.days[dkey(ny,nm,d)]);
         const nparts = [effectiveEventsAnnual(nrec, nstatus), nrec.eventsMonthly].filter(Boolean);
-        const nshaded = isShadedDay(nstatus, ndow);
+        let nshaded = isShadedDay(nstatus, ndow);
+        if(nshaded && !nstatus.isHoliday && ndow===6 && anySchoolDay(ny, nm, d)) nshaded = false;
         const nnonschool = !nshaded && isNonSchoolDay(nstatus, ndow, ny, nm, d);
         const nCenterStyle = nshaded ? XSTYLE.HOLIDAY_CENTER : nnonschool ? XSTYLE.NONSCHOOL_CENTER : XSTYLE.CENTER;
         row[totalCols] = {v:d, num:true, style:nCenterStyle};
@@ -3341,7 +3354,10 @@ function renderMonthlyPreview(opts){
     const dow = new Date(year,month-1,d).getDay();
     const status = getDayStatus(year,month,d);
     const rec = migrateDayRecord(state.days[key]);
-    const rowCls = isShadedDay(status, dow) ? 'pv-holiday' : (isNonSchoolDay(status, dow, year, month, d) ? 'pv-nonschool' : '');
+    let shadedPv = isShadedDay(status, dow);
+    // 登校日にチェックが入っている(実際に登校する学年がある)土曜は、休業日と同じ網掛けにしない(年間予定表と同じ扱い)
+    if(shadedPv && !status.isHoliday && dow===6 && anySchoolDay(year, month, d)) shadedPv = false;
+    const rowCls = shadedPv ? 'pv-holiday' : (isNonSchoolDay(status, dow, year, month, d) ? 'pv-nonschool' : '');
     html += `<tr class="${rowCls}">`;
     html += `<td class="pv-daynum">${d}</td><td class="pv-dow">${DOW[dow]}</td>`;
     cols.forEach(c=>{
@@ -3415,7 +3431,9 @@ function renderMonthlyPreview(opts){
       const dow = new Date(ny,nm-1,d).getDay();
       const rec = migrateDayRecord(state.days[dkey(ny,nm,d)]);
       const parts = [effectiveEventsAnnual(rec, status), rec.eventsMonthly].filter(Boolean);
-      const rowCls = isShadedDay(status, dow) ? 'pv-holiday' : (isNonSchoolDay(status, dow, ny, nm, d) ? 'pv-nonschool' : '');
+      let shadedN = isShadedDay(status, dow);
+      if(shadedN && !status.isHoliday && dow===6 && anySchoolDay(ny, nm, d)) shadedN = false;
+      const rowCls = shadedN ? 'pv-holiday' : (isNonSchoolDay(status, dow, ny, nm, d) ? 'pv-nonschool' : '');
       html += `<tr class="${rowCls}"><td class="pv-daynum">${d}</td><td class="pv-dow">${DOW[dow]}</td><td class="pv-events">${escapeHtml(parts.join('\u3000'))}</td></tr>`;
     }
     html += '</tbody></table></div>';
@@ -4413,6 +4431,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-10</strong>: 月間予定表Excel出力で、境目・外枠の罫線が太すぎたため細めに調整。「会議・出張・研修」「放課後」の見出しを、折り返しではなくセルのサイズに合わせた縮小表示に変更。月間予定表(画面・Excel出力とも)で、登校日にチェックが入っている(実際に登校する学年がある)土曜日の網掛けを外すように修正(年間予定表は対応済みだったが月間は未対応だった)。</li>
     <li><strong>2026-09-10</strong>: 月間予定表Excel出力の日・曜・週番の列幅を、実際の見た目を確認しながら再調整(日・曜=26ピクセル相当、週番=27ピクセル相当)。</li>
     <li><strong>2026-09-10</strong>: 月間予定表Excel出力の列幅を微調整。日・曜・掃除・給食・授業の各列は、20ピクセル相当だと文字が縮小されて窮屈に見えていたため、中央揃えのまま縮小がかからない幅(日=2.3、その他=2.8)まで少し広げた。週番は氏名など複数文字が入る前提のため20ピクセル相当のまま。</li>
     <li><strong>2026-09-10</strong>: 年間予定表Excel出力の見出しラベル(「日」「曜」「◯月行事」)の揃えを調整。「日」「曜」は左揃え、「◯月行事」は中央揃えに変更(見出し行のみ。日付・曜日のデータ欄は従来通り中央揃えのまま)。</li>
