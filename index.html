@@ -212,7 +212,7 @@
   .preview-scroll{overflow-x:auto;border:1px solid #999;}
   table.preview{border-collapse:collapse;font-size:12px;table-layout:fixed;}
   table.preview th, table.preview td{border:1px solid #888;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:22px;box-sizing:border-box;}
-  table.preview thead th{background:#dce6f3;font-weight:600;text-align:center;font-size:11px;height:auto;white-space:normal;overflow:visible;}
+  table.preview thead th{font-weight:600;text-align:center;font-size:11px;height:auto;white-space:normal;overflow:visible;}
   table.preview thead th.th-vert{writing-mode:vertical-rl;text-orientation:upright;font-size:10px;letter-spacing:1px;padding:4px 1px;line-height:1.3;}
   table.preview td.pv-events{text-align:left;}
   table.preview:not(.nmb-table) td.pv-events{font-size:11px;} /* 月間予定表(教員用・家庭用)は年間より少し小さめにして見やすくする */
@@ -256,8 +256,8 @@
      日ごとの表の高さがまちまちになるため、これを別立てにしないと数字の位置が月ごとにずれてしまう) */
   table.annual-summary-tbl{margin-top:auto;}
   tr.annual-pad td{background:#fafafa;border-color:#eee;}
-  tr.annual-summary td{background:#e2efda;font-size:10.5px;font-weight:600;color:var(--ink-soft);padding:3px 6px 3px 2px;white-space:nowrap;}
-  tr.annual-summary-month td{background:#c6e0b4;color:#1f3b3d;font-weight:700;}
+  tr.annual-summary td{font-size:10.5px;font-weight:600;color:var(--ink-soft);padding:3px 6px 3px 2px;white-space:nowrap;border-top:1px solid #888;}
+  tr.annual-summary-month td{font-weight:700;border-top:2px solid #333;}
   tr.annual-summary .as-row{display:flex;justify-content:flex-end;}
   tr.annual-summary .as-label{display:inline-block;width:3.4em;flex:none;text-align:left;}
   tr.annual-summary .as-val{display:inline-block;width:3.1em;flex:none;text-align:right;font-variant-numeric:tabular-nums;}
@@ -851,7 +851,7 @@
 // 同じ日に複数回更新した場合に見分けがつくよう、時刻まで含める。
 // 画面右上のバッジに表示するほか、保存時に.datファイルのmetaにも書き込まれるため、
 // 「このファイルはいつの時点のアプリで保存されたか」も後から確認できる。
-const APP_VERSION = '2026-09-10 15:30';
+const APP_VERSION = '2026-09-10 15:43';
 
 const DOW = ['日','月','火','水','木','金','土'];
 
@@ -1525,9 +1525,9 @@ function buildXlsxStyles(){
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
 <fonts count="8"><font><sz val="10"/><name val="Yu Mincho"/></font><font><b/><sz val="10"/><name val="Yu Mincho"/></font><font><b/><sz val="14"/><name val="Yu Mincho"/></font><font><sz val="9"/><name val="Yu Mincho"/></font><font><b/><sz val="10"/><name val="MS Gothic"/></font><font><b/><sz val="8"/><name val="Yu Mincho"/></font><font><sz val="8"/><name val="Yu Mincho"/></font><font><sz val="10"/><name val="MS Gothic"/></font></fonts>
 <fills count="8"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>
-<fill><patternFill patternType="solid"><fgColor rgb="FFDCE6F3"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="none"/></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="${holidayRgb}"/><bgColor indexed="64"/></patternFill></fill>
-<fill><patternFill patternType="solid"><fgColor rgb="FFE2EFDA"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="none"/></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="${absentRgb}"/><bgColor indexed="64"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="FFFBE0AE"/><bgColor indexed="64"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="${nonschoolRgb}"/><bgColor indexed="64"/></patternFill></fill></fills>
@@ -4444,6 +4444,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-10</strong>: 基本的に白黒印刷になるとのことで、直前に追加した見出し・集計行の背景色(青・緑)を除去し、太字・罫線のみで区別するように変更(画面表示・Excelとも)。休業日・欠席の網掛けや参考ページのタイトル帯は従来通り。</li>
     <li><strong>2026-09-10</strong>: TODOにためていた項目をさらにまとめて対応。
       <ul>
         <li>月間Excel出力の境目の罫線をさらに細く(グレー)し、1〜3年(・5組)の学年間の境目にも同じ太さの罫線を追加。</li>
