@@ -423,8 +423,6 @@
   <div class="panel" style="padding:12px;">
     <div class="month-head">
       <span style="font-size:13px;color:var(--ink-soft);">年度: <strong id="mealsFyDisplay">-</strong>(設定タブで変更)</span>
-      <label style="font-size:13px;color:var(--ink-soft);margin-left:8px;">集計する月</label>
-      <select id="mealsMonthSelect"></select>
       <div class="spacer"></div>
       <span style="font-size:12px;color:var(--ink-soft);">給食欄の入力内容から自動集計します</span>
     </div>
@@ -851,7 +849,7 @@
 // 同じ日に複数回更新した場合に見分けがつくよう、時刻まで含める。
 // 画面右上のバッジに表示するほか、保存時に.datファイルのmetaにも書き込まれるため、
 // 「このファイルはいつの時点のアプリで保存されたか」も後から確認できる。
-const APP_VERSION = '2026-09-10 15:43';
+const APP_VERSION = '2026-09-10 15:59';
 
 const DOW = ['日','月','火','水','木','金','土'];
 
@@ -2329,7 +2327,6 @@ function populateMonthSelect(){
   populateMonthSelectFor('monthSelect');
   populateMonthSelectFor('pvMonthSelect');
   populateMonthSelectFor('pvFamilyMonthSelect');
-  populateMonthSelectFor('mealsMonthSelect');
   populateMonthSelectFor('statsMonthSelect');
 }
 function populateMonthSelectFor(selId){
@@ -2730,7 +2727,6 @@ document.querySelectorAll('.annual-opts input[type=checkbox]').forEach(cb=>{
   });
 });
 document.getElementById('statsMonthSelect').addEventListener('change', renderStats);
-document.getElementById('mealsMonthSelect').addEventListener('change', renderMealsTab);
 
 //////////////////////// 月間予定表プレビュー(教員用) ////////////////////////
 // 元のExcel「4月職」シートの並びに合わせた読み取り専用プレビュー。
@@ -3597,21 +3593,18 @@ function renderMealsTab(){
   const wrap = document.getElementById('mealsWrap');
   if(!wrap) return;
   document.getElementById('mealsFyDisplay').textContent = state.meta.fiscalYear;
-  const sel = document.getElementById('mealsMonthSelect');
-  const [yStr,mStr] = (sel.value||'').split('-');
-  const year = Number(yStr), month = Number(mStr);
-  if(!year){ wrap.innerHTML = '<p class="preview-empty">月を選択してください。</p>'; return; }
 
-  const monthStats = computeStatsForRange([{year,month}]);
+  const monthList = fiscalMonthList(state.meta.fiscalYear);
+  const monthCols = monthList.map(({year,month})=>({label:`${month}月`, s:computeStatsForRange([{year,month}])}));
   const term1Stats = computeStatsForRange(getTermMonths(1));
   const term2Stats = computeStatsForRange(getTermMonths(2));
   const term3Stats = computeStatsForRange(getTermMonths(3));
-  const yearStats = computeStatsForRange(fiscalMonthList(state.meta.fiscalYear));
+  const yearStats = computeStatsForRange(monthList);
   const cols = [
-    {label:`${month}月`, s:monthStats},
-    {label:'1学期', s:term1Stats},
-    {label:'2学期', s:term2Stats},
-    {label:'3学期', s:term3Stats},
+    ...monthCols,
+    {label:'1学期', s:term1Stats, total:true},
+    {label:'2学期', s:term2Stats, total:true},
+    {label:'3学期', s:term3Stats, total:true},
     {label:'年間計', s:yearStats, total:true}
   ];
 
@@ -3621,19 +3614,10 @@ function renderMealsTab(){
 
   let html = '';
 
-  // 給食実施日数
+  // 給食実施日数(4月〜3月の月ごと、および学期ごとの給食実施日数のみをまとめる。2026-09-10、ユーザー指定によりシンプル化)
   html += '<div class="panel"><h2>給食実施日数</h2><table class="stats-table"><thead><tr><th></th>'+cols.map(c=>`<th>${c.label}</th>`).join('')+'</tr></thead><tbody>';
   grades.forEach(g=>{
-    html += `<tr><td>${gradeLabel(g)}　給食○</td>`+cols.map(c=>`<td${c.total?' class="stats-total"':''}>${c.s.lunchOn[g]}</td>`).join('')+'</tr>';
-  });
-  grades.forEach(g=>{
-    html += `<tr><td>${gradeLabel(g)}　給食×</td>`+cols.map(c=>`<td${c.total?' class="stats-total"':''}>${c.s.lunchOff[g]}</td>`).join('')+'</tr>';
-  });
-  grades.forEach(g=>{
-    html += `<tr><td>${gradeLabel(g)}　授業日数</td>`+cols.map(c=>`<td${c.total?' class="stats-total"':''}>${c.s.schoolDays[g]}</td>`).join('')+'</tr>';
-  });
-  grades.forEach(g=>{
-    html += `<tr><td>${gradeLabel(g)}　給食ない日(授業日数-給食○)</td>`+cols.map(c=>`<td${c.total?' class="stats-total"':''}>${c.s.schoolDays[g]-c.s.lunchOn[g]}</td>`).join('')+'</tr>';
+    html += `<tr><td>${gradeLabel(g)}</td>`+cols.map(c=>`<td${c.total?' class="stats-total"':''}>${c.s.lunchOn[g]}</td>`).join('')+'</tr>';
   });
   html += '</tbody></table><small class="hint">1学期=4〜7月、2学期=8〜12月、3学期=1〜3月が既定です(「設定」タブで変更可)。</small></div>';
 
@@ -4444,6 +4428,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-10</strong>: 「給食」タブの給食実施日数パネルを、4月〜3月の月ごと+学期ごとの給食実施日数のみを表示するシンプルな形に変更(給食×・授業日数・給食ない日の内訳行と、月選択は廃止)。</li>
     <li><strong>2026-09-10</strong>: 基本的に白黒印刷になるとのことで、直前に追加した見出し・集計行の背景色(青・緑)を除去し、太字・罫線のみで区別するように変更(画面表示・Excelとも)。休業日・欠席の網掛けや参考ページのタイトル帯は従来通り。</li>
     <li><strong>2026-09-10</strong>: TODOにためていた項目をさらにまとめて対応。
       <ul>
@@ -4568,16 +4553,21 @@ document.getElementById('helpBody').innerHTML = `
   <p>「年間予定表(教員用)」「年間予定表(家庭用)」の2つのタブに分かれています。どちらも基本は「学校行事等(共通・年間)」欄の内容を表示しますが、上部のチェックボックスで「学校行事等(共通・月間のみ)も含める」「学校行事等(教員のみ・月間のみ)も含める」「職員会議のあった日を含める」をそれぞれ個別にオン・オフできます(既定値: 教員用は共通・月間のみ、教員のみ・月間のみをオン、家庭用は共通・月間のみだけオン)。教員向けの内容はオレンジ、職員会議は青字で「職員会議」とだけ表示されます(会議の詳細な内容や企画会議・出張などは年間予定表には表示されません)。「学校行事等(教員のみ・年間)」欄に入力した内容は、この設定に関わらず教員用の年間予定表にのみ常に表示されます(月間予定表には表示されません。「学校行事等(教員のみ・月間のみ)」と違って年間だけに載せたい内容専用の欄です)。各月の下部には元のExcelと同様に「年計」「学期計」「月計」として学年別の授業日数を表示します。学期の区切り(2学期・3学期の開始月)は「設定」タブで変更できます。「Excelに出力」ボタンで、A3横1ページに収まる形でその時点のチェック設定のまま年間分をまとめてダウンロードできます(元のExcelと同じくA3サイズ)。</p>
   <p style="font-size:12px;color:var(--ink-soft);">※PDF保存・印刷ボタンは、最終的な確認・配布をExcel出力ベースで行う運用のため、現在は非表示にしています。</p>
 
-  <h4>時数・集計の確認</h4>
-  <p>「時数・集計」タブでは、入力した内容から次を自動集計して確認できます。</p>
+  <h4>給食の確認</h4>
+  <p>「給食」タブでは、入力した内容から次を自動集計して確認できます(特別支援学級が有効な時は5組の行・列も加わります)。</p>
   <ul>
-    <li>給食実施日数(学年別の給食○・×の日数、給食ない日)</li>
+    <li>給食実施日数(学年別。4月〜3月の月ごとと、1学期・2学期・3学期・年間計)</li>
     <li>年間給食喫食数と、給食のない日の一覧(年間・登校日ベース。土日祝など登校日でない日は含みません)</li>
+  </ul>
+  <p>「給食のない日 一覧」には、登校日なのに給食○になっていない日(体育祭・音楽祭などの行事や試験期間を含む)が日付順に並びます。修学旅行など宿泊を伴う行事で、学校給食は提供されないが食事はしている日については、一覧の該当学年にチェックを入れると「給食のない日」から除外され、上の「年間給食喫食数」に加算されます(この設定はデータファイルに保存されます)。</p>
+
+  <h4>時数・集計の確認</h4>
+  <p>「時数・集計」タブでは、入力した内容から次を自動集計して確認できます(いずれも1〜3年のみが対象です)。</p>
+  <ul>
     <li>学校行事の回数(授業枠(①〜⑥)に入力された「行」の合計時数、教員のみの内容がある日数)。授業枠に記録されない行事の時数は、名称と時数を自由入力すると年間計に合算されます。</li>
     <li>授業日課の内訳(①〜⑥時限に入力した「道」「総」「学」「1」〜「6」などの記号ごとのコマ数)</li>
   </ul>
   <p>選択した月の数値と、年度全体の累計を並べて表示します。</p>
-  <p>「給食のない日 一覧」には、登校日なのに給食○になっていない日(体育祭・音楽祭などの行事や試験期間を含む)が日付順に並びます。修学旅行など宿泊を伴う行事で、学校給食は提供されないが食事はしている日については、一覧の該当学年にチェックを入れると「給食のない日」から除外され、上の「年間給食喫食数」に加算されます(この設定はデータファイルに保存されます)。</p>
 
   <h4>ファイルの保存</h4>
   <ol>
