@@ -212,7 +212,7 @@
   .preview-scroll{overflow-x:auto;border:1px solid #999;}
   table.preview{border-collapse:collapse;font-size:12px;table-layout:fixed;}
   table.preview th, table.preview td{border:1px solid #888;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:22px;box-sizing:border-box;}
-  table.preview thead th{background:#eee;font-weight:600;text-align:center;font-size:11px;height:auto;white-space:normal;overflow:visible;}
+  table.preview thead th{background:#dce6f3;font-weight:600;text-align:center;font-size:11px;height:auto;white-space:normal;overflow:visible;}
   table.preview thead th.th-vert{writing-mode:vertical-rl;text-orientation:upright;font-size:10px;letter-spacing:1px;padding:4px 1px;line-height:1.3;}
   table.preview td.pv-events{text-align:left;}
   table.preview:not(.nmb-table) td.pv-events{font-size:11px;} /* 月間予定表(教員用・家庭用)は年間より少し小さめにして見やすくする */
@@ -256,8 +256,8 @@
      日ごとの表の高さがまちまちになるため、これを別立てにしないと数字の位置が月ごとにずれてしまう) */
   table.annual-summary-tbl{margin-top:auto;}
   tr.annual-pad td{background:#fafafa;border-color:#eee;}
-  tr.annual-summary td{background:#ececec;font-size:10.5px;font-weight:600;color:var(--ink-soft);padding:3px 6px 3px 2px;white-space:nowrap;}
-  tr.annual-summary-month td{background:#d7d7d7;color:#1f3b3d;font-weight:700;}
+  tr.annual-summary td{background:#e2efda;font-size:10.5px;font-weight:600;color:var(--ink-soft);padding:3px 6px 3px 2px;white-space:nowrap;}
+  tr.annual-summary-month td{background:#c6e0b4;color:#1f3b3d;font-weight:700;}
   tr.annual-summary .as-row{display:flex;justify-content:flex-end;}
   tr.annual-summary .as-label{display:inline-block;width:3.4em;flex:none;text-align:left;}
   tr.annual-summary .as-val{display:inline-block;width:3.1em;flex:none;text-align:right;font-variant-numeric:tabular-nums;}
@@ -851,7 +851,7 @@
 // 同じ日に複数回更新した場合に見分けがつくよう、時刻まで含める。
 // 画面右上のバッジに表示するほか、保存時に.datファイルのmetaにも書き込まれるため、
 // 「このファイルはいつの時点のアプリで保存されたか」も後から確認できる。
-const APP_VERSION = '2026-09-10 14:04';
+const APP_VERSION = '2026-09-10 15:30';
 
 const DOW = ['日','月','火','水','木','金','土'];
 
@@ -1523,34 +1523,35 @@ function buildXlsxStyles(){
   const nonschoolRgb = 'FF' + lightenHex((state.colors && state.colors.holiday || 'D9D9D9'), 0.6);
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<fonts count="6"><font><sz val="10"/><name val="Yu Mincho"/></font><font><b/><sz val="10"/><name val="Yu Mincho"/></font><font><b/><sz val="14"/><name val="Yu Mincho"/></font><font><sz val="9"/><name val="Yu Mincho"/></font><font><b/><sz val="10"/><name val="MS Gothic"/></font><font><b/><sz val="8"/><name val="Yu Mincho"/></font></fonts>
+<fonts count="8"><font><sz val="10"/><name val="Yu Mincho"/></font><font><b/><sz val="10"/><name val="Yu Mincho"/></font><font><b/><sz val="14"/><name val="Yu Mincho"/></font><font><sz val="9"/><name val="Yu Mincho"/></font><font><b/><sz val="10"/><name val="MS Gothic"/></font><font><b/><sz val="8"/><name val="Yu Mincho"/></font><font><sz val="8"/><name val="Yu Mincho"/></font><font><sz val="10"/><name val="MS Gothic"/></font></fonts>
 <fills count="8"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>
-<fill><patternFill patternType="solid"><fgColor rgb="FFEFEFEF"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFDCE6F3"/><bgColor indexed="64"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="${holidayRgb}"/><bgColor indexed="64"/></patternFill></fill>
-<fill><patternFill patternType="solid"><fgColor rgb="FFECECEC"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFE2EFDA"/><bgColor indexed="64"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="${absentRgb}"/><bgColor indexed="64"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="FFFBE0AE"/><bgColor indexed="64"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="${nonschoolRgb}"/><bgColor indexed="64"/></patternFill></fill></fills>
-<borders count="10"><border><left/><right/><top/><bottom/><diagonal/></border>
+<borders count="11"><border><left/><right/><top/><bottom/><diagonal/></border>
 <border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
-<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="thin"><color rgb="FF000000"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
-<border><left style="thin"><color rgb="FF000000"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
-<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
-<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>
-<border><left style="thin"><color rgb="FF000000"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
-<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
-<border><left style="thin"><color rgb="FF000000"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>
-<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="thin"><color rgb="FF000000"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>
+<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="thin"><color rgb="FF808080"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
+<border><left style="thin"><color rgb="FF808080"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
+<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="thin"><color rgb="FF808080"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
+<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="thin"><color rgb="FF808080"/></bottom><diagonal/></border>
+<border><left style="thin"><color rgb="FF808080"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="thin"><color rgb="FF808080"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
+<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="thin"><color rgb="FF808080"/></right><top style="thin"><color rgb="FF808080"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
+<border><left style="thin"><color rgb="FF808080"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="thin"><color rgb="FF808080"/></bottom><diagonal/></border>
+<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="thin"><color rgb="FF808080"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="thin"><color rgb="FF808080"/></bottom><diagonal/></border>
+<border diagonalDown="1"><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal style="thin"><color rgb="FF808080"/></diagonal></border>
 </borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="63">
+<cellXfs count="65">
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" shrinkToFit="1"/></xf>
-<xf numFmtId="0" fontId="4" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="7" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" textRotation="255"/></xf>
@@ -1570,9 +1571,9 @@ function buildXlsxStyles(){
 <xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="top" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
-<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
-<xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
-<xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="6" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="6" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="6" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="5" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="4" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="7" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
@@ -1607,6 +1608,8 @@ function buildXlsxStyles(){
 <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="4" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="7" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="0" borderId="10" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="0" borderId="10" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" shrinkToFit="1"/></xf>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -1626,7 +1629,9 @@ const XSTYLE = { HEADER:1, CENTER:2, LEFT:3, HOLIDAY_CENTER:4, HOLIDAY_LEFT:5, S
   HEADER_LEFT:60,
   // 月間excelの「会議・出張・研修」「放課後」見出しを、折り返し(wrapText)ではなく
   // セルのサイズに合わせた縮小表示(shrinkToFit)にするための見出しスタイル
-  HEADER_T_SHRINK:61, HEADER_TR_SHRINK:62 };
+  HEADER_T_SHRINK:61, HEADER_TR_SHRINK:62,
+  // 年間予定表で、その月に存在しない日(31日が無い月など)のマスに斜線を引くためのスタイル
+  CENTER_DIAG:63, LEFT_DIAG:64 };
 
 // 月間excelの境目強調線用: 既存スタイルの罫線だけを差し替えた派生スタイルに変換する
 function xstyleToLeft(s){
@@ -2856,7 +2861,7 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
   subtitleRow[0] = {
     style: refStyle,
     runs: [
-      {text: refMark+`${year}年${month}月　行事予定(${audienceLabel})`, sz:14, bold:true},
+      {text: refMark+`令和${year-2018}年${month}月　行事予定(${audienceLabel})`, sz:14, bold:true},
       {text: '(●特別時間割　○学年時間割)', sz:9, bold:false}
     ]
   };
@@ -2908,16 +2913,18 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
     if(row2[i]==null) row2[i] = {v:'', style:XSTYLE.HEADER};
   }
 
-  // 放課後|給食、給食|授業、授業|週番の境目と、主表の右端(週番。家庭用は最後の授業欄)の
-  // 列に、通常より太い(濃い)縦罫線を入れる。あわせて主表左端(日)・上端(見出し)・
-  // 下端(最終行)にも同じ太さの罫線を入れ、表全体の外枠を強調する。
+  // 放課後|給食、給食|授業、学年間(1年|2年|3年|5組)、授業|週番の境目と、主表の右端
+  // (週番。家庭用は最後の授業欄)の列に、通常より太い(濃い)縦罫線を入れる。あわせて
+  // 主表左端(日)・上端(見出し)・下端(最終行)にも同じ太さの罫線を入れ、表全体の外枠を強調する。
   const gradesActive = activeGrades();
   const lastGrade = gradesActive[gradesActive.length-1];
   const clubIdx = 2 + cols.findIndex(c=>c.key==='club');
   const lastLunchIdx = 2 + cols.findIndex(c=>c.key==='lunchG'+lastGrade);
   const lastPeriodIdx = 2 + cols.findIndex(c=>c.key==='g'+lastGrade+'p6');
+  // 学年間の境目(1年|2年、2年|3年、3年|5組...)。最後の学年は上のlastPeriodIdxで扱うため除く
+  const gradeBoundaryIdxs = gradesActive.slice(0,-1).map(g => 2 + cols.findIndex(c=>c.key==='g'+g+'p6'));
   const lastMainColIdx = totalCols - 1;
-  const rightThickCols = [clubIdx, lastLunchIdx, lastPeriodIdx, lastMainColIdx].filter((v,i,a)=>v>=2 && a.indexOf(v)===i);
+  const rightThickCols = [clubIdx, lastLunchIdx, ...gradeBoundaryIdxs, lastPeriodIdx, lastMainColIdx].filter((v,i,a)=>v>=2 && a.indexOf(v)===i);
   rightThickCols.forEach(ci=>{
     if(row1[ci]){
       if(row1[ci].style===XSTYLE.HEADER_T) row1[ci] = {...row1[ci], style:XSTYLE.HEADER_TR};
@@ -3109,8 +3116,10 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
   const DAY_DOW_COL_WIDTH = px2w(26); // =3.0
   const WEEKLY_DUTY_COL_WIDTH = px2w(27); // ≒3.1
   const KANJI_COL_WIDTH = 2.8;
+  // 学校行事等の欄は、A4横向き1枚にちょうど収まるよう元の幅の8割程度に縮小(2026-09-10、ユーザー指定)
+  const EVENTS_COL_WIDTH = Math.round(60*0.8*10)/10; // =48
   const colWidths = [DAY_DOW_COL_WIDTH,DAY_DOW_COL_WIDTH].concat(cols.map(c=>{
-    if(c.key==='events') return 60;
+    if(c.key==='events') return EVENTS_COL_WIDTH;
     if(c.key==='meeting') return 14;
     if(c.key==='cleaning') return KANJI_COL_WIDTH;
     if(c.key==='weeklyDuty') return WEEKLY_DUTY_COL_WIDTH;
@@ -3201,12 +3210,14 @@ function buildAnnualExportGrid(fy, audience){
   const term2Start = state.meta.term2StartMonth || 8;
   const term3Start = state.meta.term3StartMonth || 1;
   const opts = state.annualSettings[audience];
-  const monthly = months.map(({year,month})=>[1,2,3].map(g=>countSchoolDaysByGrade(year,month,g)));
+  // ①②③は1〜3年、特別支援学級が有効な時のみ④として集計に加える(2026-09-10、ユーザー指定)
+  const summaryGrades = activeGrades();
+  const monthly = months.map(({year,month})=>summaryGrades.map(g=>countSchoolDaysByGrade(year,month,g)));
   const yearCum = []; const termCum = [];
-  let yearRun=[0,0,0], termRun=[0,0,0];
+  let yearRun=summaryGrades.map(()=>0), termRun=summaryGrades.map(()=>0);
   months.forEach(({month}, i)=>{
-    if(month===term2Start || month===term3Start) termRun=[0,0,0];
-    for(let g=0;g<3;g++){ yearRun[g]+=monthly[i][g]; termRun[g]+=monthly[i][g]; }
+    if(month===term2Start || month===term3Start) termRun=summaryGrades.map(()=>0);
+    for(let g=0;g<summaryGrades.length;g++){ yearRun[g]+=monthly[i][g]; termRun[g]+=monthly[i][g]; }
     yearCum.push(yearRun.slice()); termCum.push(termRun.slice());
   });
 
@@ -3223,7 +3234,7 @@ function buildAnnualExportGrid(fy, audience){
   const audienceLabel = audience==='teacher' ? '教職員用' : '家庭用';
   const annualVersionLabel = (state.meta.versionLabelAnnual||'').trim();
   const titleLine1 = `令和${reiwa}年度　${state.meta.schoolName || '(学校名未設定)'}`;
-  const titleLine2 = `年間行事予定(${audienceLabel})` + (annualVersionLabel ? `　${annualVersionLabel}` : '');
+  const titleLine2 = `年間行事予定(${audienceLabel})` + (annualVersionLabel ? `　【${annualVersionLabel}】` : '');
   grid[0][0] = {v:`${titleLine1}\n${titleLine2}`, style:XSTYLE.TITLE_WRAP};
   merges.push(`${colLetter(1)}1:${colLetter(totalCols)}1`);
   grid[1][0] = {v:'', style:XSTYLE.TITLE};
@@ -3248,10 +3259,10 @@ function buildAnnualExportGrid(fy, audience){
     for(let d=1; d<=maxDim; d++){
       const rIdx = r0+d;
       if(d>dim){
-        // その月には存在しない日。罫線だけ揃えて空セルにする(原本と同様、枠だけ残す)
-        grid[rIdx][base] = {v:'', style:XSTYLE.CENTER};
-        grid[rIdx][base+1] = {v:'', style:XSTYLE.CENTER};
-        grid[rIdx][base+2] = {v:'', style:XSTYLE.LEFT};
+        // その月には存在しない日。罫線を揃えたうえで斜線を引いて「存在しない日」であることを示す
+        grid[rIdx][base] = {v:'', style:XSTYLE.CENTER_DIAG};
+        grid[rIdx][base+1] = {v:'', style:XSTYLE.CENTER_DIAG};
+        grid[rIdx][base+2] = {v:'', style:XSTYLE.LEFT_DIAG};
         continue;
       }
       const dow = new Date(m.year, m.month-1, d).getDay();
@@ -3269,23 +3280,23 @@ function buildAnnualExportGrid(fy, audience){
       grid[rIdx][base+2] = {v:annualEventText(rec, opts, status, audience), style:lS};
     }
     const sumRowBase = r0+1+maxDim;
-    const [y1,y2,y3] = yearCum[i], [t1,t2,t3] = termCum[i], [mo1,mo2,mo3] = monthly[i];
-    // ラベルの文字数(2字/3字)と数値の桁数がそろわないと①②③の位置がずれるため、
+    // ラベルの文字数(2字/3字)と数値の桁数がそろわないと①②③(④)の位置がずれるため、
     // ラベルは3字幅(全角スペースで埋める)、数値は3桁幅(半角スペースで埋める)にそろえる。
     // このセルはプロポーショナルフォントだと空白の幅が数字と揃わずずれて見えるため、
     // XSTYLE.SUMMARYは等幅系フォント(MS Gothic)を使うようにしてある。
     const padLabel3 = s => s.length<3 ? s+'　'.repeat(3-s.length) : s;
     const padNum3 = n => String(n).padStart(3,' ');
-    const sumLine = (label,v1,v2,v3) => `${padLabel3(label)} ①${padNum3(v1)}②${padNum3(v2)}③${padNum3(v3)}`;
-    grid[sumRowBase][base] = {v:sumLine('年計',y1,y2,y3), style:XSTYLE.SUMMARY};
+    const CIRCLED_NUM = ['①','②','③','④'];
+    const sumLine = (label, vals) => `${padLabel3(label)} ` + vals.map((v,idx)=>`${CIRCLED_NUM[idx]}${padNum3(v)}`).join('');
+    grid[sumRowBase][base] = {v:sumLine('年計', yearCum[i]), style:XSTYLE.SUMMARY};
     grid[sumRowBase][base+1] = {v:'', style:XSTYLE.SUMMARY};
     grid[sumRowBase][base+2] = {v:'', style:XSTYLE.SUMMARY};
     merges.push(`${colLetter(base+1)}${sumRowBase+1}:${colLetter(base+3)}${sumRowBase+1}`);
-    grid[sumRowBase+1][base] = {v:sumLine('学期計',t1,t2,t3), style:XSTYLE.SUMMARY};
+    grid[sumRowBase+1][base] = {v:sumLine('学期計', termCum[i]), style:XSTYLE.SUMMARY};
     grid[sumRowBase+1][base+1] = {v:'', style:XSTYLE.SUMMARY};
     grid[sumRowBase+1][base+2] = {v:'', style:XSTYLE.SUMMARY};
     merges.push(`${colLetter(base+1)}${sumRowBase+2}:${colLetter(base+3)}${sumRowBase+2}`);
-    grid[sumRowBase+2][base] = {v:sumLine('月計',mo1,mo2,mo3), style:XSTYLE.SUMMARY};
+    grid[sumRowBase+2][base] = {v:sumLine('月計', monthly[i]), style:XSTYLE.SUMMARY};
     grid[sumRowBase+2][base+1] = {v:'', style:XSTYLE.SUMMARY};
     grid[sumRowBase+2][base+2] = {v:'', style:XSTYLE.SUMMARY};
     merges.push(`${colLetter(base+1)}${sumRowBase+3}:${colLetter(base+3)}${sumRowBase+3}`);
@@ -3899,12 +3910,14 @@ function annualEventHtml(rec, opts, status, audience){
   }).join('\u3000');
 }
 function annualEventText(rec, opts, status, audience){
+  // 複数の行事が同じ日にある場合、全角スペース区切りだと折り返しの際に1つの行事の途中で
+  // 改行されて読みにくくなることがあるため、行事ごとに改行して1行ずつ表示する
   return buildAnnualEventParts(rec, opts, status, audience).map(p=>{
     if(p.cls==='annual') return p.text;
     if(p.cls==='teacheronly') return p.text;
     if(p.cls==='meeting') return `◆${p.text}`;
     return p.text;
-  }).join('\u3000');
+  }).join('\n');
 }
 
 function renderAnnualPreview(audience){
@@ -4431,6 +4444,18 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-10</strong>: TODOにためていた項目をさらにまとめて対応。
+      <ul>
+        <li>月間Excel出力の境目の罫線をさらに細く(グレー)し、1〜3年(・5組)の学年間の境目にも同じ太さの罫線を追加。</li>
+        <li>月間Excel出力の副題を西暦から和暦表記に統一。</li>
+        <li>月間・年間Excel出力の見出し・集計行の背景色を、休業日の網掛け色と被らない薄い青・薄い緑に変更(画面表示の見出し・年計/学期計/月計行も同様に調整)。</li>
+        <li>月間Excel出力の学校行事等欄の幅を8割程度に縮小し、A4横向き1枚に収まりやすく調整。</li>
+        <li>年間Excel出力の○月行事欄のフォントを縮小し、複数行事がある日は行事ごとに改行して表示。</li>
+        <li>年間Excel出力で、その月に存在しない日(31日が無い月など)に斜線を追加。</li>
+        <li>年間Excel出力の年計・学期計・月計を太字なしに変更し、特別支援学級が有効な時は④として集計に追加(画面表示は従来通り)。</li>
+        <li>年間Excel出力の版・状態表示に【】を追加。</li>
+      </ul>
+    </li>
     <li><strong>2026-09-10</strong>: 月間予定表Excel出力で、境目・外枠の罫線が太すぎたため細めに調整。「会議・出張・研修」「放課後」の見出しを、折り返しではなくセルのサイズに合わせた縮小表示に変更。月間予定表(画面・Excel出力とも)で、登校日にチェックが入っている(実際に登校する学年がある)土曜日の網掛けを外すように修正(年間予定表は対応済みだったが月間は未対応だった)。</li>
     <li><strong>2026-09-10</strong>: 月間予定表Excel出力の日・曜・週番の列幅を、実際の見た目を確認しながら再調整(日・曜=26ピクセル相当、週番=27ピクセル相当)。</li>
     <li><strong>2026-09-10</strong>: 月間予定表Excel出力の列幅を微調整。日・曜・掃除・給食・授業の各列は、20ピクセル相当だと文字が縮小されて窮屈に見えていたため、中央揃えのまま縮小がかからない幅(日=2.3、その他=2.8)まで少し広げた。週番は氏名など複数文字が入る前提のため20ピクセル相当のまま。</li>
@@ -4507,7 +4532,7 @@ document.getElementById('helpBody').innerHTML = `
   <p>「設定」タブの「テストデータ」から、元のExcelファイルの実際の記載内容を参考にした4月分のサンプルデータを.datファイルとして書き出せます。現在編集中のデータには影響しません。書き出したファイルを「開く」で読み込むと、入力例が入った状態で各タブの表示やExcel出力を試せます(パスワードは初期値の0000のままです)。すぐに試したいだけなら「サンプルデータをすぐに試す」ボタンで、ファイルを介さずその場で画面上のデータをサンプルに切り替えられます。この操作は開いていたファイル自体を一切変更・上書きしません(保存先が未設定の状態になるため、誤って元のファイルに保存される心配もありません)。お手元のデータに戻るときは、もう一度そのファイルを「開く」で読み込み直してください。</p>
 
   <h4>特別支援学級の追加</h4>
-  <p>「設定」タブの「特別支援学級を追加する」にチェックを入れると、年間予定入力タブと月間予定表(画面表示・Excel出力とも)の「給食」「登校日」「授業(①〜⑥)」の各欄に、4つ目の学級が追加されます。学級名は右の欄で自由に変更でき、既定は「5組」です(名前を変えるとすぐに見出しへ反映されます)。年間予定表の年計・学期計・月計、時数・集計タブの各種集計には反映されません(1〜3年のみの集計のままです)。チェックを外すと欄は非表示になりますが、入力済みのデータは消えずに残るので、後で再度チェックを入れれば復元されます。</p>
+  <p>「設定」タブの「特別支援学級を追加する」にチェックを入れると、年間予定入力タブと月間予定表(画面表示・Excel出力とも)の「給食」「登校日」「授業(①〜⑥)」の各欄に、4つ目の学級が追加されます。学級名は右の欄で自由に変更でき、既定は「5組」です(名前を変えるとすぐに見出しへ反映されます)。年間予定表Excel出力の年計・学期計・月計には④として加わりますが(画面表示は従来通り①②③のみ)、時数・集計タブの各種集計には反映されません(1〜3年のみの集計のままです)。チェックを外すと欄は非表示になりますが、入力済みのデータは消えずに残るので、後で再度チェックを入れれば復元されます。</p>
 
   <h4>入力の操作(Excelのように使えます)</h4>
   <ul>
