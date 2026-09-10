@@ -319,6 +319,7 @@
   <button class="tab" data-tab="preview-family">月間予定表(家庭用)</button>
   <button class="tab" data-tab="preview-annual-teacher">年間予定表(教員用)</button>
   <button class="tab" data-tab="preview-annual-family">年間予定表(家庭用)</button>
+  <button class="tab" data-tab="meals">給食</button>
   <button class="tab" data-tab="stats">時数・集計</button>
   <button class="tab" data-tab="settings">設定(学校名・祝休日)</button>
 </nav>
@@ -415,6 +416,19 @@
       <label><input type="checkbox" data-audience="family" data-opt="includeMeeting"> 職員会議のあった日を含める</label>
     </div>
     <div id="previewAnnualFamilyWrap" class="print-target"></div>
+  </div>
+</main>
+
+<main class="narrow" id="mainMeals" style="display:none;">
+  <div class="panel" style="padding:12px;">
+    <div class="month-head">
+      <span style="font-size:13px;color:var(--ink-soft);">年度: <strong id="mealsFyDisplay">-</strong>(設定タブで変更)</span>
+      <label style="font-size:13px;color:var(--ink-soft);margin-left:8px;">集計する月</label>
+      <select id="mealsMonthSelect"></select>
+      <div class="spacer"></div>
+      <span style="font-size:12px;color:var(--ink-soft);">給食欄の入力内容から自動集計します</span>
+    </div>
+    <div id="mealsWrap"></div>
   </div>
 </main>
 
@@ -833,10 +847,11 @@
    ・File System Access API でローカルの .dat(JSON)に保存/自動保存
    ============================================================ */
 
-// アプリのバージョン表示用。日付形式(YYYY-MM-DD)で、機能追加・修正のたびに更新する。
+// アプリのバージョン表示用。日付+時刻の形式(YYYY-MM-DD HH:MM)で、機能追加・修正のたびに更新する。
+// 同じ日に複数回更新した場合に見分けがつくよう、時刻まで含める。
 // 画面右上のバッジに表示するほか、保存時に.datファイルのmetaにも書き込まれるため、
 // 「このファイルはいつの時点のアプリで保存されたか」も後から確認できる。
-const APP_VERSION = '2026-09-09';
+const APP_VERSION = '2026-09-10 13:07';
 
 const DOW = ['日','月','火','水','木','金','土'];
 
@@ -981,7 +996,7 @@ function normalizeState(obj){
       const ov = obj.mealCountOverrides[key];
       if(!/^\d{4}-\d{2}-\d{2}$/.test(key) || !ov || typeof ov!=='object'){ delete obj.mealCountOverrides[key]; return; }
       const clean = {};
-      ['g1','g2','g3'].forEach(g=>{ if(ov[g]===true) clean[g] = true; });
+      ['g1','g2','g3','g4'].forEach(g=>{ if(ov[g]===true) clean[g] = true; });
       if(Object.keys(clean).length===0) delete obj.mealCountOverrides[key];
       else obj.mealCountOverrides[key] = clean;
     });
@@ -1508,7 +1523,7 @@ function buildXlsxStyles(){
   const nonschoolRgb = 'FF' + lightenHex((state.colors && state.colors.holiday || 'D9D9D9'), 0.6);
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<fonts count="5"><font><sz val="10"/><name val="Yu Mincho"/></font><font><b/><sz val="10"/><name val="Yu Mincho"/></font><font><b/><sz val="14"/><name val="Yu Mincho"/></font><font><sz val="9"/><name val="Yu Mincho"/></font><font><b/><sz val="10"/><name val="MS Gothic"/></font></fonts>
+<fonts count="6"><font><sz val="10"/><name val="Yu Mincho"/></font><font><b/><sz val="10"/><name val="Yu Mincho"/></font><font><b/><sz val="14"/><name val="Yu Mincho"/></font><font><sz val="9"/><name val="Yu Mincho"/></font><font><b/><sz val="10"/><name val="MS Gothic"/></font><font><b/><sz val="8"/><name val="Yu Mincho"/></font></fonts>
 <fills count="8"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="FFEFEFEF"/><bgColor indexed="64"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="${holidayRgb}"/><bgColor indexed="64"/></patternFill></fill>
@@ -1516,10 +1531,19 @@ function buildXlsxStyles(){
 <fill><patternFill patternType="solid"><fgColor rgb="${absentRgb}"/><bgColor indexed="64"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="FFFBE0AE"/><bgColor indexed="64"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="${nonschoolRgb}"/><bgColor indexed="64"/></patternFill></fill></fills>
-<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>
-<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border></borders>
+<borders count="10"><border><left/><right/><top/><bottom/><diagonal/></border>
+<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
+<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="medium"><color rgb="FF000000"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
+<border><left style="medium"><color rgb="FF000000"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
+<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="medium"><color rgb="FF000000"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
+<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="medium"><color rgb="FF000000"/></bottom><diagonal/></border>
+<border><left style="medium"><color rgb="FF000000"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="medium"><color rgb="FF000000"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
+<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="medium"><color rgb="FF000000"/></right><top style="medium"><color rgb="FF000000"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
+<border><left style="medium"><color rgb="FF000000"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="medium"><color rgb="FF000000"/></bottom><diagonal/></border>
+<border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="medium"><color rgb="FF000000"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="medium"><color rgb="FF000000"/></bottom><diagonal/></border>
+</borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="29">
+<cellXfs count="60">
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
@@ -1549,6 +1573,37 @@ function buildXlsxStyles(){
 <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="5" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="4" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="7" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="3" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="5" fillId="2" borderId="4" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="5" fillId="2" borderId="6" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="5" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="4" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" textRotation="255"/></xf>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="7" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" textRotation="255"/></xf>
+<xf numFmtId="0" fontId="0" fillId="0" borderId="3" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="0" borderId="2" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="0" borderId="5" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="0" borderId="8" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="0" borderId="9" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="3" borderId="3" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="3" borderId="2" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="3" borderId="5" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="3" borderId="8" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="3" borderId="9" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="7" borderId="3" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="7" borderId="2" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="7" borderId="5" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="7" borderId="8" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="7" borderId="9" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="5" borderId="2" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="5" borderId="5" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="5" borderId="9" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="3" fillId="0" borderId="5" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="3" fillId="3" borderId="5" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="3" fillId="7" borderId="5" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" shrinkToFit="1"/></xf>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -1556,7 +1611,52 @@ function buildXlsxStyles(){
 
 const XSTYLE = { HEADER:1, CENTER:2, LEFT:3, HOLIDAY_CENTER:4, HOLIDAY_LEFT:5, SUMMARY:6, TITLE:7, DATE:8, HEADER_VERT:9, LEFT_SMALL:10, HOLIDAY_LEFT_SMALL:11, CENTER_VERT:12, HOLIDAY_CENTER_VERT:13, ABSENT_CENTER:14, TITLE_REF:15, NONSCHOOL_CENTER:16, NONSCHOOL_LEFT:17, NONSCHOOL_LEFT_SMALL:18,
   CENTER_TOP:19, LEFT_TOP:20, HOLIDAY_CENTER_TOP:21, HOLIDAY_LEFT_TOP:22, NONSCHOOL_CENTER_TOP:23, NONSCHOOL_LEFT_TOP:24, TITLE_WRAP:25,
-  LEFT_WRAP:26, HOLIDAY_LEFT_WRAP:27, NONSCHOOL_LEFT_WRAP:28 };
+  LEFT_WRAP:26, HOLIDAY_LEFT_WRAP:27, NONSCHOOL_LEFT_WRAP:28, HEADER_SMALL:29,
+  // 月間excelの項目間の境目(放課後|給食、給食|授業、授業|週番)と表全体の外枠を太くするための派生スタイル
+  HEADER_T:30, HEADER_TR:31, HEADER_R:32, HEADER_L:33, HEADER_SMALL_T:34, HEADER_SMALL_TL:35, HEADER_SMALL_R:36, HEADER_VERT_T:37, HEADER_VERT_TR:38,
+  CENTER_L:39, CENTER_R:40, CENTER_B:41, CENTER_BL:42, CENTER_BR:43,
+  HOLIDAY_CENTER_L:44, HOLIDAY_CENTER_R:45, HOLIDAY_CENTER_B:46, HOLIDAY_CENTER_BL:47, HOLIDAY_CENTER_BR:48,
+  NONSCHOOL_CENTER_L:49, NONSCHOOL_CENTER_R:50, NONSCHOOL_CENTER_B:51, NONSCHOOL_CENTER_BL:52, NONSCHOOL_CENTER_BR:53,
+  ABSENT_CENTER_R:54, ABSENT_CENTER_B:55, ABSENT_CENTER_BR:56,
+  LEFT_SMALL_B:57, HOLIDAY_LEFT_SMALL_B:58, NONSCHOOL_LEFT_SMALL_B:59 };
+
+// 月間excelの境目強調線用: 既存スタイルの罫線だけを差し替えた派生スタイルに変換する
+function xstyleToLeft(s){
+  if(s===XSTYLE.CENTER) return XSTYLE.CENTER_L;
+  if(s===XSTYLE.HOLIDAY_CENTER) return XSTYLE.HOLIDAY_CENTER_L;
+  if(s===XSTYLE.NONSCHOOL_CENTER) return XSTYLE.NONSCHOOL_CENTER_L;
+  return s;
+}
+function xstyleToRight(s){
+  if(s===XSTYLE.CENTER) return XSTYLE.CENTER_R;
+  if(s===XSTYLE.HOLIDAY_CENTER) return XSTYLE.HOLIDAY_CENTER_R;
+  if(s===XSTYLE.NONSCHOOL_CENTER) return XSTYLE.NONSCHOOL_CENTER_R;
+  if(s===XSTYLE.ABSENT_CENTER) return XSTYLE.ABSENT_CENTER_R;
+  return s;
+}
+function xstyleToBottom(s){
+  if(s===XSTYLE.CENTER) return XSTYLE.CENTER_B;
+  if(s===XSTYLE.HOLIDAY_CENTER) return XSTYLE.HOLIDAY_CENTER_B;
+  if(s===XSTYLE.NONSCHOOL_CENTER) return XSTYLE.NONSCHOOL_CENTER_B;
+  if(s===XSTYLE.ABSENT_CENTER) return XSTYLE.ABSENT_CENTER_B;
+  if(s===XSTYLE.LEFT_SMALL) return XSTYLE.LEFT_SMALL_B;
+  if(s===XSTYLE.HOLIDAY_LEFT_SMALL) return XSTYLE.HOLIDAY_LEFT_SMALL_B;
+  if(s===XSTYLE.NONSCHOOL_LEFT_SMALL) return XSTYLE.NONSCHOOL_LEFT_SMALL_B;
+  return s;
+}
+function xstyleToBottomLeft(s){
+  if(s===XSTYLE.CENTER) return XSTYLE.CENTER_BL;
+  if(s===XSTYLE.HOLIDAY_CENTER) return XSTYLE.HOLIDAY_CENTER_BL;
+  if(s===XSTYLE.NONSCHOOL_CENTER) return XSTYLE.NONSCHOOL_CENTER_BL;
+  return s;
+}
+function xstyleToBottomRight(s){
+  if(s===XSTYLE.CENTER) return XSTYLE.CENTER_BR;
+  if(s===XSTYLE.HOLIDAY_CENTER) return XSTYLE.HOLIDAY_CENTER_BR;
+  if(s===XSTYLE.NONSCHOOL_CENTER) return XSTYLE.NONSCHOOL_CENTER_BR;
+  if(s===XSTYLE.ABSENT_CENTER) return XSTYLE.ABSENT_CENTER_BR;
+  return s;
+}
 
 function buildWorkbookXml(sheetNames){
   const sheets = sheetNames.map((name,i)=>`<sheet name="${xmlEscape(name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('');
@@ -2093,6 +2193,7 @@ document.querySelectorAll('nav.tabs .tab').forEach(btn=>{
     document.getElementById('mainPreviewFamily').style.display = btn.dataset.tab==='preview-family' ? '' : 'none';
     document.getElementById('mainPreviewAnnualTeacher').style.display = btn.dataset.tab==='preview-annual-teacher' ? '' : 'none';
     document.getElementById('mainPreviewAnnualFamily').style.display = btn.dataset.tab==='preview-annual-family' ? '' : 'none';
+    document.getElementById('mainMeals').style.display = btn.dataset.tab==='meals' ? '' : 'none';
     document.getElementById('mainStats').style.display = btn.dataset.tab==='stats' ? '' : 'none';
     document.getElementById('mainSettings').style.display = btn.dataset.tab==='settings' ? '' : 'none';
     if(btn.dataset.tab==='settings') renderSettingsTab();
@@ -2100,6 +2201,7 @@ document.querySelectorAll('nav.tabs .tab').forEach(btn=>{
     if(btn.dataset.tab==='preview-family') renderFamilyPreview();
     if(btn.dataset.tab==='preview-annual-teacher') renderAnnualPreview('teacher');
     if(btn.dataset.tab==='preview-annual-family') renderAnnualPreview('family');
+    if(btn.dataset.tab==='meals') renderMealsTab();
     if(btn.dataset.tab==='stats') renderStats();
   });
 });
@@ -2214,6 +2316,7 @@ function populateMonthSelect(){
   populateMonthSelectFor('monthSelect');
   populateMonthSelectFor('pvMonthSelect');
   populateMonthSelectFor('pvFamilyMonthSelect');
+  populateMonthSelectFor('mealsMonthSelect');
   populateMonthSelectFor('statsMonthSelect');
 }
 function populateMonthSelectFor(selId){
@@ -2393,7 +2496,7 @@ function attachGridHandlers(){
     captureUndoPoint();
     setFieldValue(key, field, val);
     markDirty();
-    if(/^g[123]SchoolDay$/.test(field)){
+    if(/^g[1234]SchoolDay$/.test(field)){
       // 登校日チェックの切り替えは、その学年の時限欄の入力可否に影響するため再描画する
       renderAgenda();
     }
@@ -2614,6 +2717,7 @@ document.querySelectorAll('.annual-opts input[type=checkbox]').forEach(cb=>{
   });
 });
 document.getElementById('statsMonthSelect').addEventListener('change', renderStats);
+document.getElementById('mealsMonthSelect').addEventListener('change', renderMealsTab);
 
 //////////////////////// 月間予定表プレビュー(教員用) ////////////////////////
 // 元のExcel「4月職」シートの並びに合わせた読み取り専用プレビュー。
@@ -2629,11 +2733,11 @@ function rebuildPVCols(){
     {key:'meeting', label:'会議・出張・研修', w:100},
     {key:'cleaning', label:'掃除', w:30, vertical:true},
     {key:'club', label:'放課後', w:40},
-    {key:'lunchG1', label:'1年', grpLunch:true, w:22},
-    {key:'lunchG2', label:'2年', grpLunch:true, w:22},
-    {key:'lunchG3', label:'3年', grpLunch:true, w:22},
+    {key:'lunchG1', label:'1年', grpLunch:true, w:22, xlsxLabel:'1'},
+    {key:'lunchG2', label:'2年', grpLunch:true, w:22, xlsxLabel:'2'},
+    {key:'lunchG3', label:'3年', grpLunch:true, w:22, xlsxLabel:'3'},
   ];
-  if(spOn) PV_COLS_TEACHER.push({key:'lunchG4', label:spName, grpLunch:true, w:22});
+  if(spOn) PV_COLS_TEACHER.push({key:'lunchG4', label:spName, grpLunch:true, w:22, xlsxLabel:spName.slice(0,1)||'5'});
   ['1','2','3'].forEach(g=>{
     for(let i=1;i<=6;i++) PV_COLS_TEACHER.push({key:'g'+g+'p'+i, label:'①②③④⑤⑥'[i-1], grade:g, w:20});
   });
@@ -2647,11 +2751,11 @@ function rebuildPVCols(){
     {key:'events', label:'学\u3000校\u3000行\u3000事\u3000等', w:390},
     {key:'cleaning', label:'掃除', w:30, vertical:true},
     {key:'club', label:'放課後', w:40},
-    {key:'lunchG1', label:'1年', grpLunch:true, w:22},
-    {key:'lunchG2', label:'2年', grpLunch:true, w:22},
-    {key:'lunchG3', label:'3年', grpLunch:true, w:22},
+    {key:'lunchG1', label:'1年', grpLunch:true, w:22, xlsxLabel:'1'},
+    {key:'lunchG2', label:'2年', grpLunch:true, w:22, xlsxLabel:'2'},
+    {key:'lunchG3', label:'3年', grpLunch:true, w:22, xlsxLabel:'3'},
   ];
-  if(spOn) PV_COLS_FAMILY.push({key:'lunchG4', label:spName, grpLunch:true, w:22});
+  if(spOn) PV_COLS_FAMILY.push({key:'lunchG4', label:spName, grpLunch:true, w:22, xlsxLabel:spName.slice(0,1)||'5'});
   ['1','2','3'].forEach(g=>{
     for(let i=1;i<=6;i++) PV_COLS_FAMILY.push({key:'g'+g+'p'+i, label:'①②③④⑤⑥'[i-1], grade:g, w:20});
   });
@@ -2761,13 +2865,13 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
     `${colLetter(1)}2:${colLetter(dateStart-1)}2`,
     `${colLetter(dateStart)}2:${colLetter(totalCols)}2`
   ];
-  row1[0] = {v:'日', style:XSTYLE.HEADER};
-  row1[1] = {v:'曜', style:XSTYLE.HEADER};
+  row1[0] = {v:'日', style:XSTYLE.HEADER_SMALL_TL};
+  row1[1] = {v:'曜', style:XSTYLE.HEADER_SMALL_T};
   merges.push(`${colLetter(1)}3:${colLetter(1)}4`);
   merges.push(`${colLetter(2)}3:${colLetter(2)}4`);
   let colIdx = 2;
   groups.forEach(g=>{
-    row1[colIdx] = {v:g.label, style: g.vertical ? XSTYLE.HEADER_VERT : XSTYLE.HEADER};
+    row1[colIdx] = {v:g.label, style: g.vertical ? XSTYLE.HEADER_VERT_T : XSTYLE.HEADER_T};
     merges.push(g.grouped
       ? `${colLetter(colIdx+1)}3:${colLetter(colIdx+g.span)}3`
       : `${colLetter(colIdx+1)}3:${colLetter(colIdx+1)}4`);
@@ -2775,7 +2879,7 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
   });
   let ci2 = 2;
   cols.forEach(c=>{
-    if(c.grade || c.grpLunch) row2[ci2] = {v:c.label, style:XSTYLE.HEADER};
+    if(c.grade || c.grpLunch) row2[ci2] = {v:(c.xlsxLabel||c.label), style:XSTYLE.HEADER_SMALL};
     ci2++;
   });
   if(extraCols>0){
@@ -2786,10 +2890,33 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
     row2[totalCols+2] = {v:'学校行事等', style:XSTYLE.HEADER};
   }
   // 結合セルの陰に隠れる位置も含め、見出し帯(row1/row2)は全マスに罫線を入れて隙間をなくす
+  // (row1は主表の範囲(totalCols未満)だけ上端を太くする。翌月欄(先取り)は対象外)
   for(let i=0;i<grandTotalCols;i++){
-    if(row1[i]==null) row1[i] = {v:'', style:XSTYLE.HEADER};
+    if(row1[i]==null) row1[i] = {v:'', style: i<totalCols ? XSTYLE.HEADER_T : XSTYLE.HEADER};
     if(row2[i]==null) row2[i] = {v:'', style:XSTYLE.HEADER};
   }
+
+  // 放課後|給食、給食|授業、授業|週番の境目と、主表の右端(週番。家庭用は最後の授業欄)の
+  // 列に、通常より太い(濃い)縦罫線を入れる。あわせて主表左端(日)・上端(見出し)・
+  // 下端(最終行)にも同じ太さの罫線を入れ、表全体の外枠を強調する。
+  const gradesActive = activeGrades();
+  const lastGrade = gradesActive[gradesActive.length-1];
+  const clubIdx = 2 + cols.findIndex(c=>c.key==='club');
+  const lastLunchIdx = 2 + cols.findIndex(c=>c.key==='lunchG'+lastGrade);
+  const lastPeriodIdx = 2 + cols.findIndex(c=>c.key==='g'+lastGrade+'p6');
+  const lastMainColIdx = totalCols - 1;
+  const rightThickCols = [clubIdx, lastLunchIdx, lastPeriodIdx, lastMainColIdx].filter((v,i,a)=>v>=2 && a.indexOf(v)===i);
+  rightThickCols.forEach(ci=>{
+    if(row1[ci]){
+      if(row1[ci].style===XSTYLE.HEADER_T) row1[ci] = {...row1[ci], style:XSTYLE.HEADER_TR};
+      else if(row1[ci].style===XSTYLE.HEADER_VERT_T) row1[ci] = {...row1[ci], style:XSTYLE.HEADER_VERT_TR};
+    }
+    if(row2[ci]){
+      if(row2[ci].style===XSTYLE.HEADER) row2[ci] = {...row2[ci], style:XSTYLE.HEADER_R};
+      else if(row2[ci].style===XSTYLE.HEADER_SMALL) row2[ci] = {...row2[ci], style:XSTYLE.HEADER_SMALL_R};
+    }
+  });
+  row2[0] = {v:'', style:XSTYLE.HEADER_L};
 
   const grid = [titleRow, subtitleRow, row1, row2];
   const wdColIdx = cols.findIndex(c=>c.key==='weeklyDuty');
@@ -2885,6 +3012,22 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
         for(let i=totalCols;i<grandTotalCols;i++) row[i] = {v:'', style:XSTYLE.CENTER};
       }
     }
+    // 主表(日〜週番)の範囲だけ、境目の縦罫線と、左端・最終行の罫線を太くする
+    {
+      const isLastRow = (d===totalDayRows);
+      for(let ci=0; ci<totalCols; ci++){
+        if(!row[ci]) continue;
+        const isRightEdge = rightThickCols.indexOf(ci)!==-1;
+        const isLeftEdge = (ci===0);
+        let ns = row[ci].style;
+        if(isLeftEdge && isLastRow) ns = xstyleToBottomLeft(ns);
+        else if(isRightEdge && isLastRow) ns = xstyleToBottomRight(ns);
+        else if(isLeftEdge) ns = xstyleToLeft(ns);
+        else if(isRightEdge) ns = xstyleToRight(ns);
+        else if(isLastRow) ns = xstyleToBottom(ns);
+        if(ns!==row[ci].style) row[ci] = {...row[ci], style:ns};
+      }
+    }
     grid.push(row);
   }
   if(wdColIdx!==-1){
@@ -2940,14 +3083,16 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
       });
     }
   }
-  const colWidths = [3,3].concat(cols.map(c=>{
+  // 日・曜・掃除・給食・授業・週番は幅20ピクセル相当に統一する。Excelの列幅は「文字幅」という
+  // 独自単位のため、一般的な変換式(文字幅 ≈ (ピクセル-5)/7)で換算する(フォントにより多少誤差はある)。
+  const NARROW_COL_WIDTH = Math.round(((20-5)/7)*10)/10; // ≒2.1
+  const colWidths = [NARROW_COL_WIDTH,NARROW_COL_WIDTH].concat(cols.map(c=>{
     if(c.key==='events') return 60;
     if(c.key==='meeting') return 14;
-    if(c.key==='cleaning' || c.key==='weeklyDuty') return 4;
+    if(c.key==='cleaning' || c.key==='weeklyDuty') return NARROW_COL_WIDTH;
     if(c.key==='club') return 6;
-    // 「1年」「2年」「3年」(給食)の見出しが2文字あるため、給食欄はセルからはみ出さない幅を確保する
-    if(c.grpLunch) return 4.5;
-    if(c.grade) return 2.8;
+    if(c.grpLunch) return NARROW_COL_WIDTH;
+    if(c.grade) return NARROW_COL_WIDTH;
     return 9;
   }));
   if(extraCols>0) colWidths.push(3,3,40);
@@ -3313,10 +3458,10 @@ function countSchoolDaysByGrade(year, month, grade){
 // monthList が undefined の場合は年度全体を対象にする。
 function computeStatsForRange(monthList){
   const result = {
-    schoolDays: {1:0,2:0,3:0},          // 授業日数(いずれかの時限が入力されている日)
-    lunchOn: {1:0,2:0,3:0},              // 給食○の日数
-    lunchOff: {1:0,2:0,3:0},             // 給食×の日数
-    periodTally: {1:{},2:{},3:{}},       // 学年別、コード別のコマ数集計
+    schoolDays: {1:0,2:0,3:0,4:0},          // 授業日数(いずれかの時限が入力されている日)。4=特別支援学級(給食タブでのみ使用)
+    lunchOn: {1:0,2:0,3:0,4:0},              // 給食○の日数
+    lunchOff: {1:0,2:0,3:0,4:0},             // 給食×の日数
+    periodTally: {1:{},2:{},3:{}},       // 学年別、コード別のコマ数集計(時数・集計タブのみで使用。特別支援学級は対象外)
     weekdaySchoolDays: {1:{},2:{},3:{}}, // 学年別、曜日別(0=日〜6=土)の登校日数
     periodByWeekday: {1:{},2:{},3:{}},   // 学年別、曜日別の①〜⑥それぞれの実施回数(6要素配列)
     teacherEventDays: 0                  // 学校行事等(教員のみ・月間のみ/教員のみ・年間)が入力されている日数
@@ -3326,9 +3471,10 @@ function computeStatsForRange(monthList){
     for(let d=1; d<=dim; d++){
       const rec = migrateDayRecord(state.days[dkey(year,month,d)]);
       const dow = new Date(year,month-1,d).getDay();
-      [1,2,3].forEach(g=>{
+      activeGrades().forEach(g=>{
         const isSD = isSchoolDay(year,month,d,g);
         if(isSD) result.schoolDays[g]++;
+        if(g>3) return; // 特別支援学級は給食(schoolDays/lunchOn/lunchOff)のみ集計し、時数関連は対象外
         if(!result.weekdaySchoolDays[g][dow]) result.weekdaySchoolDays[g][dow] = 0;
         if(isSD) result.weekdaySchoolDays[g][dow]++;
         const arr = rec.periods['g'+g];
@@ -3340,7 +3486,7 @@ function computeStatsForRange(monthList){
         arr.forEach((v,idx)=>{ if(v && v.trim()) result.periodByWeekday[g][dow][idx]++; });
       });
       const lg = rec.lunch;
-      [['1',lg.g1],['2',lg.g2],['3',lg.g3]].forEach(([g,v])=>{
+      [['1',lg.g1],['2',lg.g2],['3',lg.g3],['4',lg.g4]].forEach(([g,v])=>{
         const gg = Number(g);
         if(v==='○') result.lunchOn[gg]++;
         else if(v==='×') result.lunchOff[gg]++;
@@ -3356,7 +3502,7 @@ function computeStatsForRange(monthList){
 // state.mealCountOverrides["YYYY-MM-DD"] = {g1:true,...} で例外扱いにできる(一覧のチェックボックスから設定)。
 // 登校日でない日(土日祝など)は isSchoolDay が false になるため、そもそも対象に入らない。
 function computeAnnualMealSummary(){
-  const result = { schoolDays:{1:0,2:0,3:0}, effMealCount:{1:0,2:0,3:0}, noLunchDays:[] };
+  const result = { schoolDays:{1:0,2:0,3:0,4:0}, effMealCount:{1:0,2:0,3:0,4:0}, noLunchDays:[] };
   fiscalMonthList(state.meta.fiscalYear).forEach(({year,month})=>{
     const dim = daysInMonth(year,month);
     for(let d=1; d<=dim; d++){
@@ -3365,7 +3511,7 @@ function computeAnnualMealSummary(){
       const dow = new Date(year,month-1,d).getDay();
       const ov = state.mealCountOverrides[key];
       const noLunchGrades = []; // 給食○ではない学年(チェックで例外扱いにした後も一覧に残すため、対象学年はここで確定させる)
-      [1,2,3].forEach(g=>{
+      activeGrades().forEach(g=>{
         if(!isSchoolDay(year,month,d,g)) return;
         result.schoolDays[g]++;
         const overridden = !!(ov && ov['g'+g]);
@@ -3406,6 +3552,104 @@ function sortedCodes(tally){
   return keys;
 }
 
+function renderMealsTab(){
+  const wrap = document.getElementById('mealsWrap');
+  if(!wrap) return;
+  document.getElementById('mealsFyDisplay').textContent = state.meta.fiscalYear;
+  const sel = document.getElementById('mealsMonthSelect');
+  const [yStr,mStr] = (sel.value||'').split('-');
+  const year = Number(yStr), month = Number(mStr);
+  if(!year){ wrap.innerHTML = '<p class="preview-empty">月を選択してください。</p>'; return; }
+
+  const monthStats = computeStatsForRange([{year,month}]);
+  const term1Stats = computeStatsForRange(getTermMonths(1));
+  const term2Stats = computeStatsForRange(getTermMonths(2));
+  const term3Stats = computeStatsForRange(getTermMonths(3));
+  const yearStats = computeStatsForRange(fiscalMonthList(state.meta.fiscalYear));
+  const cols = [
+    {label:`${month}月`, s:monthStats},
+    {label:'1学期', s:term1Stats},
+    {label:'2学期', s:term2Stats},
+    {label:'3学期', s:term3Stats},
+    {label:'年間計', s:yearStats, total:true}
+  ];
+
+  // 特別支援学級が有効な場合は5組(学級名は設定で変更可)も対象に含める
+  const grades = activeGrades();
+  const gradeLabel = g => g<=3 ? `${g}年` : (state.meta.supportClassName||'5組');
+
+  let html = '';
+
+  // 給食実施日数
+  html += '<div class="panel"><h2>給食実施日数</h2><table class="stats-table"><thead><tr><th></th>'+cols.map(c=>`<th>${c.label}</th>`).join('')+'</tr></thead><tbody>';
+  grades.forEach(g=>{
+    html += `<tr><td>${gradeLabel(g)}　給食○</td>`+cols.map(c=>`<td${c.total?' class="stats-total"':''}>${c.s.lunchOn[g]}</td>`).join('')+'</tr>';
+  });
+  grades.forEach(g=>{
+    html += `<tr><td>${gradeLabel(g)}　給食×</td>`+cols.map(c=>`<td${c.total?' class="stats-total"':''}>${c.s.lunchOff[g]}</td>`).join('')+'</tr>';
+  });
+  grades.forEach(g=>{
+    html += `<tr><td>${gradeLabel(g)}　授業日数</td>`+cols.map(c=>`<td${c.total?' class="stats-total"':''}>${c.s.schoolDays[g]}</td>`).join('')+'</tr>';
+  });
+  grades.forEach(g=>{
+    html += `<tr><td>${gradeLabel(g)}　給食ない日(授業日数-給食○)</td>`+cols.map(c=>`<td${c.total?' class="stats-total"':''}>${c.s.schoolDays[g]-c.s.lunchOn[g]}</td>`).join('')+'</tr>';
+  });
+  html += '</tbody></table><small class="hint">1学期=4〜7月、2学期=8〜12月、3学期=1〜3月が既定です(「設定」タブで変更可)。</small></div>';
+
+  // 年間給食喫食数・給食のない日一覧
+  const mealSummary = computeAnnualMealSummary();
+  html += '<div class="panel"><h2>年間給食喫食数</h2><table class="stats-table"><thead><tr><th></th>'+grades.map(g=>`<th>${gradeLabel(g)}</th>`).join('')+'</tr></thead><tbody>';
+  html += `<tr><td>喫食数(給食○＋下の一覧でチェックした例外を含む)</td>`+grades.map(g=>`<td>${mealSummary.effMealCount[g]}</td>`).join('')+`</tr>`;
+  html += `<tr><td>給食のない日数(登校日のうち)</td>`+grades.map(g=>`<td>${mealSummary.schoolDays[g]-mealSummary.effMealCount[g]}</td>`).join('')+`</tr>`;
+  html += '</tbody></table><small class="hint">土日祝など、そもそも登校日でない日は集計に含めません。</small></div>';
+
+  const MEAL_LIST_PREVIEW_COUNT = 20;
+  html += `<div class="panel"><h2>給食のない日 一覧(年間) <span class="hint" style="font-weight:normal;">(${mealSummary.noLunchDays.length}件)</span></h2>`;
+  if(mealSummary.noLunchDays.length===0){
+    html += '<p class="preview-empty">該当する日はありません。</p>';
+  } else {
+    const showAll = mealListExpanded || mealSummary.noLunchDays.length<=MEAL_LIST_PREVIEW_COUNT;
+    html += '<table class="stats-table meal-list-table"><thead><tr><th>日付</th><th>曜</th><th>学年</th><th>行事等</th><th>宿泊行事等(給食扱いにする)</th></tr></thead><tbody>';
+    mealSummary.noLunchDays.forEach((item,idx)=>{
+      const gradeLabelStr = item.grades.map(g=>gradeLabel(g)).join('・');
+      const cbs = item.grades.map(g=>{
+        const checked = !!(state.mealCountOverrides[item.key] && state.mealCountOverrides[item.key]['g'+g]);
+        return `<label class="meal-override-label"><input type="checkbox" class="meal-override-cb" data-key="${item.key}" data-grade="g${g}"${checked?' checked':''}>${gradeLabel(g)}</label>`;
+      }).join(' ');
+      const rowHidden = (!showAll && idx>=MEAL_LIST_PREVIEW_COUNT) ? ' hidden' : '';
+      html += `<tr${rowHidden}><td>${item.month}/${item.d}</td><td>${DOW[item.dow]}</td><td>${gradeLabelStr}</td><td>${escapeHtml(item.reason)}</td><td>${cbs}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    if(mealSummary.noLunchDays.length>MEAL_LIST_PREVIEW_COUNT){
+      html += `<button type="button" class="ghost tiny" id="btnToggleMealList">${showAll ? '先頭' + MEAL_LIST_PREVIEW_COUNT + '件だけ表示' : `すべて表示(${mealSummary.noLunchDays.length}件)`}</button>`;
+    }
+  }
+  html += '<small class="hint">修学旅行など宿泊を伴う行事で、給食(学校給食)は提供されないが食事はしている日は、該当する学年にチェックを入れると「給食のない日」から除外され、上の喫食数に加算されます。</small>';
+  html += '</div>';
+
+  wrap.innerHTML = html;
+  wrap.querySelectorAll('.meal-override-cb').forEach(cb=>{
+    cb.disabled = !editUnlocked;
+    cb.addEventListener('change', (e)=>{
+      if(!editUnlocked) return;
+      const key = e.target.dataset.key, g = e.target.dataset.grade;
+      if(!state.mealCountOverrides[key]) state.mealCountOverrides[key] = {};
+      if(e.target.checked) state.mealCountOverrides[key][g] = true;
+      else delete state.mealCountOverrides[key][g];
+      if(Object.keys(state.mealCountOverrides[key]).length===0) delete state.mealCountOverrides[key];
+      markDirty();
+      renderMealsTab();
+    });
+  });
+  const btnToggleMealList = document.getElementById('btnToggleMealList');
+  if(btnToggleMealList){
+    btnToggleMealList.addEventListener('click', ()=>{
+      mealListExpanded = !mealListExpanded;
+      renderMealsTab();
+    });
+  }
+}
+
 function renderStats(){
   const wrap = document.getElementById('statsWrap');
   if(!wrap) return;
@@ -3429,57 +3673,6 @@ function renderStats(){
   ];
 
   let html = '';
-
-  // 給食実施日数
-  html += '<div class="panel"><h2>給食実施日数</h2><table class="stats-table"><thead><tr><th></th>'+cols.map(c=>`<th>${c.label}</th>`).join('')+'</tr></thead><tbody>';
-  ['1年','2年','3年'].forEach((label,i)=>{
-    const g = i+1;
-    html += `<tr><td>${label}　給食○</td>`+cols.map(c=>`<td${c.total?' class="stats-total"':''}>${c.s.lunchOn[g]}</td>`).join('')+'</tr>';
-  });
-  ['1年','2年','3年'].forEach((label,i)=>{
-    const g = i+1;
-    html += `<tr><td>${label}　給食×</td>`+cols.map(c=>`<td${c.total?' class="stats-total"':''}>${c.s.lunchOff[g]}</td>`).join('')+'</tr>';
-  });
-  ['1年','2年','3年'].forEach((label,i)=>{
-    const g = i+1;
-    html += `<tr><td>${label}　授業日数</td>`+cols.map(c=>`<td${c.total?' class="stats-total"':''}>${c.s.schoolDays[g]}</td>`).join('')+'</tr>';
-  });
-  ['1年','2年','3年'].forEach((label,i)=>{
-    const g = i+1;
-    html += `<tr><td>${label}　給食ない日(授業日数-給食○)</td>`+cols.map(c=>`<td${c.total?' class="stats-total"':''}>${c.s.schoolDays[g]-c.s.lunchOn[g]}</td>`).join('')+'</tr>';
-  });
-  html += '</tbody></table><small class="hint">1学期=4〜7月、2学期=8〜12月、3学期=1〜3月が既定です(「設定」タブで変更可)。</small></div>';
-
-  // 年間給食喫食数・給食のない日一覧
-  const mealSummary = computeAnnualMealSummary();
-  html += '<div class="panel"><h2>年間給食喫食数</h2><table class="stats-table"><thead><tr><th></th><th>1年</th><th>2年</th><th>3年</th></tr></thead><tbody>';
-  html += `<tr><td>喫食数(給食○＋下の一覧でチェックした例外を含む)</td><td>${mealSummary.effMealCount[1]}</td><td>${mealSummary.effMealCount[2]}</td><td>${mealSummary.effMealCount[3]}</td></tr>`;
-  html += `<tr><td>給食のない日数(登校日のうち)</td><td>${mealSummary.schoolDays[1]-mealSummary.effMealCount[1]}</td><td>${mealSummary.schoolDays[2]-mealSummary.effMealCount[2]}</td><td>${mealSummary.schoolDays[3]-mealSummary.effMealCount[3]}</td></tr>`;
-  html += '</tbody></table><small class="hint">土日祝など、そもそも登校日でない日は集計に含めません。</small></div>';
-
-  const MEAL_LIST_PREVIEW_COUNT = 20;
-  html += `<div class="panel"><h2>給食のない日 一覧(年間) <span class="hint" style="font-weight:normal;">(${mealSummary.noLunchDays.length}件)</span></h2>`;
-  if(mealSummary.noLunchDays.length===0){
-    html += '<p class="preview-empty">該当する日はありません。</p>';
-  } else {
-    const showAll = mealListExpanded || mealSummary.noLunchDays.length<=MEAL_LIST_PREVIEW_COUNT;
-    html += '<table class="stats-table meal-list-table"><thead><tr><th>日付</th><th>曜</th><th>学年</th><th>行事等</th><th>宿泊行事等(給食扱いにする)</th></tr></thead><tbody>';
-    mealSummary.noLunchDays.forEach((item,idx)=>{
-      const gradeLabel = item.grades.map(g=>g+'年').join('・');
-      const cbs = item.grades.map(g=>{
-        const checked = !!(state.mealCountOverrides[item.key] && state.mealCountOverrides[item.key]['g'+g]);
-        return `<label class="meal-override-label"><input type="checkbox" class="meal-override-cb" data-key="${item.key}" data-grade="g${g}"${checked?' checked':''}>${g}年</label>`;
-      }).join(' ');
-      const rowHidden = (!showAll && idx>=MEAL_LIST_PREVIEW_COUNT) ? ' hidden' : '';
-      html += `<tr${rowHidden}><td>${item.month}/${item.d}</td><td>${DOW[item.dow]}</td><td>${gradeLabel}</td><td>${escapeHtml(item.reason)}</td><td>${cbs}</td></tr>`;
-    });
-    html += '</tbody></table>';
-    if(mealSummary.noLunchDays.length>MEAL_LIST_PREVIEW_COUNT){
-      html += `<button type="button" class="ghost tiny" id="btnToggleMealList">${showAll ? '先頭' + MEAL_LIST_PREVIEW_COUNT + '件だけ表示' : `すべて表示(${mealSummary.noLunchDays.length}件)`}</button>`;
-    }
-  }
-  html += '<small class="hint">修学旅行など宿泊を伴う行事で、給食(学校給食)は提供されないが食事はしている日は、該当する学年にチェックを入れると「給食のない日」から除外され、上の喫食数に加算されます。</small>';
-  html += '</div>';
 
   // 学校行事の回数(「行事のある日数」は、授業枠(①〜⑥)に入力された「行」の合計時数として集計する。
   // 授業枠に記録されない行事の時数は、下の自由記述欄に手入力して年間計に合算できる)
@@ -3613,26 +3806,6 @@ function renderStats(){
       renderStats();
     });
   });
-  wrap.querySelectorAll('.meal-override-cb').forEach(cb=>{
-    cb.disabled = !editUnlocked;
-    cb.addEventListener('change', (e)=>{
-      if(!editUnlocked) return;
-      const key = e.target.dataset.key, g = e.target.dataset.grade;
-      if(!state.mealCountOverrides[key]) state.mealCountOverrides[key] = {};
-      if(e.target.checked) state.mealCountOverrides[key][g] = true;
-      else delete state.mealCountOverrides[key][g];
-      if(Object.keys(state.mealCountOverrides[key]).length===0) delete state.mealCountOverrides[key];
-      markDirty();
-      renderStats();
-    });
-  });
-  const btnToggleMealList = document.getElementById('btnToggleMealList');
-  if(btnToggleMealList){
-    btnToggleMealList.addEventListener('click', ()=>{
-      mealListExpanded = !mealListExpanded;
-      renderStats();
-    });
-  }
   wrap.querySelectorAll('.event-hour-label').forEach(inp=>{
     inp.disabled = !editUnlocked;
     inp.addEventListener('change', (e)=>{
@@ -3671,6 +3844,7 @@ function renderStats(){
     });
   }
 }
+
 
 function buildAnnualEventParts(rec, opts, status, audience){
   const parts = [];
@@ -4036,6 +4210,7 @@ function jumpToDay(y, m, d, focusField){
   document.getElementById('mainPreviewFamily').style.display='none';
   document.getElementById('mainPreviewAnnualTeacher').style.display='none';
   document.getElementById('mainPreviewAnnualFamily').style.display='none';
+  document.getElementById('mainMeals').style.display='none';
   document.getElementById('mainStats').style.display='none';
   document.getElementById('mainSettings').style.display='none';
   const fy2 = m>=4 ? y : y-1;
@@ -4226,6 +4401,14 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-10</strong>: TODOにためていた項目をさらにまとめて対応。
+      <ul>
+        <li>特別支援学級(5組)の登校日チェックON/OFFで授業欄の入力可否が切り替わらない不具合を修正。</li>
+        <li>給食喫食数の集計に5組を含めるように変更。「時数・集計」タブを「給食」タブと「時数・集計」タブの2つに分割(給食実施日数・年間給食喫食数・給食のない日一覧は「給食」タブへ移動)。</li>
+        <li>月間予定表Excel出力: 給食(1年〜5組)・授業(①〜⑥)の見出しのフォントを小さくし、Excel出力にのみ「1年」→「1」のように1文字表記を使うことで見出しのはみ出しを解消。日・曜・掃除・給食・授業・週番の列幅をすべて20ピクセル相当に統一。放課後|給食、給食|授業、授業|週番の境目と、表全体の外枠に太め(濃いめ)の罫線を追加。</li>
+        <li>画面右上のバージョン表示に、日付だけでなく更新時刻も表示するように変更。</li>
+      </ul>
+    </li>
     <li><strong>2026-09-10</strong>: 特別支援学級を追加できるように変更。「設定」タブでON/OFFと学級名(既定「5組」)を設定でき、有効にすると年間予定入力タブと月間予定表(画面・Excel出力)の給食・登校日・授業の欄に学級が1つ追加される。年間予定表の集計・時数集計タブへの反映はなし。OFFにしても入力済みのデータは消えず、再度ONにすると復元される。</li>
     <li><strong>2026-09-10</strong>: 「登校日へまとめて入力」の授業内容を、曜日ごと(月〜日)に別々に指定できるように変更。初期値は月:道2345、火:123456、水:12345、木:12345総、金:12345(土・日は初期値なし)。</li>
     <li><strong>2026-09-10</strong>: TODOにためていた項目をまとめて対応。
@@ -4781,6 +4964,7 @@ function refreshAll(){
   if(document.getElementById('mainPreviewFamily').style.display!=='none') renderFamilyPreview();
   if(document.getElementById('mainPreviewAnnualTeacher').style.display!=='none') renderAnnualPreview('teacher');
   if(document.getElementById('mainPreviewAnnualFamily').style.display!=='none') renderAnnualPreview('family');
+  if(document.getElementById('mainMeals').style.display!=='none') renderMealsTab();
   if(document.getElementById('mainStats').style.display!=='none') renderStats();
 }
 if(!supportsFSA){
