@@ -851,7 +851,7 @@
 // 同じ日に複数回更新した場合に見分けがつくよう、時刻まで含める。
 // 画面右上のバッジに表示するほか、保存時に.datファイルのmetaにも書き込まれるため、
 // 「このファイルはいつの時点のアプリで保存されたか」も後から確認できる。
-const APP_VERSION = '2026-09-10 13:38';
+const APP_VERSION = '2026-09-10 13:51';
 
 const DOW = ['日','月','火','水','木','金','土'];
 
@@ -3086,16 +3086,23 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
       });
     }
   }
-  // 日・曜・掃除・給食・授業・週番は幅20ピクセル相当に統一する。Excelの列幅は「文字幅」という
-  // 独自単位のため、一般的な変換式(文字幅 ≈ (ピクセル-5)/7)で換算する(フォントにより多少誤差はある)。
-  const NARROW_COL_WIDTH = Math.round(((20-5)/7)*10)/10; // ≒2.1
-  const colWidths = [NARROW_COL_WIDTH,NARROW_COL_WIDTH].concat(cols.map(c=>{
+  // 日・曜・掃除・給食・授業・週番は中央揃えのまま、縮小(shrinkToFit)が働かずに収まる
+  // 最小限の幅にする。20ピクセル相当(≒2.1)だと1文字(特に漢字・記号)でも縮小がかかって
+  // 窮屈に見えるため、実際に必要な幅まで少し広げる(2026-09-10、ユーザー確認済み)。
+  // ・日(数字のみ、最大2桁): やや狭めでよい
+  // ・曜・掃除・給食・授業(漢字1文字や「欠」等が入りうる欄): 同程度の幅が必要
+  // ・週番(氏名など複数文字が入りうる欄)は縮小前提のため、20ピクセル相当のまま変更しない
+  const NARROW_COL_WIDTH = Math.round(((20-5)/7)*10)/10; // ≒2.1(週番用)
+  const DAY_COL_WIDTH = 2.3;
+  const KANJI_COL_WIDTH = 2.8;
+  const colWidths = [DAY_COL_WIDTH,KANJI_COL_WIDTH].concat(cols.map(c=>{
     if(c.key==='events') return 60;
     if(c.key==='meeting') return 14;
-    if(c.key==='cleaning' || c.key==='weeklyDuty') return NARROW_COL_WIDTH;
+    if(c.key==='cleaning') return KANJI_COL_WIDTH;
+    if(c.key==='weeklyDuty') return NARROW_COL_WIDTH;
     if(c.key==='club') return 6;
-    if(c.grpLunch) return NARROW_COL_WIDTH;
-    if(c.grade) return NARROW_COL_WIDTH;
+    if(c.grpLunch) return KANJI_COL_WIDTH;
+    if(c.grade) return KANJI_COL_WIDTH;
     return 9;
   }));
   if(extraCols>0) colWidths.push(3,3,40);
@@ -4405,6 +4412,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-10</strong>: 月間予定表Excel出力の列幅を微調整。日・曜・掃除・給食・授業の各列は、20ピクセル相当だと文字が縮小されて窮屈に見えていたため、中央揃えのまま縮小がかからない幅(日=2.3、その他=2.8)まで少し広げた。週番は氏名など複数文字が入る前提のため20ピクセル相当のまま。</li>
     <li><strong>2026-09-10</strong>: 年間予定表Excel出力の見出しラベル(「日」「曜」「◯月行事」)の揃えを調整。「日」「曜」は左揃え、「◯月行事」は中央揃えに変更(見出し行のみ。日付・曜日のデータ欄は従来通り中央揃えのまま)。</li>
     <li><strong>2026-09-10</strong>: 年間予定表Excel出力で、月見出しの「◯月行事」ラベルが中央揃えのままその下の行事欄(左揃え)とずれて見えていた不具合を修正(見出しも左揃えに変更)。日・曜のデータ自体は元から正しく出力されていたことを確認済み。</li>
     <li><strong>2026-09-10</strong>: TODOにためていた項目をさらにまとめて対応。
