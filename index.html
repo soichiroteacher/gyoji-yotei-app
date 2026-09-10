@@ -851,7 +851,7 @@
 // 同じ日に複数回更新した場合に見分けがつくよう、時刻まで含める。
 // 画面右上のバッジに表示するほか、保存時に.datファイルのmetaにも書き込まれるため、
 // 「このファイルはいつの時点のアプリで保存されたか」も後から確認できる。
-const APP_VERSION = '2026-09-10 13:07';
+const APP_VERSION = '2026-09-10 13:34';
 
 const DOW = ['日','月','火','水','木','金','土'];
 
@@ -1543,7 +1543,7 @@ function buildXlsxStyles(){
 <border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="medium"><color rgb="FF000000"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="medium"><color rgb="FF000000"/></bottom><diagonal/></border>
 </borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="60">
+<cellXfs count="61">
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
@@ -1604,6 +1604,7 @@ function buildXlsxStyles(){
 <xf numFmtId="0" fontId="3" fillId="0" borderId="5" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="3" fillId="3" borderId="5" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="3" fillId="7" borderId="5" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" shrinkToFit="1"/></xf>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -1618,7 +1619,9 @@ const XSTYLE = { HEADER:1, CENTER:2, LEFT:3, HOLIDAY_CENTER:4, HOLIDAY_LEFT:5, S
   HOLIDAY_CENTER_L:44, HOLIDAY_CENTER_R:45, HOLIDAY_CENTER_B:46, HOLIDAY_CENTER_BL:47, HOLIDAY_CENTER_BR:48,
   NONSCHOOL_CENTER_L:49, NONSCHOOL_CENTER_R:50, NONSCHOOL_CENTER_B:51, NONSCHOOL_CENTER_BL:52, NONSCHOOL_CENTER_BR:53,
   ABSENT_CENTER_R:54, ABSENT_CENTER_B:55, ABSENT_CENTER_BR:56,
-  LEFT_SMALL_B:57, HOLIDAY_LEFT_SMALL_B:58, NONSCHOOL_LEFT_SMALL_B:59 };
+  LEFT_SMALL_B:57, HOLIDAY_LEFT_SMALL_B:58, NONSCHOOL_LEFT_SMALL_B:59,
+  // 年間予定表の月見出し(◯月行事)を、その下のデータ(年間行事欄・左揃え)と揃えるための左揃え見出し
+  HEADER_LEFT:60 };
 
 // 月間excelの境目強調線用: 既存スタイルの罫線だけを差し替えた派生スタイルに変換する
 function xstyleToLeft(s){
@@ -3217,7 +3220,8 @@ function buildAnnualExportGrid(fy, audience){
     // 画面表示(年間予定表タブ)と同じく、見出しは「日・曜・◯月行事」の1行にまとめる(◯月だけの行は作らない)
     grid[r0][base] = {v:'日', style:XSTYLE.HEADER};
     grid[r0][base+1] = {v:'曜', style:XSTYLE.HEADER};
-    grid[r0][base+2] = {v:`${m.month}月行事`, style:XSTYLE.HEADER};
+    // 見出しの下は左揃えの行事欄(LEFT_WRAP系)のため、見出し自体も左揃えにして縦のずれを無くす
+    grid[r0][base+2] = {v:`${m.month}月行事`, style:XSTYLE.HEADER_LEFT};
 
     const dim = daysInMonth(m.year, m.month);
     for(let d=1; d<=maxDim; d++){
@@ -4401,6 +4405,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-10</strong>: 年間予定表Excel出力で、月見出しの「◯月行事」ラベルが中央揃えのままその下の行事欄(左揃え)とずれて見えていた不具合を修正(見出しも左揃えに変更)。日・曜のデータ自体は元から正しく出力されていたことを確認済み。</li>
     <li><strong>2026-09-10</strong>: TODOにためていた項目をさらにまとめて対応。
       <ul>
         <li>特別支援学級(5組)の登校日チェックON/OFFで授業欄の入力可否が切り替わらない不具合を修正。</li>
