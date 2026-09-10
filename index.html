@@ -179,6 +179,7 @@
   .g1col{background:#fbfdfc;}
   .g2col{background:#fdfcf9;}
   .g3col{background:#fbfbfd;}
+  .g4col{background:#fdfbfd;}
 
   small.hint{color:#8a97a0;font-size:11.5px;}
   .resize-handle{position:absolute;top:0;right:-3px;width:6px;height:100%;cursor:col-resize;z-index:30;}
@@ -464,6 +465,11 @@
         <label style="margin-left:12px;">3学期の開始月</label>
         <select id="setTerm3Start"></select>
         <small class="hint">年間予定表の「学期計」の区切りに使用します</small>
+      </div>
+      <div class="field-row">
+        <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="setSupportClassEnabled">特別支援学級を追加する</label>
+        <input type="text" id="setSupportClassName" placeholder="5組" style="width:100px;">
+        <small class="hint">年間予定入力タブと月間予定表(画面・Excel出力)の給食・登校日・授業の欄に、学級を1つ追加します(年間予定表の集計・時数集計タブへの反映はありません)。</small>
       </div>
     </div>
 
@@ -901,7 +907,8 @@ function emptyState(){
     meta:{ schoolName:'', fiscalYear: now.getMonth()>=3 ? now.getFullYear() : now.getFullYear()-1,
       term2StartMonth: 8, term3StartMonth: 1, // 2学期・3学期の開始月(暦月1-12)。既定は1学期4-7月/2学期8-12月/3学期1-3月
       editPasswordHash: DEFAULT_PASSWORD_HASH, // 編集用パスワード(SHA-256ハッシュ)。既定値は"0000"
-      versionLabelMonthly:'', versionLabelAnnual:'' }, // 予定表タイトルに添える版表記(例:"正式版","保護者説明会時点(4/10)")。月間・年間で別々に設定可能。任意
+      versionLabelMonthly:'', versionLabelAnnual:'', // 予定表タイトルに添える版表記(例:"正式版","保護者説明会時点(4/10)")。月間・年間で別々に設定可能。任意
+      supportClassEnabled:false, supportClassName:'5組' }, // 特別支援学級(4つ目の学級)を年間予定入力・月間予定表に追加するか、その名称
     manualDayFlags:{},   // "YYYY-MM-DD" -> {mode:'holiday'|'schoolday', label:''}
     holidayOverrides:{}, // "YYYY-MM-DD" -> {type:'add'|'remove', label:''} 特別法による祝日移動等の例外を手動で追加・解除
     eventCandidates:[],  // 日程未定の行事等を一次保存しておく候補プール。{id, text, useCount}
@@ -933,6 +940,8 @@ function normalizeState(obj){
   if(!obj.meta.term2StartMonth) obj.meta.term2StartMonth = 8;
   if(!obj.meta.term3StartMonth) obj.meta.term3StartMonth = 1;
   if(!obj.meta.editPasswordHash) obj.meta.editPasswordHash = DEFAULT_PASSWORD_HASH;
+  if(typeof obj.meta.supportClassEnabled !== 'boolean') obj.meta.supportClassEnabled = false;
+  if(typeof obj.meta.supportClassName !== 'string' || !obj.meta.supportClassName.trim()) obj.meta.supportClassName = '5組';
   // 版・状態表示は月間・年間で別々の欄に分離した。旧形式(単一のversionLabel)があれば両方へ引き継ぐ。
   if(typeof obj.meta.versionLabelMonthly !== 'string'){
     obj.meta.versionLabelMonthly = typeof obj.meta.versionLabel === 'string' ? obj.meta.versionLabel : '';
@@ -1049,9 +1058,9 @@ function emptyDayRecord(){
     eventsAnnual:'', eventsMonthly:'', eventsTeacherOnly:'', eventsTeacherOnlyAnnual:'', meeting:'',
     planningMeeting:false, staffMeeting:false,
     cleaning:null, club:'', // 掃除はnull=未設定(土日祝は既定オフ、それ以外は既定オン)。明示的にtrue/falseを入れると常にその値を使う
-    lunch:{g1:'',g2:'',g3:''},
-    periods:{ g1:['','','','','',''], g2:['','','','','',''], g3:['','','','','',''] },
-    schoolDay:{g1:null,g2:null,g3:null}, // 学年別の登校日フラグ。null=祝日・土日から自動判定
+    lunch:{g1:'',g2:'',g3:'',g4:''},
+    periods:{ g1:['','','','','',''], g2:['','','','','',''], g3:['','','','','',''], g4:['','','','','',''] },
+    schoolDay:{g1:null,g2:null,g3:null,g4:null}, // 学年別の登校日フラグ。null=祝日・土日から自動判定。g4=特別支援学級(有効時のみ使用)
     weeklyDuty:'', memo:'', memoInOutput:false
   };
 }
@@ -1073,13 +1082,15 @@ function migrateDayRecord(rec){
   if(typeof rec.cleaning === 'boolean') out.cleaning = rec.cleaning;
   else if(typeof rec.cleaning === 'string') out.cleaning = rec.cleaning === '' ? null : rec.cleaning !== '×';
   else out.cleaning = null;
-  out.lunch = Object.assign({g1:'',g2:'',g3:''}, rec.lunch||{});
+  out.lunch = Object.assign({g1:'',g2:'',g3:'',g4:''}, rec.lunch||{});
+  const padPeriods = arr => (arr ? arr.slice(0,6).concat(Array(6).fill('')).slice(0,6) : ['','','','','','']);
   out.periods = {
-    g1: (rec.periods && rec.periods.g1) ? rec.periods.g1.slice(0,6).concat(Array(6).fill('')).slice(0,6) : ['','','','','',''],
-    g2: (rec.periods && rec.periods.g2) ? rec.periods.g2.slice(0,6).concat(Array(6).fill('')).slice(0,6) : ['','','','','',''],
-    g3: (rec.periods && rec.periods.g3) ? rec.periods.g3.slice(0,6).concat(Array(6).fill('')).slice(0,6) : ['','','','','','']
+    g1: padPeriods(rec.periods && rec.periods.g1),
+    g2: padPeriods(rec.periods && rec.periods.g2),
+    g3: padPeriods(rec.periods && rec.periods.g3),
+    g4: padPeriods(rec.periods && rec.periods.g4)
   };
-  out.schoolDay = Object.assign({g1:null,g2:null,g3:null}, rec.schoolDay||{});
+  out.schoolDay = Object.assign({g1:null,g2:null,g3:null,g4:null}, rec.schoolDay||{});
   return out;
 }
 
@@ -1252,9 +1263,13 @@ function isSchoolDay(y,m,d,grade){
   const dow = new Date(y,m-1,d).getDay();
   return !getDayStatus(y,m,d).isHoliday && dow!==6; // 土曜は既定では休業日
 }
+// 現在有効な学年番号の一覧(特別支援学級が有効な場合は4を含む)。一括操作や集計のループで共通して使う。
+function activeGrades(){
+  return (state.meta && state.meta.supportClassEnabled) ? [1,2,3,4] : [1,2,3];
+}
 // いずれかの学年が登校日かどうか(全学年とも登校日でない日は、掃除欄を空欄にする判定に使う)
 function anySchoolDay(y,m,d){
-  return [1,2,3].some(g=>isSchoolDay(y,m,d,g));
+  return activeGrades().some(g=>isSchoolDay(y,m,d,g));
 }
 
 //////////////////////// ファイル入出力 ////////////////////////
@@ -1822,6 +1837,7 @@ function loadSampleDataInMemory(){
   applyLockUI();
   applyColorSettings();
   renderDatalists();
+  rebuildColumnDefs();
   refreshAll();
 }
 
@@ -2026,6 +2042,7 @@ function loadStateFromText(text){
     markSaved();
     updateFileVersionInfo();
     renderDatalists();
+    rebuildColumnDefs();
     refreshAll();
   }catch(e){ alert('読み込みに失敗しました: '+e.message); }
 }
@@ -2090,28 +2107,46 @@ document.querySelectorAll('nav.tabs .tab').forEach(btn=>{
 //////////////////////// グリッド列定義 ////////////////////////
 // 元のExcel「4月職/4月生」シートの並び順に合わせています:
 // 日,曜,学校行事等,(教員のみ),会議・出張・研修,掃除,部活動,給食(1〜3年),1年①〜⑥,2年①〜⑥,3年①〜⑥,週番,(メモ,休業/登校変更は独自追加)
-const COLS = [
-  {key:'eventsAnnual', label:'学校行事等(共通・年間)', w:190, hint:'年間予定表にも掲載されます'},
-  {key:'eventsMonthly', label:'学校行事等(共通・月間のみ)', w:190, hint:'月の予定表のみに掲載されます'},
-  {key:'eventsTeacherOnlyAnnual', label:'学校行事等(教員のみ・年間)', w:170, hint:'年間予定表(教員用)にのみ掲載されます(月間予定表には表示されません)'},
-  {key:'eventsTeacherOnly', label:'学校行事等(教員のみ・月間のみ)', w:170, hint:'月間予定表(教員用)に掲載されます。年間予定表への表示は「年間予定表(教員用)」タブの設定でオン/オフできます'},
-  {key:'meeting', label:'会議・出張・研修', w:110},
-  {key:'planningMeeting', label:'企画会議', w:30, type:'checkbox', vertical:true},
-  {key:'staffMeeting', label:'職員会議', w:30, type:'checkbox', vertical:true},
-  {key:'cleaning', label:'掃除', w:30, type:'checkbox', vertical:true, hint:'既定は平日「あり」・土日祝「なし」。月間予定表の「掃除」欄には「なし」の日だけ×が表示されます'},
-  {key:'club', label:'放課後', w:52, dl:'dl-club', placeholder:'空欄=あり', hint:'空欄は「活動あり」の意味になります。活動なしの日や、再登校時刻などの特記事項がある日だけ入力してください(例: ×、再登校15:00〜)'},
-  {key:'lunchG1', label:'1年', w:36, dl:'dl-lunch', grpLunch:true, cls:'small-input', hint:'○(給食)・×(給食なし)・弁(お弁当)などを入力できます。候補から選ぶか直接入力してください'},
-  {key:'lunchG2', label:'2年', w:36, dl:'dl-lunch', grpLunch:true, cls:'small-input'},
-  {key:'lunchG3', label:'3年', w:36, dl:'dl-lunch', grpLunch:true, cls:'small-input'},
-  {key:'g1SchoolDay', label:'1年', w:36, type:'checkbox', grpAttend:true, schoolDayGrade:'1'},
-  {key:'g2SchoolDay', label:'2年', w:36, type:'checkbox', grpAttend:true, schoolDayGrade:'2'},
-  {key:'g3SchoolDay', label:'3年', w:36, type:'checkbox', grpAttend:true, schoolDayGrade:'3'},
-];
-['1','2','3'].forEach(g=>{
-  for(let i=1;i<=6;i++) COLS.push({key:'g'+g+'p'+i, label:'①②③④⑤⑥'[i-1], w:36, dl:'dl-period', grade:g, cls:'small-input'});
-});
-COLS.push({key:'weeklyDuty', label:'週番', w:36, dl:'dl-weeklyduty', cls:'small-input'});
-COLS.push({key:'memo', label:'メモ(根拠等)', w:150});
+// 「設定」タブで特別支援学級を有効にすると、給食・登校日・授業の各グループに4つ目の列が追加される。
+// 学年構成が変わりうるため、COLSは(固定のconstではなく)呼び出すたびに現在の設定を反映して組み立てる。
+function buildCOLS(){
+  const spName = (state.meta && state.meta.supportClassName) || '5組';
+  const spOn = !!(state.meta && state.meta.supportClassEnabled);
+  const cols = [
+    {key:'eventsAnnual', label:'学校行事等(共通・年間)', w:190, hint:'年間予定表にも掲載されます'},
+    {key:'eventsMonthly', label:'学校行事等(共通・月間のみ)', w:190, hint:'月の予定表のみに掲載されます'},
+    {key:'eventsTeacherOnlyAnnual', label:'学校行事等(教員のみ・年間)', w:170, hint:'年間予定表(教員用)にのみ掲載されます(月間予定表には表示されません)'},
+    {key:'eventsTeacherOnly', label:'学校行事等(教員のみ・月間のみ)', w:170, hint:'月間予定表(教員用)に掲載されます。年間予定表への表示は「年間予定表(教員用)」タブの設定でオン/オフできます'},
+    {key:'meeting', label:'会議・出張・研修', w:110},
+    {key:'planningMeeting', label:'企画会議', w:30, type:'checkbox', vertical:true},
+    {key:'staffMeeting', label:'職員会議', w:30, type:'checkbox', vertical:true},
+    {key:'cleaning', label:'掃除', w:30, type:'checkbox', vertical:true, hint:'既定は平日「あり」・土日祝「なし」。月間予定表の「掃除」欄には「なし」の日だけ×が表示されます'},
+    {key:'club', label:'放課後', w:52, dl:'dl-club', placeholder:'空欄=あり', hint:'空欄は「活動あり」の意味になります。活動なしの日や、再登校時刻などの特記事項がある日だけ入力してください(例: ×、再登校15:00〜)'},
+    {key:'lunchG1', label:'1年', w:36, dl:'dl-lunch', grpLunch:true, cls:'small-input', hint:'○(給食)・×(給食なし)・弁(お弁当)などを入力できます。候補から選ぶか直接入力してください'},
+    {key:'lunchG2', label:'2年', w:36, dl:'dl-lunch', grpLunch:true, cls:'small-input'},
+    {key:'lunchG3', label:'3年', w:36, dl:'dl-lunch', grpLunch:true, cls:'small-input'},
+  ];
+  if(spOn) cols.push({key:'lunchG4', label:spName, w:36, dl:'dl-lunch', grpLunch:true, cls:'small-input'});
+  cols.push({key:'g1SchoolDay', label:'1年', w:36, type:'checkbox', grpAttend:true, schoolDayGrade:'1'});
+  cols.push({key:'g2SchoolDay', label:'2年', w:36, type:'checkbox', grpAttend:true, schoolDayGrade:'2'});
+  cols.push({key:'g3SchoolDay', label:'3年', w:36, type:'checkbox', grpAttend:true, schoolDayGrade:'3'});
+  if(spOn) cols.push({key:'g4SchoolDay', label:spName, w:36, type:'checkbox', grpAttend:true, schoolDayGrade:'4'});
+  ['1','2','3'].forEach(g=>{
+    for(let i=1;i<=6;i++) cols.push({key:'g'+g+'p'+i, label:'①②③④⑤⑥'[i-1], w:36, dl:'dl-period', grade:g, cls:'small-input'});
+  });
+  if(spOn){
+    for(let i=1;i<=6;i++) cols.push({key:'g4p'+i, label:'①②③④⑤⑥'[i-1], w:36, dl:'dl-period', grade:'4', gradeLabel:spName, cls:'small-input'});
+  }
+  cols.push({key:'weeklyDuty', label:'週番', w:36, dl:'dl-weeklyduty', cls:'small-input'});
+  cols.push({key:'memo', label:'メモ(根拠等)', w:150});
+  return cols;
+}
+let COLS = buildCOLS();
+// 特別支援学級の設定が変わった時などに、COLSと関連する列定義を最新の状態に作り直す。
+function rebuildColumnDefs(){
+  COLS = buildCOLS();
+  rebuildPVCols();
+}
 
 function colWidth(key){
   const c = COLS.find(x=>x.key===key);
@@ -2136,14 +2171,15 @@ function getFieldValue(rec, manual, key){
   if(key==='lunchG1') return rec.lunch.g1||'';
   if(key==='lunchG2') return rec.lunch.g2||'';
   if(key==='lunchG3') return rec.lunch.g3||'';
-  const gm = key.match(/^g([123])p([1-6])$/);
+  if(key==='lunchG4') return rec.lunch.g4||'';
+  const gm = key.match(/^g([1234])p([1-6])$/);
   if(gm) return rec.periods['g'+gm[1]][Number(gm[2])-1];
   return rec[key] || '';
 }
 function setFieldValue(dateKey, key, value){
   let rec = state.days[dateKey];
   if(!rec){ rec = emptyDayRecord(); state.days[dateKey] = rec; }
-  const sdm = key.match(/^g([123])SchoolDay$/);
+  const sdm = key.match(/^g([1234])SchoolDay$/);
   if(sdm){
     rec.schoolDay['g'+sdm[1]] = (value===true || value==='1' || value==='true');
   } else if(key==='planningMeeting' || key==='staffMeeting' || key==='cleaning'){
@@ -2151,8 +2187,9 @@ function setFieldValue(dateKey, key, value){
   } else if(key==='lunchG1'){ rec.lunch.g1 = String(value).trim(); }
   else if(key==='lunchG2'){ rec.lunch.g2 = String(value).trim(); }
   else if(key==='lunchG3'){ rec.lunch.g3 = String(value).trim(); }
+  else if(key==='lunchG4'){ rec.lunch.g4 = String(value).trim(); }
   else {
-    const gm = key.match(/^g([123])p([1-6])$/);
+    const gm = key.match(/^g([1234])p([1-6])$/);
     if(gm) rec.periods['g'+gm[1]][Number(gm[2])-1] = String(value).trim();
     else {
       const noTrim = (key==='memo'||key==='eventsAnnual'||key==='eventsMonthly'||key==='eventsTeacherOnly'||key==='eventsTeacherOnlyAnnual'||key==='meeting');
@@ -2166,8 +2203,8 @@ function pruneIfEmpty(dateKey){
   if(!rec) return;
   const empty = !rec.eventsAnnual && !rec.eventsMonthly && !rec.eventsTeacherOnly && !rec.eventsTeacherOnlyAnnual && !rec.meeting &&
     !rec.planningMeeting && !rec.staffMeeting && rec.cleaning===null && !rec.club &&
-    !rec.lunch.g1 && !rec.lunch.g2 && !rec.lunch.g3 && !rec.weeklyDuty && !rec.memo &&
-    rec.schoolDay.g1===null && rec.schoolDay.g2===null && rec.schoolDay.g3===null &&
+    !rec.lunch.g1 && !rec.lunch.g2 && !rec.lunch.g3 && !rec.lunch.g4 && !rec.weeklyDuty && !rec.memo &&
+    rec.schoolDay.g1===null && rec.schoolDay.g2===null && rec.schoolDay.g3===null && rec.schoolDay.g4===null &&
     Object.values(rec.periods).every(arr=>arr.every(v=>!v));
   if(empty) delete state.days[dateKey];
 }
@@ -2223,7 +2260,7 @@ function renderAgenda(){
   const groupStartColIdx = new Set();
   COLS.forEach((c,ciAll)=>{
     let gkey, glabel, grouped;
-    if(c.grade){ gkey='grade-'+c.grade; glabel=c.grade+'年授業'; grouped=true; }
+    if(c.grade){ gkey='grade-'+c.grade; glabel=(c.gradeLabel||c.grade+'年')+'授業'; grouped=true; }
     else if(c.grpLunch){ gkey='lunch'; glabel='給食'; grouped=true; }
     else if(c.grpAttend){ gkey='attend'; glabel='登校日'; grouped=true; }
     else { gkey='single-'+c.key; glabel=c.label; grouped=false; } // 単独列は常に固有キーにして誤結合を防ぐ
@@ -2255,9 +2292,11 @@ function renderAgenda(){
     const effSchoolDay = {
       1: typeof rec.schoolDay.g1==='boolean' ? rec.schoolDay.g1 : autoSchoolDay,
       2: typeof rec.schoolDay.g2==='boolean' ? rec.schoolDay.g2 : autoSchoolDay,
-      3: typeof rec.schoolDay.g3==='boolean' ? rec.schoolDay.g3 : autoSchoolDay
+      3: typeof rec.schoolDay.g3==='boolean' ? rec.schoolDay.g3 : autoSchoolDay,
+      4: typeof rec.schoolDay.g4==='boolean' ? rec.schoolDay.g4 : autoSchoolDay
     };
-    const anyAttend = effSchoolDay[1] || effSchoolDay[2] || effSchoolDay[3];
+    // 特別支援学級が無効な間は、その学年の登校日判定を網掛け等の判定に含めない
+    const anyAttend = effSchoolDay[1] || effSchoolDay[2] || effSchoolDay[3] || (state.meta.supportClassEnabled && effSchoolDay[4]);
     // 土曜の青い網掛けは、いずれかの学年が登校日にチェックされている(=実際に登校する)日には付けない
     if(dow===6 && !anyAttend) rowClasses.push('rowsat');
     // 土日祝ではない(平日)のに、明示的な設定で全学年とも登校日でなくなっている行は、土日祝より薄い色で網掛けする
@@ -2579,39 +2618,55 @@ document.getElementById('statsMonthSelect').addEventListener('change', renderSta
 //////////////////////// 月間予定表プレビュー(教員用) ////////////////////////
 // 元のExcel「4月職」シートの並びに合わせた読み取り専用プレビュー。
 // 学校行事等は「全体」に「教員のみ」の内容も合わせて表示(教員のみの部分はオレンジ文字で区別)。
-const PV_COLS_TEACHER = [
-  {key:'events', label:'学\u3000校\u3000行\u3000事\u3000等', w:315},
-  {key:'meeting', label:'会議・出張・研修', w:100},
-  {key:'cleaning', label:'掃除', w:30, vertical:true},
-  {key:'club', label:'放課後', w:40},
-  {key:'lunchG1', label:'1年', grpLunch:true, w:22},
-  {key:'lunchG2', label:'2年', grpLunch:true, w:22},
-  {key:'lunchG3', label:'3年', grpLunch:true, w:22},
-];
-['1','2','3'].forEach(g=>{
-  for(let i=1;i<=6;i++) PV_COLS_TEACHER.push({key:'g'+g+'p'+i, label:'①②③④⑤⑥'[i-1], grade:g, w:20});
-});
-PV_COLS_TEACHER.push({key:'weeklyDuty', label:'週番', w:26, vertical:true});
+let PV_COLS_TEACHER = [];
+let PV_COLS_FAMILY = [];
+// 特別支援学級が有効な場合に、給食・授業の各グループへ4つ目の列(学級名で表示)を追加する。
+function rebuildPVCols(){
+  const spName = (state.meta && state.meta.supportClassName) || '5組';
+  const spOn = !!(state.meta && state.meta.supportClassEnabled);
+  PV_COLS_TEACHER = [
+    {key:'events', label:'学\u3000校\u3000行\u3000事\u3000等', w:315},
+    {key:'meeting', label:'会議・出張・研修', w:100},
+    {key:'cleaning', label:'掃除', w:30, vertical:true},
+    {key:'club', label:'放課後', w:40},
+    {key:'lunchG1', label:'1年', grpLunch:true, w:22},
+    {key:'lunchG2', label:'2年', grpLunch:true, w:22},
+    {key:'lunchG3', label:'3年', grpLunch:true, w:22},
+  ];
+  if(spOn) PV_COLS_TEACHER.push({key:'lunchG4', label:spName, grpLunch:true, w:22});
+  ['1','2','3'].forEach(g=>{
+    for(let i=1;i<=6;i++) PV_COLS_TEACHER.push({key:'g'+g+'p'+i, label:'①②③④⑤⑥'[i-1], grade:g, w:20});
+  });
+  if(spOn){
+    for(let i=1;i<=6;i++) PV_COLS_TEACHER.push({key:'g4p'+i, label:'①②③④⑤⑥'[i-1], grade:'4', gradeLabel:spName, w:20});
+  }
+  PV_COLS_TEACHER.push({key:'weeklyDuty', label:'週番', w:26, vertical:true});
 
-// 家庭用: 会議・出張・研修と週番(教員向け情報)を除いた構成
-const PV_COLS_FAMILY = [
-  {key:'events', label:'学\u3000校\u3000行\u3000事\u3000等', w:390},
-  {key:'cleaning', label:'掃除', w:30, vertical:true},
-  {key:'club', label:'放課後', w:40},
-  {key:'lunchG1', label:'1年', grpLunch:true, w:22},
-  {key:'lunchG2', label:'2年', grpLunch:true, w:22},
-  {key:'lunchG3', label:'3年', grpLunch:true, w:22},
-];
-['1','2','3'].forEach(g=>{
-  for(let i=1;i<=6;i++) PV_COLS_FAMILY.push({key:'g'+g+'p'+i, label:'①②③④⑤⑥'[i-1], grade:g, w:20});
-});
+  // 家庭用: 会議・出張・研修と週番(教員向け情報)を除いた構成
+  PV_COLS_FAMILY = [
+    {key:'events', label:'学\u3000校\u3000行\u3000事\u3000等', w:390},
+    {key:'cleaning', label:'掃除', w:30, vertical:true},
+    {key:'club', label:'放課後', w:40},
+    {key:'lunchG1', label:'1年', grpLunch:true, w:22},
+    {key:'lunchG2', label:'2年', grpLunch:true, w:22},
+    {key:'lunchG3', label:'3年', grpLunch:true, w:22},
+  ];
+  if(spOn) PV_COLS_FAMILY.push({key:'lunchG4', label:spName, grpLunch:true, w:22});
+  ['1','2','3'].forEach(g=>{
+    for(let i=1;i<=6;i++) PV_COLS_FAMILY.push({key:'g'+g+'p'+i, label:'①②③④⑤⑥'[i-1], grade:g, w:20});
+  });
+  if(spOn){
+    for(let i=1;i<=6;i++) PV_COLS_FAMILY.push({key:'g4p'+i, label:'①②③④⑤⑥'[i-1], grade:'4', gradeLabel:spName, w:20});
+  }
+}
+rebuildPVCols();
 
 function buildPreviewHeaderHTML(cols){
   const groups = [];
   let cur=null;
   cols.forEach(c=>{
     let gkey, glabel, grouped;
-    if(c.grade){ gkey='grade-'+c.grade; glabel=c.grade+'年授業'; grouped=true; }
+    if(c.grade){ gkey='grade-'+c.grade; glabel=(c.gradeLabel||c.grade+'年')+'授業'; grouped=true; }
     else if(c.grpLunch){ gkey='lunch'; glabel='給食'; grouped=true; }
     else { gkey='single-'+c.key; glabel=c.label; grouped=false; }
     if(gkey!==cur){ groups.push({label:glabel, span:0, grouped, vertical:c.vertical}); cur=gkey; }
@@ -2636,7 +2691,7 @@ function groupHeaderForExport(cols){
   let cur=null;
   cols.forEach(c=>{
     let gkey, glabel, grouped;
-    if(c.grade){ gkey='grade-'+c.grade; glabel=c.grade+'年授業'; grouped=true; }
+    if(c.grade){ gkey='grade-'+c.grade; glabel=(c.gradeLabel||c.grade+'年')+'授業'; grouped=true; }
     else if(c.grpLunch){ gkey='lunch'; glabel='給食'; grouped=true; }
     else { gkey='single-'+c.key; glabel=c.label; grouped=false; }
     if(gkey!==cur){ groups.push({label:glabel, span:0, grouped, vertical:c.vertical}); cur=gkey; }
@@ -2792,6 +2847,7 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
         else if(c.key==='lunchG1'){ row[ci] = {v:rec.lunch.g1||'', style:cS}; }
         else if(c.key==='lunchG2'){ row[ci] = {v:rec.lunch.g2||'', style:cS}; }
         else if(c.key==='lunchG3'){ row[ci] = {v:rec.lunch.g3||'', style:cS}; }
+        else if(c.key==='lunchG4'){ row[ci] = {v:rec.lunch.g4||'', style:cS}; }
         else if(c.key==='weeklyDuty'){
           const run = weeklyDutyRuns[d];
           if(run && run.skip) row[ci] = {v:'', style:cS}; // 結合セルの陰の部分。中身は非表示になるが罫線は入れる
@@ -2799,7 +2855,7 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
           else row[ci] = {v:rec.weeklyDuty||'', style:cS};
         }
         else {
-          const gm = c.key.match(/^g([123])p([1-6])$/);
+          const gm = c.key.match(/^g([1234])p([1-6])$/);
           const val = gm ? rec.periods['g'+gm[1]][Number(gm[2])-1] : '';
           // 「1」〜「6」の数字だけは文字列ではなく数値として書き出す(文字列のままだと
           // Excelで「数値が文字列として保存されています」という警告が出るため。実害はないが紛らわしい)
@@ -3159,6 +3215,8 @@ function renderMonthlyPreview(opts){
         html += `<td class="pv-center">${escapeHtml(rec.lunch.g2||'')}</td>`;
       } else if(c.key==='lunchG3'){
         html += `<td class="pv-center">${escapeHtml(rec.lunch.g3||'')}</td>`;
+      } else if(c.key==='lunchG4'){
+        html += `<td class="pv-center">${escapeHtml(rec.lunch.g4||'')}</td>`;
       } else if(c.key==='weeklyDuty'){
         const run = weeklyDutyRuns[d];
         if(run && run.skip){
@@ -3169,7 +3227,7 @@ function renderMonthlyPreview(opts){
           html += `<td class="pv-center pv-vert">${escapeHtml(rec.weeklyDuty||'')}</td>`;
         }
       } else {
-        const gm = c.key.match(/^g([123])p([1-6])$/);
+        const gm = c.key.match(/^g([1234])p([1-6])$/);
         const val = gm ? rec.periods['g'+gm[1]][Number(gm[2])-1] : '';
         html += `<td class="pv-center${val==='欠'?' pv-absent':''}">${escapeHtml(val||'')}</td>`;
       }
@@ -3738,6 +3796,9 @@ function renderSettingsTab(){
   document.getElementById('setVersionLabelMonthly').value = state.meta.versionLabelMonthly || '';
   document.getElementById('setVersionLabelAnnual').value = state.meta.versionLabelAnnual || '';
   document.getElementById('setFiscalYear').value = state.meta.fiscalYear;
+  document.getElementById('setSupportClassEnabled').checked = !!state.meta.supportClassEnabled;
+  document.getElementById('setSupportClassName').value = state.meta.supportClassName || '5組';
+  document.getElementById('setSupportClassName').disabled = !editUnlocked || !state.meta.supportClassEnabled;
   document.getElementById('btnImportPrevYearEvents').textContent = `${state.meta.fiscalYear-1}年度の行事を候補に追加`;
   document.getElementById('importPrevYearMsg').textContent = '';
   document.getElementById('setColorHoliday').value = '#'+state.colors.holiday;
@@ -3754,6 +3815,7 @@ function renderSettingsTab(){
   renderPrintCountList();
   refreshBackupUI();
   ['setSchoolName','setVersionLabelMonthly','setVersionLabelAnnual','setFiscalYear','setTerm2Start','setTerm3Start',
+   'setSupportClassEnabled',
    'presetClub','presetLunch','presetPeriod','presetWeeklyDuty',
    'pwCurrentInput','pwNewInput','pwNewInput2','btnChangePassword',
    'btnImportPrevYearEvents','setColorHoliday','setColorAbsent','btnResetColors',
@@ -3924,6 +3986,21 @@ document.getElementById('setFiscalYear').addEventListener('change', (e)=>{
   renderAgenda();
   document.getElementById('btnImportPrevYearEvents').textContent = `${state.meta.fiscalYear-1}年度の行事を候補に追加`;
   document.getElementById('importPrevYearMsg').textContent = '';
+});
+document.getElementById('setSupportClassEnabled').addEventListener('change', (e)=>{
+  if(!editUnlocked) return;
+  state.meta.supportClassEnabled = e.target.checked;
+  markDirty();
+  rebuildColumnDefs();
+  renderSettingsTab();
+  refreshAll();
+});
+document.getElementById('setSupportClassName').addEventListener('input', (e)=>{
+  if(!editUnlocked) return;
+  state.meta.supportClassName = e.target.value.trim() || '5組';
+  markDirty();
+  rebuildColumnDefs();
+  refreshAll();
 });
 function stepMonth(delta){
   const sel = document.getElementById('monthSelect');
@@ -4149,6 +4226,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-10</strong>: 特別支援学級を追加できるように変更。「設定」タブでON/OFFと学級名(既定「5組」)を設定でき、有効にすると年間予定入力タブと月間予定表(画面・Excel出力)の給食・登校日・授業の欄に学級が1つ追加される。年間予定表の集計・時数集計タブへの反映はなし。OFFにしても入力済みのデータは消えず、再度ONにすると復元される。</li>
     <li><strong>2026-09-10</strong>: 「登校日へまとめて入力」の授業内容を、曜日ごと(月〜日)に別々に指定できるように変更。初期値は月:道2345、火:123456、水:12345、木:12345総、金:12345(土・日は初期値なし)。</li>
     <li><strong>2026-09-10</strong>: TODOにためていた項目をまとめて対応。
       <ul>
@@ -4209,6 +4287,9 @@ document.getElementById('helpBody').innerHTML = `
 
   <h4>テストデータでの動作確認</h4>
   <p>「設定」タブの「テストデータ」から、元のExcelファイルの実際の記載内容を参考にした4月分のサンプルデータを.datファイルとして書き出せます。現在編集中のデータには影響しません。書き出したファイルを「開く」で読み込むと、入力例が入った状態で各タブの表示やExcel出力を試せます(パスワードは初期値の0000のままです)。すぐに試したいだけなら「サンプルデータをすぐに試す」ボタンで、ファイルを介さずその場で画面上のデータをサンプルに切り替えられます。この操作は開いていたファイル自体を一切変更・上書きしません(保存先が未設定の状態になるため、誤って元のファイルに保存される心配もありません)。お手元のデータに戻るときは、もう一度そのファイルを「開く」で読み込み直してください。</p>
+
+  <h4>特別支援学級の追加</h4>
+  <p>「設定」タブの「特別支援学級を追加する」にチェックを入れると、年間予定入力タブと月間予定表(画面表示・Excel出力とも)の「給食」「登校日」「授業(①〜⑥)」の各欄に、4つ目の学級が追加されます。学級名は右の欄で自由に変更でき、既定は「5組」です(名前を変えるとすぐに見出しへ反映されます)。年間予定表の年計・学期計・月計、時数・集計タブの各種集計には反映されません(1〜3年のみの集計のままです)。チェックを外すと欄は非表示になりますが、入力済みのデータは消えずに残るので、後で再度チェックを入れれば復元されます。</p>
 
   <h4>入力の操作(Excelのように使えます)</h4>
   <ul>
@@ -4897,21 +4978,22 @@ function bulkAttendFillTargetDays(){
   const dim = daysInMonth(year,month);
   const days = [];
   for(let d=1; d<=dim; d++){
-    const grades = [1,2,3].filter(g=>isSchoolDay(year,month,d,g));
+    const grades = activeGrades().filter(g=>isSchoolDay(year,month,d,g));
     if(grades.length) days.push({year,month,d,grades});
   }
   return days;
 }
 function renderBulkAttendFillPreview(){
   const days = bulkAttendFillTargetDays();
-  const perGrade = {1:0,2:0,3:0};
+  const perGrade = {1:0,2:0,3:0,4:0};
   days.forEach(day=> day.grades.forEach(g=> perGrade[g]++));
   const el = document.getElementById('bafPreview');
   if(days.length===0){
     el.textContent = '対象: 現在表示中の月に、登校日にチェックが入っている日がありません。';
     return;
   }
-  el.textContent = `対象: ${days.length}日(1年:${perGrade[1]}日 2年:${perGrade[2]}日 3年:${perGrade[3]}日)`;
+  const spLabel = state.meta.supportClassEnabled ? ` ${state.meta.supportClassName||'5組'}:${perGrade[4]}日` : '';
+  el.textContent = `対象: ${days.length}日(1年:${perGrade[1]}日 2年:${perGrade[2]}日 3年:${perGrade[3]}日${spLabel})`;
 }
 function openBulkAttendFillModal(){
   document.getElementById('bafPeriods').checked = true;
