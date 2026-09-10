@@ -849,7 +849,7 @@
 // 同じ日に複数回更新した場合に見分けがつくよう、時刻まで含める。
 // 画面右上のバッジに表示するほか、保存時に.datファイルのmetaにも書き込まれるため、
 // 「このファイルはいつの時点のアプリで保存されたか」も後から確認できる。
-const APP_VERSION = '2026-09-10 16:12';
+const APP_VERSION = '2026-09-10 16:15';
 
 const DOW = ['日','月','火','水','木','金','土'];
 
@@ -1283,6 +1283,11 @@ function activeGrades(){
 // いずれかの学年が登校日かどうか(全学年とも登校日でない日は、掃除欄を空欄にする判定に使う)
 function anySchoolDay(y,m,d){
   return activeGrades().some(g=>isSchoolDay(y,m,d,g));
+}
+// 全学年が登校日かどうか(学校全体として動いている日かどうかの判定に使う。土曜日の網掛け表示で、
+// 一部の学年だけ登校する日(修学旅行等)は網掛けを残し、全学年が登校する日だけ外すために使う)
+function allSchoolDay(y,m,d){
+  return activeGrades().every(g=>isSchoolDay(y,m,d,g));
 }
 
 //////////////////////// ファイル入出力 ////////////////////////
@@ -2963,7 +2968,7 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
       const rec = migrateDayRecord(state.days[dkey(year,month,d)]);
       let shaded = isShadedDay(status, dow);
       // 登校日にチェックが入っている(実際に登校する学年がある)土曜は、休業日と同じ網掛けにしない(年間予定表と同じ扱い)
-      if(shaded && !status.isHoliday && dow===6 && anySchoolDay(year, month, d)) shaded = false;
+      if(shaded && !status.isHoliday && dow===6 && allSchoolDay(year, month, d)) shaded = false;
       const nonschool = !shaded && isNonSchoolDay(status, dow, year, month, d);
       const cS = shaded ? XSTYLE.HOLIDAY_CENTER : nonschool ? XSTYLE.NONSCHOOL_CENTER : XSTYLE.CENTER;
       const lSsmall = shaded ? XSTYLE.HOLIDAY_LEFT_SMALL : nonschool ? XSTYLE.NONSCHOOL_LEFT_SMALL : XSTYLE.LEFT_SMALL; // 月間予定表の学校行事等は年間より少し小さめのフォントにする
@@ -3021,7 +3026,7 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
         const nrec = migrateDayRecord(state.days[dkey(ny,nm,d)]);
         const nparts = [effectiveEventsAnnual(nrec, nstatus), nrec.eventsMonthly].filter(Boolean);
         let nshaded = isShadedDay(nstatus, ndow);
-        if(nshaded && !nstatus.isHoliday && ndow===6 && anySchoolDay(ny, nm, d)) nshaded = false;
+        if(nshaded && !nstatus.isHoliday && ndow===6 && allSchoolDay(ny, nm, d)) nshaded = false;
         const nnonschool = !nshaded && isNonSchoolDay(nstatus, ndow, ny, nm, d);
         const nCenterStyle = nshaded ? XSTYLE.HOLIDAY_CENTER : nnonschool ? XSTYLE.NONSCHOOL_CENTER : XSTYLE.CENTER;
         row[totalCols] = {v:d, num:true, style:nCenterStyle};
@@ -3266,7 +3271,7 @@ function buildAnnualExportGrid(fy, audience){
       const rec = migrateDayRecord(state.days[dkey(m.year,m.month,d)]);
       let shaded = isShadedDay(status, dow);
       // 登校日にチェックが入っている(実際に登校する学年がある)土曜は、休業日と同じ網掛けにしない
-      if(shaded && !status.isHoliday && dow===6 && anySchoolDay(m.year, m.month, d)) shaded = false;
+      if(shaded && !status.isHoliday && dow===6 && allSchoolDay(m.year, m.month, d)) shaded = false;
       const nonschool = !shaded && isNonSchoolDay(status, dow, m.year, m.month, d);
       // 日・曜は上下左右中央揃え、年間行事欄は折り返し表示にする
       const cS = shaded ? XSTYLE.HOLIDAY_CENTER : nonschool ? XSTYLE.NONSCHOOL_CENTER : XSTYLE.CENTER;
@@ -3363,7 +3368,7 @@ function renderMonthlyPreview(opts){
     const rec = migrateDayRecord(state.days[key]);
     let shadedPv = isShadedDay(status, dow);
     // 登校日にチェックが入っている(実際に登校する学年がある)土曜は、休業日と同じ網掛けにしない(年間予定表と同じ扱い)
-    if(shadedPv && !status.isHoliday && dow===6 && anySchoolDay(year, month, d)) shadedPv = false;
+    if(shadedPv && !status.isHoliday && dow===6 && allSchoolDay(year, month, d)) shadedPv = false;
     const rowCls = shadedPv ? 'pv-holiday' : (isNonSchoolDay(status, dow, year, month, d) ? 'pv-nonschool' : '');
     html += `<tr class="${rowCls}">`;
     html += `<td class="pv-daynum">${d}</td><td class="pv-dow">${DOW[dow]}</td>`;
@@ -3439,7 +3444,7 @@ function renderMonthlyPreview(opts){
       const rec = migrateDayRecord(state.days[dkey(ny,nm,d)]);
       const parts = [effectiveEventsAnnual(rec, status), rec.eventsMonthly].filter(Boolean);
       let shadedN = isShadedDay(status, dow);
-      if(shadedN && !status.isHoliday && dow===6 && anySchoolDay(ny, nm, d)) shadedN = false;
+      if(shadedN && !status.isHoliday && dow===6 && allSchoolDay(ny, nm, d)) shadedN = false;
       const rowCls = shadedN ? 'pv-holiday' : (isNonSchoolDay(status, dow, ny, nm, d) ? 'pv-nonschool' : '');
       html += `<tr class="${rowCls}"><td class="pv-daynum">${d}</td><td class="pv-dow">${DOW[dow]}</td><td class="pv-events">${escapeHtml(parts.join('\u3000'))}</td></tr>`;
     }
@@ -3941,7 +3946,7 @@ function renderAnnualPreview(audience){
       const rec = migrateDayRecord(state.days[dkey(year,month,d)]);
       let shaded = isShadedDay(status, dow);
       // 登校日にチェックが入っている(実際に登校する学年がある)土曜は、休業日と同じ網掛けにしない
-      if(shaded && !status.isHoliday && dow===6 && anySchoolDay(year, month, d)) shaded = false;
+      if(shaded && !status.isHoliday && dow===6 && allSchoolDay(year, month, d)) shaded = false;
       const rowCls = shaded ? 'pv-holiday' : (isNonSchoolDay(status, dow, year, month, d) ? 'pv-nonschool' : '');
       html += `<tr class="${rowCls}"><td class="pv-daynum">${d}</td><td class="pv-dow">${DOW[dow]}</td><td class="pv-events">${annualEventHtml(rec, opts, status, audience)}</td></tr>`;
     }
@@ -4421,6 +4426,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-10</strong>: 登校日チェック済みの土曜日の網掛けを外す条件を、「いずれかの学年が登校」から「全学年が登校」に変更(年間・月間の画面表示・Excel出力とも)。一部の学年だけ登校する土曜(修学旅行等)は、網掛けを残すようにした。</li>
     <li><strong>2026-09-10</strong>: 「時数・集計」タブの「必要時数との比較」から「その他(手入力)」欄を削除。「教科(数字入力分の合計)」は①〜⑥の「1」〜「6」に加えて「●」も集計するように変更し、学年の標準時数合計との比較行を追加。</li>
     <li><strong>2026-09-10</strong>: 「給食」タブの給食実施日数パネルを、4月〜3月の月ごと+学期ごとの給食実施日数のみを表示するシンプルな形に変更(給食×・授業日数・給食ない日の内訳行と、月選択は廃止)。</li>
     <li><strong>2026-09-10</strong>: 基本的に白黒印刷になるとのことで、直前に追加した見出し・集計行の背景色(青・緑)を除去し、太字・罫線のみで区別するように変更(画面表示・Excelとも)。休業日・欠席の網掛けや参考ページのタイトル帯は従来通り。</li>
