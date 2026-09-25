@@ -762,7 +762,7 @@
       <div id="monthPickerList" class="month-picker-list"></div>
       <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;margin-top:10px;">
         <input type="checkbox" id="monthPickerRefHighlight" checked>
-        2校目以降のシートを「参考」として色を変えて区別する(印刷して見比べる時に一目で分かるようにします)
+        2枚目以降のシートを「参考」として区別する(タイトルに【参考】を付けます。印刷して見比べる時に一目で分かるようにします)
       </label>
     </div>
     <div class="modal-foot">
@@ -849,7 +849,7 @@
 // 同じ日に複数回更新した場合に見分けがつくよう、時刻まで含める。
 // 画面右上のバッジに表示するほか、保存時に.datファイルのmetaにも書き込まれるため、
 // 「このファイルはいつの時点のアプリで保存されたか」も後から確認できる。
-const APP_VERSION = '2026-09-11 19:41';
+const APP_VERSION = '2026-09-25 19:46';
 
 const DOW = ['日','月','火','水','木','金','土'];
 
@@ -926,7 +926,6 @@ function emptyState(){
     holidayOverrides:{}, // "YYYY-MM-DD" -> {type:'add'|'remove', label:''} 特別法による祝日移動等の例外を手動で追加・解除
     eventCandidates:[],  // 日程未定の行事等を一次保存しておく候補プール。{id, text, useCount}
     colors:{ holiday:'D9D9D9', absent:'BFBFBF' }, // 土日祝の網掛け色・欠セルの色(6桁HEX、#なし)。設定タブで変更可
-    extraHours:{ g1:0, g2:0, g3:0 }, // 行事予定にのらない時間数の手入力分(時数・集計タブの「必要時数との比較」に合算)
     mealCountOverrides:{}, // "YYYY-MM-DD" -> {g1:bool,g2:bool,g3:bool} 宿泊行事等で給食○ではないが喫食したものとして数える例外(時数・集計タブの一覧から設定)
     printCounts:[],      // 印刷部数の履歴ログ。{id, date:"YYYY-MM-DD", target:'staff'|'student', staffName:'', count:0, note:''}
     eventHourEntries:[], // 授業枠に載らない行事の時数を自由記述で手入力する一覧。{id, label:'', hours:0}(時数・集計タブの「学校行事の回数」に合算)
@@ -986,8 +985,7 @@ function normalizeState(obj){
     if(!isHex6(obj.colors.holiday)) obj.colors.holiday = 'D9D9D9';
     if(!isHex6(obj.colors.absent)) obj.colors.absent = '808080';
   }
-  if(!obj.extraHours || typeof obj.extraHours!=='object') obj.extraHours = { g1:0, g2:0, g3:0 };
-  else ['g1','g2','g3'].forEach(g=>{ if(!Number.isFinite(obj.extraHours[g])) obj.extraHours[g] = 0; });
+  delete obj.extraHours; // 廃止した「その他(手入力)」欄のデータ。古いファイルから読み込んだ場合も取り除く
   if(!obj.mealCountOverrides || typeof obj.mealCountOverrides!=='object') obj.mealCountOverrides = {};
   else {
     Object.keys(obj.mealCountOverrides).forEach(key=>{
@@ -1532,7 +1530,7 @@ function buildXlsxStyles(){
 <fill><patternFill patternType="solid"><fgColor rgb="${holidayRgb}"/><bgColor indexed="64"/></patternFill></fill>
 <fill><patternFill patternType="none"/></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="${absentRgb}"/><bgColor indexed="64"/></patternFill></fill>
-<fill><patternFill patternType="solid"><fgColor rgb="FFFBE0AE"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="none"/></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="${nonschoolRgb}"/><bgColor indexed="64"/></patternFill></fill></fills>
 <borders count="11"><border><left/><right/><top/><bottom/><diagonal/></border>
 <border><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>
@@ -1547,7 +1545,7 @@ function buildXlsxStyles(){
 <border diagonalDown="1"><left style="hair"><color rgb="FFBFBFBF"/></left><right style="hair"><color rgb="FFBFBFBF"/></right><top style="hair"><color rgb="FFBFBFBF"/></top><bottom style="hair"><color rgb="FFBFBFBF"/></bottom><diagonal style="thin"><color rgb="FF808080"/></diagonal></border>
 </borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="65">
+<cellXfs count="59">
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
@@ -1567,12 +1565,6 @@ function buildXlsxStyles(){
 <xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="3" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" shrinkToFit="1"/></xf>
-<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top" shrinkToFit="1"/></xf>
-<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="top" shrinkToFit="1"/></xf>
-<xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top" shrinkToFit="1"/></xf>
-<xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="top" shrinkToFit="1"/></xf>
-<xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top" shrinkToFit="1"/></xf>
-<xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="top" shrinkToFit="1"/></xf>
 <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="6" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="6" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
@@ -1619,22 +1611,22 @@ function buildXlsxStyles(){
 }
 
 const XSTYLE = { HEADER:1, CENTER:2, LEFT:3, HOLIDAY_CENTER:4, HOLIDAY_LEFT:5, SUMMARY:6, TITLE:7, DATE:8, HEADER_VERT:9, LEFT_SMALL:10, HOLIDAY_LEFT_SMALL:11, CENTER_VERT:12, HOLIDAY_CENTER_VERT:13, ABSENT_CENTER:14, TITLE_REF:15, NONSCHOOL_CENTER:16, NONSCHOOL_LEFT:17, NONSCHOOL_LEFT_SMALL:18,
-  CENTER_TOP:19, LEFT_TOP:20, HOLIDAY_CENTER_TOP:21, HOLIDAY_LEFT_TOP:22, NONSCHOOL_CENTER_TOP:23, NONSCHOOL_LEFT_TOP:24, TITLE_WRAP:25,
-  LEFT_WRAP:26, HOLIDAY_LEFT_WRAP:27, NONSCHOOL_LEFT_WRAP:28, HEADER_SMALL:29,
-  // 月間excelの項目間の境目(放課後|給食、給食|授業、授業|週番)と表全体の外枠を太くするための派生スタイル
-  HEADER_T:30, HEADER_TR:31, HEADER_R:32, HEADER_L:33, HEADER_SMALL_T:34, HEADER_SMALL_TL:35, HEADER_SMALL_R:36, HEADER_VERT_T:37, HEADER_VERT_TR:38,
-  CENTER_L:39, CENTER_R:40, CENTER_B:41, CENTER_BL:42, CENTER_BR:43,
-  HOLIDAY_CENTER_L:44, HOLIDAY_CENTER_R:45, HOLIDAY_CENTER_B:46, HOLIDAY_CENTER_BL:47, HOLIDAY_CENTER_BR:48,
-  NONSCHOOL_CENTER_L:49, NONSCHOOL_CENTER_R:50, NONSCHOOL_CENTER_B:51, NONSCHOOL_CENTER_BL:52, NONSCHOOL_CENTER_BR:53,
-  ABSENT_CENTER_R:54, ABSENT_CENTER_B:55, ABSENT_CENTER_BR:56,
-  LEFT_SMALL_B:57, HOLIDAY_LEFT_SMALL_B:58, NONSCHOOL_LEFT_SMALL_B:59,
-  // 年間予定表の月見出し(◯月行事)を、その下のデータ(年間行事欄・左揃え)と揃えるための左揃え見出し
-  HEADER_LEFT:60,
+  TITLE_WRAP:19,
+  LEFT_WRAP:20, HOLIDAY_LEFT_WRAP:21, NONSCHOOL_LEFT_WRAP:22, HEADER_SMALL:23,
+  // 月間excelの項目間の境目(放課後|給食、給食|授業、学年間、授業|週番)と表全体の外枠を太くするための派生スタイル
+  HEADER_T:24, HEADER_TR:25, HEADER_R:26, HEADER_L:27, HEADER_SMALL_T:28, HEADER_SMALL_TL:29, HEADER_SMALL_R:30, HEADER_VERT_T:31, HEADER_VERT_TR:32,
+  CENTER_L:33, CENTER_R:34, CENTER_B:35, CENTER_BL:36, CENTER_BR:37,
+  HOLIDAY_CENTER_L:38, HOLIDAY_CENTER_R:39, HOLIDAY_CENTER_B:40, HOLIDAY_CENTER_BL:41, HOLIDAY_CENTER_BR:42,
+  NONSCHOOL_CENTER_L:43, NONSCHOOL_CENTER_R:44, NONSCHOOL_CENTER_B:45, NONSCHOOL_CENTER_BL:46, NONSCHOOL_CENTER_BR:47,
+  ABSENT_CENTER_R:48, ABSENT_CENTER_B:49, ABSENT_CENTER_BR:50,
+  LEFT_SMALL_B:51, HOLIDAY_LEFT_SMALL_B:52, NONSCHOOL_LEFT_SMALL_B:53,
+  // 年間予定表の見出しのうち、左揃えにする「日」「曜」用
+  HEADER_LEFT:54,
   // 月間excelの「会議・出張・研修」「放課後」見出しを、折り返し(wrapText)ではなく
   // セルのサイズに合わせた縮小表示(shrinkToFit)にするための見出しスタイル
-  HEADER_T_SHRINK:61, HEADER_TR_SHRINK:62,
+  HEADER_T_SHRINK:55, HEADER_TR_SHRINK:56,
   // 年間予定表で、その月に存在しない日(31日が無い月など)のマスに斜線を引くためのスタイル
-  CENTER_DIAG:63, LEFT_DIAG:64 };
+  CENTER_DIAG:57, LEFT_DIAG:58 };
 
 // 月間excelの境目強調線用: 既存スタイルの罫線だけを差し替えた派生スタイルに変換する
 function xstyleToLeft(s){
@@ -2415,8 +2407,10 @@ function renderAgenda(){
     };
     // 特別支援学級が無効な間は、その学年の登校日判定を網掛け等の判定に含めない
     const anyAttend = effSchoolDay[1] || effSchoolDay[2] || effSchoolDay[3] || (state.meta.supportClassEnabled && effSchoolDay[4]);
-    // 土曜の青い網掛けは、いずれかの学年が登校日にチェックされている(=実際に登校する)日には付けない
-    if(dow===6 && !anyAttend) rowClasses.push('rowsat');
+    const allAttend = effSchoolDay[1] && effSchoolDay[2] && effSchoolDay[3] && (!state.meta.supportClassEnabled || effSchoolDay[4]);
+    // 土曜の網掛けは、全学年が登校日の(=学校全体が動いている)日だけ外す。一部の学年だけ登校する
+    // 土曜(修学旅行等)は網掛けを残す(予定表・Excel出力の allSchoolDay と同じ判定)
+    if(dow===6 && !allAttend) rowClasses.push('rowsat');
     // 土日祝ではない(平日)のに、明示的な設定で全学年とも登校日でなくなっている行は、土日祝より薄い色で網掛けする
     if(!status.isHoliday && dow!==6 && !anyAttend){
       rowClasses.push('rownonschool');
@@ -2851,7 +2845,7 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
   const grandTotalCols = totalCols + extraCols;
 
   // 複数月をまとめて出力する際、2枚目以降を「参考」として区別できるようにするための印。
-  // タイトル行の色を変え、副題に【参考】を付け足す(内容の文字サイズ・レイアウトは変えない)。
+  // 副題に【参考】を付け足す(白黒印刷前提のため色は付けない。内容の文字サイズ・レイアウトは変えない)。
   const refMark = isReference ? '【参考】' : '';
   const refStyle = isReference ? XSTYLE.TITLE_REF : XSTYLE.TITLE;
   const titleRow = new Array(grandTotalCols).fill(null);
@@ -2967,7 +2961,7 @@ function buildMonthlyExportGrid(year, month, cols, audience, includeMemo, isRefe
       const status = getDayStatus(year,month,d);
       const rec = migrateDayRecord(state.days[dkey(year,month,d)]);
       let shaded = isShadedDay(status, dow);
-      // 登校日にチェックが入っている(実際に登校する学年がある)土曜は、休業日と同じ網掛けにしない(年間予定表と同じ扱い)
+      // 全学年が登校日の土曜(学校全体が動いている日)だけ網掛けを外す。一部の学年だけ登校する土曜は網掛けを残す
       if(shaded && !status.isHoliday && dow===6 && allSchoolDay(year, month, d)) shaded = false;
       const nonschool = !shaded && isNonSchoolDay(status, dow, year, month, d);
       const cS = shaded ? XSTYLE.HOLIDAY_CENTER : nonschool ? XSTYLE.NONSCHOOL_CENTER : XSTYLE.CENTER;
@@ -3270,7 +3264,7 @@ function buildAnnualExportGrid(fy, audience){
       const status = getDayStatus(m.year, m.month, d);
       const rec = migrateDayRecord(state.days[dkey(m.year,m.month,d)]);
       let shaded = isShadedDay(status, dow);
-      // 登校日にチェックが入っている(実際に登校する学年がある)土曜は、休業日と同じ網掛けにしない
+      // 全学年が登校日の土曜(学校全体が動いている日)だけ網掛けを外す。一部の学年だけ登校する土曜は網掛けを残す
       if(shaded && !status.isHoliday && dow===6 && allSchoolDay(m.year, m.month, d)) shaded = false;
       const nonschool = !shaded && isNonSchoolDay(status, dow, m.year, m.month, d);
       // 日・曜は上下左右中央揃え、年間行事欄は折り返し表示にする
@@ -3327,7 +3321,7 @@ function renderMonthlyPreview(opts){
   const year = Number(yStr), month = Number(mStr);
   if(!year){ wrap.innerHTML = '<p class="preview-empty">月を選択してください。</p>'; return; }
   const dim = daysInMonth(year,month);
-  const reiwa = year - 2018;
+  const reiwa = state.meta.fiscalYear - 2018; // 「令和◯年度」は表示中の月の暦年ではなく年度で決める(1〜3月は暦年が1つ先になるため)
   const cols = opts.cols;
 
   let html = `<div class="preview-title">令和${reiwa}年度\u3000${escapeHtml(schoolNameWithVersion('monthly'))}</div>`;
@@ -3367,7 +3361,7 @@ function renderMonthlyPreview(opts){
     const status = getDayStatus(year,month,d);
     const rec = migrateDayRecord(state.days[key]);
     let shadedPv = isShadedDay(status, dow);
-    // 登校日にチェックが入っている(実際に登校する学年がある)土曜は、休業日と同じ網掛けにしない(年間予定表と同じ扱い)
+    // 全学年が登校日の土曜(学校全体が動いている日)だけ網掛けを外す。一部の学年だけ登校する土曜は網掛けを残す
     if(shadedPv && !status.isHoliday && dow===6 && allSchoolDay(year, month, d)) shadedPv = false;
     const rowCls = shadedPv ? 'pv-holiday' : (isNonSchoolDay(status, dow, year, month, d) ? 'pv-nonschool' : '');
     html += `<tr class="${rowCls}">`;
@@ -3921,13 +3915,15 @@ function renderAnnualPreview(audience){
   const term2Start = state.meta.term2StartMonth || 8;
   const term3Start = state.meta.term3StartMonth || 1;
 
-  // 月計・学期計・年計をあらかじめ計算(1学期は年度開始月、2学期/3学期は設定した開始月でリセット)
-  const monthly = months.map(({year,month})=>[1,2,3].map(g=>countSchoolDaysByGrade(year,month,g)));
+  // 月計・学期計・年計をあらかじめ計算(1学期は年度開始月、2学期/3学期は設定した開始月でリセット)。
+  // Excel出力と同じく、特別支援学級が有効な時は④として加える
+  const summaryGrades = activeGrades();
+  const monthly = months.map(({year,month})=>summaryGrades.map(g=>countSchoolDaysByGrade(year,month,g)));
   const yearCum = []; const termCum = [];
-  let yearRun=[0,0,0], termRun=[0,0,0];
+  let yearRun=summaryGrades.map(()=>0), termRun=summaryGrades.map(()=>0);
   months.forEach(({month}, i)=>{
-    if(month===term2Start || month===term3Start) termRun=[0,0,0];
-    for(let g=0; g<3; g++){ yearRun[g]+=monthly[i][g]; termRun[g]+=monthly[i][g]; }
+    if(month===term2Start || month===term3Start) termRun=summaryGrades.map(()=>0);
+    for(let g=0; g<summaryGrades.length; g++){ yearRun[g]+=monthly[i][g]; termRun[g]+=monthly[i][g]; }
     yearCum.push(yearRun.slice());
     termCum.push(termRun.slice());
   });
@@ -3937,7 +3933,8 @@ function renderAnnualPreview(audience){
   html += `<div class="grid-topscroll" id="${tableId}TopScroll"><div id="${tableId}TopScrollInner"></div></div>`;
   html += `<div class="preview-scroll" id="${tableId}ScrollOuter"><div class="annual-row" id="${tableId}">`;
   months.forEach(({year,month}, i)=>{
-    html += `<div class="annual-month"><table class="preview nmb-table annual-tbl"><thead><tr><th>日</th><th>曜</th><th>${month}月行事</th></tr></thead><tbody>`;
+    // 見出しの揃えはExcel出力と同じく、日・曜は左揃え、◯月行事は中央揃え
+    html += `<div class="annual-month"><table class="preview nmb-table annual-tbl"><thead><tr><th style="text-align:left;">日</th><th style="text-align:left;">曜</th><th>${month}月行事</th></tr></thead><tbody>`;
     const dim = daysInMonth(year,month);
     for(let d=1; d<=maxDim; d++){
       if(d>dim){ html += '<tr class="annual-pad"><td></td><td></td><td></td></tr>'; continue; }
@@ -3945,20 +3942,17 @@ function renderAnnualPreview(audience){
       const dow = new Date(year,month-1,d).getDay();
       const rec = migrateDayRecord(state.days[dkey(year,month,d)]);
       let shaded = isShadedDay(status, dow);
-      // 登校日にチェックが入っている(実際に登校する学年がある)土曜は、休業日と同じ網掛けにしない
+      // 全学年が登校日の土曜(学校全体が動いている日)だけ網掛けを外す。一部の学年だけ登校する土曜は網掛けを残す
       if(shaded && !status.isHoliday && dow===6 && allSchoolDay(year, month, d)) shaded = false;
       const rowCls = shaded ? 'pv-holiday' : (isNonSchoolDay(status, dow, year, month, d) ? 'pv-nonschool' : '');
       html += `<tr class="${rowCls}"><td class="pv-daynum">${d}</td><td class="pv-dow">${DOW[dow]}</td><td class="pv-events">${annualEventHtml(rec, opts, status, audience)}</td></tr>`;
     }
-    const [y1,y2,y3] = yearCum[i];
-    const [t1,t2,t3] = termCum[i];
-    const [m1,m2,m3] = monthly[i];
-    const asRow = (label, v1, v2, v3) => `<span class="as-row"><span class="as-label">${label}</span><span class="as-val">①${v1}</span><span class="as-val">②${v2}</span><span class="as-val">③${v3}</span></span>`;
+    const asRow = (label, vals) => `<span class="as-row"><span class="as-label">${label}</span>${vals.map((v,idx)=>`<span class="as-val">${'①②③④'[idx]}${v}</span>`).join('')}</span>`;
     html += '</tbody></table>';
     html += '<table class="preview nmb-table annual-tbl annual-summary-tbl"><tbody>';
-    html += `<tr class="annual-summary"><td colspan="3">${asRow('年計', y1, y2, y3)}</td></tr>`;
-    html += `<tr class="annual-summary"><td colspan="3">${asRow('学期計', t1, t2, t3)}</td></tr>`;
-    html += `<tr class="annual-summary annual-summary-month"><td colspan="3">${asRow('月計', m1, m2, m3)}</td></tr>`;
+    html += `<tr class="annual-summary"><td colspan="3">${asRow('年計', yearCum[i])}</td></tr>`;
+    html += `<tr class="annual-summary"><td colspan="3">${asRow('学期計', termCum[i])}</td></tr>`;
+    html += `<tr class="annual-summary annual-summary-month"><td colspan="3">${asRow('月計', monthly[i])}</td></tr>`;
     html += '</tbody></table></div>';
   });
   html += '</div></div>';
@@ -4426,6 +4420,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-25</strong>: 見直しで見つかった点をまとめて修正。年間予定入力タブの土曜の網掛けを、予定表と同じ「全学年が登校する日だけ外す」に統一。月間予定表(画面)で1〜3月の「令和◯年度」が1年ずれていたのを修正。年間予定表の画面表示にも特別支援学級の④と、Excelと同じ見出しの揃えを反映。複数月出力の「参考」シートは金色の帯をやめ【参考】表示のみで区別(白黒印刷対応)。そのほか古い案内文の修正と、使われなくなったデータ・書式の整理。</li>
     <li><strong>2026-09-11</strong>: 「(前年度)の行事を候補に追加」機能を調整。祝日(国民の祝日)の日は候補化の対象外にし、1つの欄に複数の行事が全角スペース区切りで入っている場合は項目ごとに別々の候補として登録するように変更。</li>
     <li><strong>2026-09-10</strong>: 学校行事等の入力ウィンドウで、「候補から選ぶ」の「使用済みを隠す」を既定でONに変更。一度選んだ候補は自動的に一覧から隠れ、チェックを外せば従来通り薄い表示で確認できる。</li>
     <li><strong>2026-09-10</strong>: 登校日チェック済みの土曜日の網掛けを外す条件を、「いずれかの学年が登校」から「全学年が登校」に変更(年間・月間の画面表示・Excel出力とも)。一部の学年だけ登校する土曜(修学旅行等)は、網掛けを残すようにした。</li>
@@ -4520,7 +4515,7 @@ document.getElementById('helpBody').innerHTML = `
   <p>「設定」タブの「テストデータ」から、元のExcelファイルの実際の記載内容を参考にした4月分のサンプルデータを.datファイルとして書き出せます。現在編集中のデータには影響しません。書き出したファイルを「開く」で読み込むと、入力例が入った状態で各タブの表示やExcel出力を試せます(パスワードは初期値の0000のままです)。すぐに試したいだけなら「サンプルデータをすぐに試す」ボタンで、ファイルを介さずその場で画面上のデータをサンプルに切り替えられます。この操作は開いていたファイル自体を一切変更・上書きしません(保存先が未設定の状態になるため、誤って元のファイルに保存される心配もありません)。お手元のデータに戻るときは、もう一度そのファイルを「開く」で読み込み直してください。</p>
 
   <h4>特別支援学級の追加</h4>
-  <p>「設定」タブの「特別支援学級を追加する」にチェックを入れると、年間予定入力タブと月間予定表(画面表示・Excel出力とも)の「給食」「登校日」「授業(①〜⑥)」の各欄に、4つ目の学級が追加されます。学級名は右の欄で自由に変更でき、既定は「5組」です(名前を変えるとすぐに見出しへ反映されます)。年間予定表Excel出力の年計・学期計・月計には④として加わりますが(画面表示は従来通り①②③のみ)、時数・集計タブの各種集計には反映されません(1〜3年のみの集計のままです)。チェックを外すと欄は非表示になりますが、入力済みのデータは消えずに残るので、後で再度チェックを入れれば復元されます。</p>
+  <p>「設定」タブの「特別支援学級を追加する」にチェックを入れると、年間予定入力タブと月間予定表(画面表示・Excel出力とも)の「給食」「登校日」「授業(①〜⑥)」の各欄に、4つ目の学級が追加されます。学級名は右の欄で自由に変更でき、既定は「5組」です(名前を変えるとすぐに見出しへ反映されます)。年間予定表(画面表示・Excel出力とも)の年計・学期計・月計には④として加わりますが、時数・集計タブの各種集計には反映されません(1〜3年のみの集計のままです)。チェックを外すと欄は非表示になりますが、入力済みのデータは消えずに残るので、後で再度チェックを入れれば復元されます。</p>
 
   <h4>入力の操作(Excelのように使えます)</h4>
   <ul>
@@ -4548,7 +4543,7 @@ document.getElementById('helpBody').innerHTML = `
   </ul>
 
   <h4>月間予定表(教員用・家庭用)の確認・Excel出力</h4>
-  <p>「月間予定表(教員用)」タブでは、入力した内容から教員用の月間予定表を画面上で確認できます。学校行事等は「年間行事」「月のみ」「教員のみ」をすべて合わせて表示し、「年間行事」は太字、「教員のみ」は色分け(オレンジ系)で区別されます。週番は、同じ内容が連続する日をまとめて1つのセルに結合して表示します(内容が変わる日や休業日でそこは区切られます)。入力したメモは表の下に一覧で表示されます。「Excelに出力」ボタンを押すと出力する月を選ぶウィンドウが開き、チェックした月をそれぞれシートに分けた1つのExcelファイルとしてダウンロードできます(「今月のみ」「今月+翌月」「全12か月」のボタンですぐに選べます)。2枚目以降のシートを「参考」として色を変えて区別するかどうかも選べるので、たとえば今月分と翌月分をまとめて出力・印刷して見比べる際に、どちらのシートか一目で分かるようにできます(文字を縮小するのではなく、タイトル行の色と「【参考】」の表示で区別します)。行の高さはすべて固定されており、長い文章を入力した場合は行が伸びるのではなく、セル内の文字が自動的に縮小されて1行に収まります(Microsoft Excelでの「縮小して全体を表示」機能を使用しています)。祝日・休業日の網掛けや集計行の色も、白黒プリンターでも判読できる濃さのグレーにしています。</p>
+  <p>「月間予定表(教員用)」タブでは、入力した内容から教員用の月間予定表を画面上で確認できます。学校行事等は「年間行事」「月のみ」「教員のみ」をすべて合わせて表示し、「年間行事」は太字、「教員のみ」は色分け(オレンジ系)で区別されます。週番は、同じ内容が連続する日をまとめて1つのセルに結合して表示します(内容が変わる日や休業日でそこは区切られます)。入力したメモは表の下に一覧で表示されます。「Excelに出力」ボタンを押すと出力する月を選ぶウィンドウが開き、チェックした月をそれぞれシートに分けた1つのExcelファイルとしてダウンロードできます(「今月のみ」「今月+翌月」「全12か月」のボタンですぐに選べます)。2枚目以降のシートを「参考」として区別するかどうかも選べるので、たとえば今月分と翌月分をまとめて出力・印刷して見比べる際に、どちらのシートか一目で分かるようにできます(白黒印刷でも分かるよう、色ではなくタイトルの「【参考】」の表示で区別します)。行の高さはすべて固定されており、長い文章を入力した場合は行が伸びるのではなく、セル内の文字が自動的に縮小されて1行に収まります(Microsoft Excelでの「縮小して全体を表示」機能を使用しています)。祝日・休業日の網掛けや集計行の色も、白黒プリンターでも判読できる濃さのグレーにしています。</p>
   <p>「月間予定表(家庭用)」タブでは、同じデータから会議・出張・研修や週番、教員のみの行事を除いた家庭向けの表示を確認できます。表の右側には元のExcelと同様に、翌月の予定(学校行事等のみ)が一覧表示されます。こちらも「Excelに出力」で出力できます(翌月ボックスもExcel出力に含まれます。元のExcelと同じく、翌月分は行を増やさず右側の列に並べて出力するため、A4横1ページに収まります)。</p>
 
   <h4>年間予定表(教員用・家庭用)の確認・Excel出力</h4>
@@ -4863,7 +4858,7 @@ document.getElementById('btnImportPrevYearEvents').addEventListener('click', ()=
   if(!editUnlocked) return;
   const {added, prevFY} = importPreviousYearEventsToCandidates();
   const msgEl = document.getElementById('importPrevYearMsg');
-  if(added===0){ msgEl.textContent = `${prevFY}年度分に、追加できる行事(学校行事等(共通・年間))が見つかりませんでした。`; return; }
+  if(added===0){ msgEl.textContent = `${prevFY}年度分に、新しく追加できる行事(学校行事等の4欄。祝日の日は除く)が見つかりませんでした。`; return; }
   markDirty();
   msgEl.textContent = `${prevFY}年度の行事から${added}件を候補に追加しました(既にある候補と重複するものは除きます)。`;
 });
