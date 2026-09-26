@@ -907,7 +907,7 @@
 // 同じ日に複数回更新した場合に見分けがつくよう、時刻まで含める。
 // 画面右上のバッジに表示するほか、保存時に.datファイルのmetaにも書き込まれるため、
 // 「このファイルはいつの時点のアプリで保存されたか」も後から確認できる。
-const APP_VERSION = '2026-09-26 21:56';
+const APP_VERSION = '2026-09-27 02:25';
 
 const DOW = ['日','月','火','水','木','金','土'];
 
@@ -2115,8 +2115,9 @@ async function runBackupNow(){
   if(!backupDirHandle || backupDirPermission!=='granted') return false;
   try{
     const now = new Date();
-    const stamp = `${now.getFullYear()}${pad2b(now.getMonth()+1)}${pad2b(now.getDate())}_${pad2b(now.getHours())}${pad2b(now.getMinutes())}${pad2b(now.getSeconds())}`;
-    const filename = `${state.meta.schoolName||'行事予定'}_backup_${stamp}.dat`;
+    // 共通ルールに合わせ「アプリ名_バックアップ_日付_時刻」にする(2026-09-27 変更。以前は「学校名_backup_日付_時刻.dat」)
+    const stamp = `${now.getFullYear()}-${pad2b(now.getMonth()+1)}-${pad2b(now.getDate())}_${pad2b(now.getHours())}${pad2b(now.getMinutes())}${pad2b(now.getSeconds())}`;
+    const filename = `行事予定_バックアップ_${stamp}.dat`;
     const fileHandleB = await backupDirHandle.getFileHandle(filename, {create:true});
     const writable = await fileHandleB.createWritable();
     await writable.write(JSON.stringify(state));
@@ -4983,6 +4984,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-27</strong>: 自動バックアップのファイル名を「行事予定_バックアップ_日付_時刻.dat」に変更(以前は「学校名_backup_日付_時刻.dat」。どちらも「開く」で読み込めます)。</li>
     <li><strong>2026-09-26</strong>: 「時数・集計」タブに「授業日数・授業週数」を追加。学年ごとに、4月〜3月・学期ごと・年間の授業日数と、授業週数(登校日のある週の数/授業日数÷5の換算値)を表示。</li>
     <li><strong>2026-09-26</strong>: 「年間予定入力」タブの名前を「予定入力」に変更(ヘルプ等の説明文も合わせて変更)。</li>
     <li><strong>2026-09-26</strong>: 「実績」タブを、学年ごと(1年・2年・3年)または全校の学級を1つの表に並べて表示・編集する形に変更。表はExcelと同じように、範囲選択・コピー/貼り付け(Excelとの相互コピペ可)・Deleteでの一括消去・Ctrl+Zでの元に戻す・キーボードでの移動ができる。「国」「数」「英」などの略称でも入力可。基本時間割の貼り付けは表示中の学級すべてにまとめて適用。</li>
