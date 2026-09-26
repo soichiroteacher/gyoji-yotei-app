@@ -91,14 +91,29 @@
   .aud-switch button{border:none;border-radius:0;background:#fff;color:var(--accent);padding:5px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin:0;}
   .aud-switch button + button{border-left:1px solid var(--accent);}
   .aud-switch button.active{background:var(--accent);color:#fff;}
-  table.act-grid td{padding:3px 4px;white-space:nowrap;}
-  table.act-grid input{width:6.4em;font-size:12.5px;padding:3px 4px;box-sizing:border-box;font-family:inherit;border:1px solid var(--line);border-radius:3px;}
-  table.act-grid td.act-auto input{color:var(--ink-soft);background:#f2f4f3;}
-  table.act-grid td.act-need input{background:#fff6dc;border-color:#d9b04a;}
-  table.act-grid td.act-manual input{font-weight:700;}
-  table.act-grid td.act-none input{background:transparent;}
-  table.act-grid tr.act-off td{background:#f3f3f3;color:#999;}
-  .act-code{display:inline-block;min-width:1.1em;font-size:10.5px;color:var(--ink-soft);margin-right:2px;text-align:center;}
+  /* 実績タブのExcel風の表 */
+  .ag-scroll{position:relative;overflow:auto;max-height:72vh;border:1px solid #c9d0d3;background:#fff;user-select:none;}
+  table.ag-table{border-collapse:separate;border-spacing:0;font-size:12px;}
+  .ag-table th,.ag-table td{border-right:1px solid #e1e5e7;border-bottom:1px solid #e1e5e7;height:24px;box-sizing:border-box;}
+  .ag-table thead th{position:sticky;top:0;background:#f3f5f6;z-index:3;font-weight:600;text-align:center;padding:0 2px;height:24px;}
+  .ag-table thead tr.ag-head2 th{top:24px;font-weight:500;color:var(--ink-soft);}
+  .ag-table th.ag-classhead{color:var(--accent);}
+  .ag-table .ag-rh{position:sticky;background:#f8f9fa;z-index:2;text-align:center;color:var(--ink-soft);}
+  .ag-table thead .ag-rh{z-index:4;background:#f3f5f6;}
+  .ag-table .ag-rh0{left:0;min-width:2.4em;max-width:2.4em;width:2.4em;}
+  .ag-table .ag-rh1{left:2.4em;min-width:2em;max-width:2em;width:2em;border-right:2px solid #9aa5aa;}
+  .ag-table td.ag-cell{position:relative;width:5.6em;min-width:5.6em;max-width:5.6em;padding:0 3px 0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:cell;}
+  .ag-table .ag-first{border-left:2px solid #9aa5aa;}
+  .ag-code{position:absolute;top:1px;left:1px;font-size:8.5px;line-height:1;color:#98a3a8;}
+  .ag-table td.ag-auto{color:#7b878c;}
+  .ag-table td.ag-need{background:#fff4d6;}
+  .ag-table td.ag-manual{font-weight:700;}
+  .ag-table td.ag-off{background:#eeeeee;}
+  .ag-focused .ag-table td.ag-sel{background-color:#d6e6e8;}
+  .ag-focused .ag-table td.ag-active{outline:2px solid var(--accent);outline-offset:-2px;}
+  .ag-editor{position:absolute;left:0;top:0;box-sizing:border-box;border:2px solid var(--accent);font:inherit;font-size:12px;padding:0 3px;margin:0;opacity:0;z-index:5;background:#fff;outline:none;caret-color:transparent;pointer-events:none;}
+  .ag-editor.editing{opacity:1;caret-color:auto;pointer-events:auto;}
+  .act-ov-short{color:#c0392b;}
   table.act-overview td{font-size:12px;line-height:1.35;}
   .act-ov-num{color:var(--ink-soft);}
   .act-ov-sub{color:var(--ink-soft);font-size:10.5px;}
@@ -464,15 +479,15 @@
 <main class="narrow" id="mainActuals" style="display:none;">
   <div class="panel" style="padding:12px;">
     <div class="month-head">
+      <div class="aud-switch" id="actScopeSwitch"><button type="button" data-scope="1">1年</button><button type="button" data-scope="2">2年</button><button type="button" data-scope="3">3年</button><button type="button" data-scope="all">全校</button></div>
       <span style="font-size:13px;color:var(--ink-soft);">年度: <strong id="actFyDisplay">-</strong>(設定タブで変更)</span>
-      <label style="font-size:13px;color:var(--ink-soft);margin-left:8px;">学級</label>
-      <select id="actClassSelect"></select>
       <label style="font-size:13px;color:var(--ink-soft);margin-left:8px;">月</label>
       <button type="button" class="ghost tiny" id="actPrevMonth">◀</button>
       <select id="actualsMonthSelect"></select>
       <button type="button" class="ghost tiny" id="actNextMonth">▶</button>
       <div class="spacer"></div>
-      <span style="font-size:12px;color:var(--ink-soft);">学級数は「設定」タブで変更できます</span>
+      <button type="button" class="ghost tiny" id="actUndoBtn">↶ 元に戻す</button>
+      <button type="button" class="ghost tiny" id="actRedoBtn">↷ やり直す</button>
     </div>
     <datalist id="actSubjectList"></datalist>
     <div id="actualsWrap"></div>
@@ -892,7 +907,7 @@
 // 同じ日に複数回更新した場合に見分けがつくよう、時刻まで含める。
 // 画面右上のバッジに表示するほか、保存時に.datファイルのmetaにも書き込まれるため、
 // 「このファイルはいつの時点のアプリで保存されたか」も後から確認できる。
-const APP_VERSION = '2026-09-26 09:27';
+const APP_VERSION = '2026-09-26 09:46';
 
 const DOW = ['日','月','火','水','木','金','土'];
 
@@ -1192,6 +1207,7 @@ function performRedo(){
 }
 function resetUndoHistory(){
   undoStack = []; redoStack = []; undoCoalesceActive = false;
+  if(typeof actUndoStack!=='undefined'){ actUndoStack = []; actRedoStack = []; } // 実績タブの元に戻す履歴も、別ファイルを読み込んだら破棄する
   clearTimeout(undoCoalesceTimer);
 }
 
@@ -2246,7 +2262,7 @@ function showView(view){
   document.getElementById('mainStats').style.display = view==='stats' ? '' : 'none';
   document.getElementById('mainActuals').style.display = view==='actuals' ? '' : 'none';
   document.getElementById('mainSettings').style.display = view==='settings' ? '' : 'none';
-  document.querySelectorAll('.aud-switch').forEach(sw=>{
+  document.querySelectorAll('.aud-switch[data-kind]').forEach(sw=>{
     const aud = sw.dataset.kind==='monthly' ? monthlyAudience : annualAudience;
     sw.querySelectorAll('button').forEach(b=>b.classList.toggle('active', b.dataset.aud===aud));
   });
@@ -2271,7 +2287,7 @@ document.querySelectorAll('nav.tabs .tab').forEach(btn=>{
     showView(viewForTab(btn.dataset.tab));
   });
 });
-document.querySelectorAll('.aud-switch button').forEach(b=>{
+document.querySelectorAll('.aud-switch[data-kind] button').forEach(b=>{
   b.addEventListener('click', ()=>{
     const kind = b.closest('.aud-switch').dataset.kind;
     if(kind==='monthly'){
@@ -2700,6 +2716,7 @@ function paintSelection(){
 }
 
 document.addEventListener('copy', (e)=>{
+  if(document.getElementById('mainSchedule').style.display==='none') return; // 年間予定入力タブ以外(実績タブ等)のコピーには関与しない
   const b = selectionBounds();
   if(!b) return;
   if(b.r0===b.r1 && b.c0===b.c1) return; // 単一セルは既定の動作(通常のテキストコピー)に任せる
@@ -3670,7 +3687,6 @@ function sortedCodes(tally){
 const ACT_CODE_SUBJECT = {'道':'道徳','総':'総合','学':'特別活動','音':'音楽'};
 const ACT_WEEKDAYS = [1,2,3,4,5];
 const ACT_DOW_LABEL = ['日','月','火','水','木','金','土'];
-let actualsPasteUndo = null; // 直前の「この月に貼り付け」を元に戻すための退避 {json, label}
 function classList(){
   const list = [];
   [1,2,3].forEach(g=>{ for(let n=1; n<=state.classCounts['g'+g]; n++) list.push({id:`${g}-${n}`, g, n, label:`${g}年${n}組`}); });
@@ -3719,214 +3735,413 @@ function tallyActuals(cid, g, monthList, dayFilter){
   });
   return {counts, unassigned};
 }
+// 「国」「数」「英」など短い書き方でも入力・貼り付けできるようにする(必要時数の教科名にそろえる)
+const SUBJECT_ALIASES = {
+  '国':'国語','社':'社会','数':'数学','理':'理科','音':'音楽','美':'美術',
+  '保':'保健体育','体':'保健体育','保体':'保健体育','体育':'保健体育',
+  '技':'技術家庭','家':'技術家庭','技家':'技術家庭','技術':'技術家庭','家庭':'技術家庭','技術・家庭':'技術家庭',
+  '英':'外国語','外':'外国語','英語':'外国語',
+  '道':'道徳','特別の教科道徳':'道徳','総':'総合','総合的な学習の時間':'総合',
+  '学':'特別活動','特':'特別活動','特活':'特別活動','学活':'特別活動','学級活動':'特別活動'
+};
+function normalizeSubject(v){
+  const s = String(v==null?'':v).trim();
+  return SUBJECT_ALIASES[s] || s;
+}
+let actScope = '1';          // 表示範囲: '1'|'2'|'3'(学年)|'all'(全校)
+let actMonthInitialized = false;
+var actUndoStack = [];       // 実績タブ専用の元に戻す履歴(state.actuals と state.classTimetables の退避)
+var actRedoStack = [];
+let actGridsLive = [];
+document.addEventListener('mouseup', ()=>{ actGridsLive.forEach(g=>g.stopDrag()); });
+function actSnapshot(){ return JSON.stringify({a:state.actuals, t:state.classTimetables}); }
+function actPushUndo(){
+  actUndoStack.push(actSnapshot());
+  if(actUndoStack.length>50) actUndoStack.shift();
+  actRedoStack = [];
+}
+function actRestore(s){ const o = JSON.parse(s); state.actuals = o.a; state.classTimetables = o.t; }
+function actUndo(){
+  if(!editUnlocked || actUndoStack.length===0) return;
+  actRedoStack.push(actSnapshot());
+  actRestore(actUndoStack.pop());
+  markDirty();
+  actRefreshAll();
+}
+function actRedo(){
+  if(!editUnlocked || actRedoStack.length===0) return;
+  actUndoStack.push(actSnapshot());
+  actRestore(actRedoStack.pop());
+  markDirty();
+  actRefreshAll();
+}
+function actRefreshAll(){
+  actGridsLive.forEach(g=>g.refresh());
+  renderActualsSummary();
+  actUpdateUndoButtons();
+}
+function actUpdateUndoButtons(){
+  document.getElementById('actUndoBtn').disabled = !editUnlocked || actUndoStack.length===0;
+  document.getElementById('actRedoBtn').disabled = !editUnlocked || actRedoStack.length===0;
+}
+function actScopeClasses(){
+  const all = classList();
+  return actScope==='all' ? all : all.filter(c=>String(c.g)===actScope);
+}
 function actSelectedMonth(){
   const [y,m] = (document.getElementById('actualsMonthSelect').value||'').split('-').map(Number);
   return {year:y, month:m};
 }
-function actSelectedClass(){
-  const list = classList();
-  return list.find(c=>c.id===document.getElementById('actClassSelect').value) || list[0];
+
+// Excelのように使える表(セル選択・範囲選択・コピー/貼り付け・キーボード操作)。
+// 列は「学級×①〜⑥」、行は呼び出し側が決める(日ごと/曜日ごと)。
+// o: {wrap, classes, rowHeadLabels, rowHeads(各行の見出し配列), cell(r,c)->{text,cls,code,title}, commit(変更配列), onChanged, editable()}
+function createActGrid(o){
+  const R = o.rowHeads.length, C = o.classes.length*6;
+  const st = {ar:0, ac:0, fr:0, fc:0, editing:false, mode:null, touched:false, dragging:false};
+  let html = '<div class="ag-scroll"><table class="ag-table"><thead><tr>';
+  o.rowHeadLabels.forEach((l,i)=>{ html += `<th class="ag-rh ag-rh${i}" rowspan="2">${l}</th>`; });
+  o.classes.forEach(c=>{ html += `<th colspan="6" class="ag-first ag-classhead">${c.label}</th>`; });
+  html += '</tr><tr class="ag-head2">';
+  o.classes.forEach(()=>{ for(let p=0;p<6;p++) html += `<th class="${p===0?'ag-first':''}">${'①②③④⑤⑥'[p]}</th>`; });
+  html += '</tr></thead><tbody>';
+  for(let r=0; r<R; r++){
+    html += '<tr>';
+    o.rowHeads[r].forEach((v,i)=>{ html += `<td class="ag-rh ag-rh${i}">${v}</td>`; });
+    for(let c=0; c<C; c++) html += `<td class="ag-cell" data-r="${r}" data-c="${c}"></td>`;
+    html += '</tr>';
+  }
+  html += '</tbody></table><input type="text" class="ag-editor" list="actSubjectList" autocomplete="off" spellcheck="false"></div>';
+  o.wrap.innerHTML = html;
+  const scroll = o.wrap.querySelector('.ag-scroll');
+  const editor = o.wrap.querySelector('.ag-editor');
+  const cells = Array.from({length:R}, ()=>[]);
+  o.wrap.querySelectorAll('td.ag-cell').forEach(td=>{ cells[+td.dataset.r][+td.dataset.c] = td; });
+
+  function refresh(){
+    for(let r=0; r<R; r++) for(let c=0; c<C; c++){
+      const info = o.cell(r,c), td = cells[r][c];
+      td.className = 'ag-cell' + (c%6===0?' ag-first':'') + (info.cls?' '+info.cls:'');
+      td.innerHTML = (info.code?`<span class="ag-code">${escapeHtml(info.code)}</span>`:'') + escapeHtml(info.text);
+      td.title = info.title || '';
+    }
+    paint();
+  }
+  let painted = [];
+  function bounds(){ return {r0:Math.min(st.ar,st.fr), r1:Math.max(st.ar,st.fr), c0:Math.min(st.ac,st.fc), c1:Math.max(st.ac,st.fc)}; }
+  function paint(){
+    painted.forEach(td=>td.classList.remove('ag-sel','ag-active'));
+    painted = [];
+    const b = bounds();
+    for(let r=b.r0; r<=b.r1; r++) for(let c=b.c0; c<=b.c1; c++){ cells[r][c].classList.add('ag-sel'); painted.push(cells[r][c]); }
+    cells[st.fr][st.fc].classList.add('ag-active');
+    placeEditor();
+  }
+  function placeEditor(){
+    const td = cells[st.fr][st.fc];
+    const sr = scroll.getBoundingClientRect(), tr = td.getBoundingClientRect();
+    editor.style.left = (tr.left - sr.left + scroll.scrollLeft - scroll.clientLeft) + 'px';
+    editor.style.top = (tr.top - sr.top + scroll.scrollTop - scroll.clientTop) + 'px';
+    editor.style.width = tr.width + 'px';
+    editor.style.height = tr.height + 'px';
+  }
+  function setSel(r, c, extend){
+    r = Math.max(0, Math.min(R-1, r)); c = Math.max(0, Math.min(C-1, c));
+    st.fr = r; st.fc = c;
+    if(!extend){ st.ar = r; st.ac = c; }
+    paint();
+    cells[r][c].scrollIntoView({block:'nearest', inline:'nearest'});
+    placeEditor();
+  }
+  function commitValues(list){
+    if(!o.editable() || list.length===0) return;
+    o.commit(list);
+    refresh();
+    if(o.onChanged) o.onChanged();
+  }
+  function startEdit(mode, initial){
+    if(!o.editable()) return;
+    st.editing = true; st.mode = mode; st.touched = mode!=='pick';
+    editor.value = initial;
+    editor.placeholder = mode==='pick' ? o.cell(st.fr, st.fc).text : '';
+    editor.classList.add('editing');
+    placeEditor();
+    const len = editor.value.length; editor.setSelectionRange(len, len);
+  }
+  function endEdit(commit){
+    if(!st.editing) return;
+    const v = editor.value, touched = st.touched;
+    st.editing = false; st.mode = null;
+    editor.classList.remove('editing'); editor.value = ''; editor.placeholder = '';
+    if(commit && touched) commitValues([{r:st.fr, c:st.fc, val:v}]);
+  }
+  function selectionTSV(){
+    const b = bounds(), lines = [];
+    for(let r=b.r0; r<=b.r1; r++){
+      const row = [];
+      for(let c=b.c0; c<=b.c1; c++) row.push(o.cell(r,c).text);
+      lines.push(row.join('\t'));
+    }
+    return lines.join('\n');
+  }
+  function clearRange(){
+    const b = bounds(), list = [];
+    for(let r=b.r0; r<=b.r1; r++) for(let c=b.c0; c<=b.c1; c++) list.push({r, c, val:''});
+    commitValues(list);
+  }
+  function pasteText(text){
+    const lines = text.replace(/\r/g,'').split('\n');
+    if(lines.length>1 && lines[lines.length-1]==='') lines.pop();
+    const block = lines.map(l=>l.split('\t'));
+    const b = bounds(), list = [];
+    if(block.length===1 && block[0].length===1){
+      // 1つの値は、選択範囲すべてに入れる(Excelで1セルをコピーして範囲に貼り付けるのと同じ)
+      for(let r=b.r0; r<=b.r1; r++) for(let c=b.c0; c<=b.c1; c++) list.push({r, c, val:block[0][0]});
+    } else {
+      const w = Math.max(...block.map(x=>x.length));
+      block.forEach((row,i)=>row.forEach((v,j)=>{ const r=b.r0+i, c=b.c0+j; if(r<R && c<C) list.push({r, c, val:v}); }));
+      st.ar = b.r0; st.ac = b.c0; st.fr = Math.min(R-1, b.r0+block.length-1); st.fc = Math.min(C-1, b.c0+w-1);
+    }
+    commitValues(list);
+  }
+
+  editor.addEventListener('focus', ()=>{ o.wrap.classList.add('ag-focused'); placeEditor(); });
+  editor.addEventListener('blur', ()=>{ endEdit(true); o.wrap.classList.remove('ag-focused'); });
+  editor.addEventListener('input', ()=>{
+    if(st.editing){ st.touched = true; return; }
+    if(!o.editable()){ editor.value = ''; return; }
+    // 選択中のセルで文字を打ち始めたら、その内容で上書き入力を始める
+    st.editing = true; st.mode = 'enter'; st.touched = true;
+    editor.classList.add('editing');
+    placeEditor();
+  });
+  editor.addEventListener('compositionstart', ()=>{
+    if(st.editing || !o.editable()) return;
+    st.editing = true; st.mode = 'enter'; st.touched = true;
+    editor.value = '';
+    editor.classList.add('editing');
+    placeEditor();
+  });
+  editor.addEventListener('keydown', (e)=>{
+    if(e.isComposing || e.keyCode===229) return;
+    const ctrl = e.ctrlKey || e.metaKey;
+    if(ctrl){
+      const k = e.key.toLowerCase();
+      if(k==='z' && !st.editing){ e.preventDefault(); if(e.shiftKey) actRedo(); else actUndo(); }
+      else if(k==='y' && !st.editing){ e.preventDefault(); actRedo(); }
+      else if(k==='a' && !st.editing){ e.preventDefault(); st.ar=0; st.ac=0; st.fr=R-1; st.fc=C-1; paint(); }
+      return; // コピー・切り取り・貼り付けは下のclipboardイベントで扱う
+    }
+    const arrows = {ArrowUp:[-1,0], ArrowDown:[1,0], ArrowLeft:[0,-1], ArrowRight:[0,1]};
+    if(st.editing){
+      if(e.key==='Enter'){ e.preventDefault(); endEdit(true); setSel(st.fr+(e.shiftKey?-1:1), st.fc, false); }
+      else if(e.key==='Tab'){ e.preventDefault(); endEdit(true); setSel(st.fr, st.fc+(e.shiftKey?-1:1), false); }
+      else if(e.key==='Escape'){ e.preventDefault(); endEdit(false); }
+      else if(arrows[e.key] && st.mode==='enter'){ e.preventDefault(); endEdit(true); setSel(st.fr+arrows[e.key][0], st.fc+arrows[e.key][1], false); }
+      return;
+    }
+    if(arrows[e.key]){ e.preventDefault(); setSel(st.fr+arrows[e.key][0], st.fc+arrows[e.key][1], e.shiftKey); }
+    else if(e.key==='Enter'){ e.preventDefault(); setSel(st.fr+(e.shiftKey?-1:1), st.fc, false); }
+    else if(e.key==='Tab'){ e.preventDefault(); setSel(st.fr, st.fc+(e.shiftKey?-1:1), false); }
+    else if(e.key==='Home'){ e.preventDefault(); setSel(st.fr, 0, e.shiftKey); }
+    else if(e.key==='End'){ e.preventDefault(); setSel(st.fr, C-1, e.shiftKey); }
+    else if(e.key==='F2'){ e.preventDefault(); startEdit('edit', o.cell(st.fr, st.fc).text); }
+    else if(e.key==='Delete' || e.key==='Backspace'){ e.preventDefault(); clearRange(); }
+  });
+  editor.addEventListener('copy', (e)=>{ if(st.editing) return; e.preventDefault(); e.clipboardData.setData('text/plain', selectionTSV()); });
+  editor.addEventListener('cut', (e)=>{ if(st.editing) return; e.preventDefault(); e.clipboardData.setData('text/plain', selectionTSV()); clearRange(); });
+  editor.addEventListener('paste', (e)=>{
+    if(st.editing) return;
+    e.preventDefault();
+    if(!o.editable()) return;
+    pasteText(e.clipboardData.getData('text'));
+  });
+  scroll.addEventListener('mousedown', (e)=>{
+    if(e.target===editor) return;
+    const td = e.target.closest('td.ag-cell');
+    if(!td) return;
+    e.preventDefault();
+    if(st.editing) endEdit(true);
+    setSel(+td.dataset.r, +td.dataset.c, e.shiftKey);
+    st.dragging = true;
+    editor.focus({preventScroll:true});
+  });
+  scroll.addEventListener('mouseover', (e)=>{
+    if(!st.dragging) return;
+    if(e.buttons!==1){ st.dragging = false; return; }
+    const td = e.target.closest('td.ag-cell');
+    if(!td) return;
+    st.fr = +td.dataset.r; st.fc = +td.dataset.c;
+    paint();
+  });
+  scroll.addEventListener('dblclick', (e)=>{
+    if(!e.target.closest('td.ag-cell')) return;
+    // ダブルクリックでは空欄から入力を始め、候補一覧(全教科)を選べるようにする。何も入れずに離れたら元のまま
+    startEdit('pick', '');
+    editor.focus({preventScroll:true});
+  });
+  refresh();
+  return { refresh, stopDrag(){ st.dragging = false; }, pasteText, get sel(){ return {...st}; }, editor };
 }
+
 function renderActualsTab(){
   const wrap = document.getElementById('actualsWrap');
   if(!wrap) return;
   document.getElementById('actFyDisplay').textContent = state.meta.fiscalYear;
   document.getElementById('actSubjectList').innerHTML = REQUIRED_HOURS_SUBJECTS.map(s=>`<option value="${escapeHtml(s)}">`).join('');
-  const cs = document.getElementById('actClassSelect');
-  const prevClass = cs.value;
-  const classes = classList();
-  cs.innerHTML = classes.map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
-  if(classes.some(c=>c.id===prevClass)) cs.value = prevClass;
-  const cls = actSelectedClass();
+  document.querySelectorAll('#actScopeSwitch button').forEach(b=>b.classList.toggle('active', b.dataset.scope===actScope));
+  const sel = document.getElementById('actualsMonthSelect');
+  if(!actMonthInitialized){
+    // 初めて開いた時は今日の月を表示する(年度外なら先頭の月)
+    const now = new Date(), v = `${now.getFullYear()}-${now.getMonth()+1}`;
+    if([...sel.options].some(op=>op.value===v)) sel.value = v;
+    actMonthInitialized = true;
+  }
   const {year, month} = actSelectedMonth();
   if(!year){ wrap.innerHTML = '<p class="preview-empty">月を選択してください。</p>'; return; }
-  const cid = cls.id, g = cls.g;
-  const dis = editUnlocked ? '' : ' disabled';
-
-  let html = '';
-  // 月の時間割(日ごと)
-  html += `<div class="panel"><h2>${cls.label}　${month}月の時間割</h2>`;
-  html += '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">各コマの左の小さな記号は、年間予定入力の①〜⑥に入っている内容です。「道」「総」「学」「音」は自動でその教科になり(灰色)、「1」〜「6」「●」のコマは教科を入力してください(未入力は黄色)。自動で入った教科や、行事などで空いているコマも、書き換えて教科を入れられます(太字。年間予定入力には反映されません)。自動で入った教科の欄を空にすると「授業なし」として扱います。書き換えを取り消すには、元の教科を入れ直してください。</p>';
-  html += '<div style="overflow-x:auto;"><table class="stats-table act-grid"><thead><tr><th>日</th><th>曜</th>'+['①','②','③','④','⑤','⑥'].map(x=>`<th>${x}</th>`).join('')+'</tr></thead><tbody>';
+  const classes = actScopeClasses();
   const dim = daysInMonth(year, month);
+  const recs = [], attend = [];
   for(let d=1; d<=dim; d++){
-    const key = dkey(year, month, d);
-    const dow = new Date(year, month-1, d).getDay();
-    const rec = migrateDayRecord(state.days[key]);
-    const attending = isSchoolDay(year, month, d, g);
-    html += `<tr class="${attending?'':'act-off'}"><td>${d}</td><td>${ACT_DOW_LABEL[dow]}</td>`;
-    for(let p=0; p<6; p++){
-      const code = actualCode(rec, g, p);
-      const ov = actualOverride(key, cid, p);
-      const derived = actualDerived(rec, g, p);
-      const eff = ov!==null ? ov : derived;
-      const state_ = ov!==null ? 'act-manual' : (derived ? 'act-auto' : (isLessonCode(code) ? 'act-need' : 'act-none'));
-      html += `<td class="${state_}"><span class="act-code">${escapeHtml(code)}</span><input type="text" class="act-cell" list="actSubjectList" data-key="${key}" data-p="${p}" value="${escapeHtml(eff)}"${dis}></td>`;
-    }
-    html += '</tr>';
+    recs.push(migrateDayRecord(state.days[dkey(year,month,d)]));
+    attend.push({1:isSchoolDay(year,month,d,1), 2:isSchoolDay(year,month,d,2), 3:isSchoolDay(year,month,d,3)});
   }
-  html += '</tbody></table></div></div>';
+  const scopeLabel = actScope==='all' ? '全校' : `${actScope}年`;
 
-  // 基本時間割(月〜金)と貼り付け
-  const tt = state.classTimetables[cid] || {};
-  html += `<div class="panel"><h2>${cls.label}の基本時間割(月〜金)</h2>`;
-  html += '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">曜日ごとの時間割を登録しておくと、「この月に貼り付け」で、年間予定入力の①〜⑥に「1」〜「6」が入っているコマへまとめて教科を入れられます。数字は基本時間割の何時間目かを表すものとして扱います(例: 月曜の③に「2」とあれば、月曜の②の教科が入ります)。すでに教科が入っているコマや、「●」のコマは変更しません。</p>';
-  html += '<table class="stats-table act-grid"><thead><tr><th></th>'+ACT_WEEKDAYS.map(w=>`<th>${ACT_DOW_LABEL[w]}</th>`).join('')+'</tr></thead><tbody>';
-  for(let p=0; p<6; p++){
-    html += `<tr><td>${'①②③④⑤⑥'[p]}</td>`+ACT_WEEKDAYS.map(w=>`<td><input type="text" class="act-tt" list="actSubjectList" data-dow="${w}" data-p="${p}" value="${escapeHtml((tt[w]&&tt[w][p])||'')}"${dis}></td>`).join('')+'</tr>';
-  }
-  html += '</tbody></table>';
-  html += `<div class="field-row" style="margin-top:8px;"><button type="button" class="ghost" id="actPasteMonth"${dis}>この月(${month}月)に貼り付け</button>`;
-  if(actualsPasteUndo) html += `<button type="button" class="ghost" id="actPasteUndo"${dis}>直前の貼り付けを元に戻す(${escapeHtml(actualsPasteUndo.label)})</button>`;
-  html += '<span id="actPasteMsg" style="font-size:12.5px;color:var(--ink-soft);"></span></div></div>';
+  let html = `<div class="panel"><h2>${scopeLabel}　${month}月の時間割</h2>`;
+  html += '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">Excelと同じように、セルをクリックして選択し、そのまま入力すると上書きできます(ダブルクリックで候補から選択、F2で内容を編集)。ドラッグやShift+矢印で範囲を選び、Ctrl+C/Ctrl+Vでコピー・貼り付け(Excelからの貼り付けも可)、Deleteでまとめて消去、Ctrl+Zで元に戻せます。1つの値をコピーして範囲に貼り付けると、範囲すべてに入ります。「国」「数」「英」「保体」のような略称でも入力できます(教科名にそろえて保存します)。</p>';
+  html += '<p style="font-size:12px;color:var(--ink-soft);margin:0 0 6px;">セル左上の小さな記号は年間予定入力の①〜⑥の内容です。灰色の文字=「道」「総」「学」「音」から自動、黄色=教科が未入力の授業コマ、太字=実績タブで書き換えたコマ(年間予定入力には反映されません)、灰色の背景=その学年の登校日でない日。自動で入った教科を消すと「授業なし」になり、元の教科を入れ直すと書き換えは取り消されます。</p>';
+  html += '<div id="actMonthGrid"></div></div>';
 
+  html += `<div class="panel"><h2>${scopeLabel}の基本時間割(月〜金)</h2>`;
+  html += '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">学級ごとの曜日別の時間割です。上の表と同じ操作で入力・コピー・貼り付けできます。「この月に貼り付け」を押すと、表示中の学級すべてについて、年間予定入力で「1」〜「6」が入っているコマへ教科をまとめて入れます(数字は基本時間割の何時間目かとして扱います。例: 月曜の③に「2」→月曜の②の教科)。すでに教科が入っているコマと「●」のコマは変更しません。貼り付け後も「元に戻す」で取り消せます。</p>';
+  html += '<div id="actTtGrid"></div>';
+  html += `<div class="field-row" style="margin-top:8px;"><button type="button" class="ghost" id="actPasteMonth"${editUnlocked?'':' disabled'}>この月(${month}月)に貼り付け</button><span id="actPasteMsg" style="font-size:12.5px;color:var(--ink-soft);"></span></div></div>`;
   html += '<div id="actSummaryWrap"></div>';
   wrap.innerHTML = html;
-  renderActualsSummary();
 
-  // datalist付きの欄は、入力済みだと前方一致する候補しか出ないため、フォーカス時に一旦空にして全候補を出す
-  // (年間予定入力タブと同じ方式。何も入力せず離れたら元に戻す)。wrapは再描画しても同じ要素なので登録は1回だけ
-  if(!wrap.dataset.dlBound){
-  wrap.dataset.dlBound = '1';
-  wrap.addEventListener('focusin', (e)=>{
-    const inp = e.target;
-    if(inp.tagName==='INPUT' && inp.hasAttribute('list') && inp.value){ inp.dataset.dlOrig = inp.value; inp.dataset.dlTouched = '0'; inp.value = ''; }
+  actGridsLive = [];
+  const monthGrid = createActGrid({
+    wrap: document.getElementById('actMonthGrid'),
+    classes,
+    rowHeadLabels: ['日','曜'],
+    rowHeads: recs.map((rec,i)=>[String(i+1), ACT_DOW_LABEL[new Date(year,month-1,i+1).getDay()]]),
+    editable: ()=>editUnlocked,
+    cell(r, c){
+      const cls = classes[Math.floor(c/6)], p = c%6, key = dkey(year,month,r+1), rec = recs[r];
+      const code = actualCode(rec, cls.g, p);
+      const ov = actualOverride(key, cls.id, p);
+      const derived = actualDerived(rec, cls.g, p);
+      const text = ov!==null ? ov : derived;
+      let k = ov!==null ? 'ag-manual' : (derived ? 'ag-auto' : (isLessonCode(code) ? 'ag-need' : ''));
+      if(!attend[r][cls.g]) k += ' ag-off';
+      return {text, cls:k, code, title:`${cls.label} ${month}/${r+1} ${'①②③④⑤⑥'[p]}　年間予定入力: ${code||'(空欄)'}`};
+    },
+    commit(list){
+      actPushUndo();
+      list.forEach(({r,c,val})=>{
+        const cls = classes[Math.floor(c/6)], p = c%6, key = dkey(year,month,r+1);
+        const v = normalizeSubject(val);
+        const derived = actualDerived(recs[r], cls.g, p);
+        setActualOverride(key, cls.id, p, v===derived ? null : v);
+      });
+      markDirty();
+    },
+    onChanged(){ renderActualsSummary(); actUpdateUndoButtons(); }
   });
-  wrap.addEventListener('input', (e)=>{ if(e.target.dataset && e.target.dataset.dlOrig!==undefined) e.target.dataset.dlTouched = '1'; });
-  wrap.addEventListener('focusout', (e)=>{
-    const inp = e.target;
-    if(inp.tagName==='INPUT' && inp.dataset.dlOrig!==undefined){
-      if(inp.value==='' && inp.dataset.dlTouched!=='1') inp.value = inp.dataset.dlOrig;
-      delete inp.dataset.dlOrig; delete inp.dataset.dlTouched;
-    }
+  const ttGrid = createActGrid({
+    wrap: document.getElementById('actTtGrid'),
+    classes,
+    rowHeadLabels: ['曜'],
+    rowHeads: ACT_WEEKDAYS.map(w=>[ACT_DOW_LABEL[w]]),
+    editable: ()=>editUnlocked,
+    cell(r, c){
+      const cls = classes[Math.floor(c/6)], p = c%6, w = ACT_WEEKDAYS[r];
+      const tt = state.classTimetables[cls.id];
+      return {text: (tt && tt[w] && tt[w][p]) || '', cls:'', code:'', title:`${cls.label} ${ACT_DOW_LABEL[w]}曜 ${'①②③④⑤⑥'[p]}`};
+    },
+    commit(list){
+      actPushUndo();
+      list.forEach(({r,c,val})=>{
+        const cls = classes[Math.floor(c/6)], p = c%6, w = ACT_WEEKDAYS[r];
+        if(!state.classTimetables[cls.id]) state.classTimetables[cls.id] = {};
+        if(!state.classTimetables[cls.id][w]) state.classTimetables[cls.id][w] = ['','','','','',''];
+        state.classTimetables[cls.id][w][p] = normalizeSubject(val);
+      });
+      markDirty();
+    },
+    onChanged(){ actUpdateUndoButtons(); }
   });
-  wrap.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && e.target.tagName==='INPUT') e.target.blur(); });
-  }
+  actGridsLive = [monthGrid, ttGrid];
 
-  wrap.querySelectorAll('.act-cell').forEach(inp=>{
-    inp.addEventListener('change', ()=>{
-      if(!editUnlocked) return;
-      const key = inp.dataset.key, p = Number(inp.dataset.p);
-      const val = inp.value.trim();
-      const rec = migrateDayRecord(state.days[key]);
-      const derived = actualDerived(rec, g, p);
-      setActualOverride(key, cid, p, val===derived ? null : val);
-      const ov = actualOverride(key, cid, p);
-      const code = actualCode(rec, g, p);
-      inp.parentElement.className = ov!==null ? 'act-manual' : (derived ? 'act-auto' : (isLessonCode(code) ? 'act-need' : 'act-none'));
-      if(ov===null) inp.value = derived;
-      markDirty();
-      renderActualsSummary();
-    });
-  });
-  wrap.querySelectorAll('.act-tt').forEach(inp=>{
-    inp.addEventListener('change', ()=>{
-      if(!editUnlocked) return;
-      const w = Number(inp.dataset.dow), p = Number(inp.dataset.p);
-      if(!state.classTimetables[cid]) state.classTimetables[cid] = {};
-      if(!state.classTimetables[cid][w]) state.classTimetables[cid][w] = ['','','','','',''];
-      state.classTimetables[cid][w][p] = inp.value.trim();
-      markDirty();
-    });
-  });
-  const btnPaste = document.getElementById('actPasteMonth');
-  btnPaste.addEventListener('click', ()=>{
+  document.getElementById('actPasteMonth').addEventListener('click', ()=>{
     if(!editUnlocked) return;
     const msg = document.getElementById('actPasteMsg');
-    const tt = state.classTimetables[cid] || {};
     const changes = [];
-    for(let d=1; d<=dim; d++){
-      const key = dkey(year, month, d);
-      const dow = new Date(year, month-1, d).getDay();
-      if(!tt[dow]) continue;
-      const rec = migrateDayRecord(state.days[key]);
-      for(let p=0; p<6; p++){
-        const code = actualCode(rec, g, p);
-        if(!/^[1-6]$/.test(code)) continue;
-        if(actualOverride(key, cid, p)!==null) continue;
-        const subj = (tt[dow][Number(code)-1]||'').trim();
-        if(subj) changes.push({key, p, subj});
+    classes.forEach(cls=>{
+      const tt = state.classTimetables[cls.id] || {};
+      for(let d=1; d<=dim; d++){
+        const dow = new Date(year, month-1, d).getDay();
+        if(!tt[dow]) continue;
+        const key = dkey(year, month, d), rec = recs[d-1];
+        for(let p=0; p<6; p++){
+          const code = actualCode(rec, cls.g, p);
+          if(!/^[1-6]$/.test(code)) continue;
+          if(actualOverride(key, cls.id, p)!==null) continue;
+          const subj = (tt[dow][Number(code)-1]||'').trim();
+          if(subj) changes.push({key, cid:cls.id, p, subj});
+        }
       }
-    }
+    });
     if(changes.length===0){ msg.textContent = '貼り付けられるコマがありません(基本時間割が空か、対象のコマに既に教科が入っています)。'; return; }
-    if(!confirm(`${cls.label}の${month}月、${changes.length}コマに基本時間割の教科を入れます。よろしいですか？`)) return;
-    actualsPasteUndo = {json: JSON.stringify(state.actuals), label:`${cls.label} ${month}月`};
-    changes.forEach(c=>setActualOverride(c.key, cid, c.p, c.subj));
+    if(!confirm(`${scopeLabel}(${classes.length}学級)の${month}月、${changes.length}コマに基本時間割の教科を入れます。よろしいですか？`)) return;
+    actPushUndo();
+    changes.forEach(ch=>setActualOverride(ch.key, ch.cid, ch.p, ch.subj));
     markDirty();
-    renderActualsTab();
-    document.getElementById('actPasteMsg').textContent = `${changes.length}コマに貼り付けました。`;
+    actRefreshAll();
+    msg.textContent = `${changes.length}コマに貼り付けました(元に戻す場合は「↶ 元に戻す」またはCtrl+Z)。`;
   });
-  const btnUndo = document.getElementById('actPasteUndo');
-  if(btnUndo) btnUndo.addEventListener('click', ()=>{
-    if(!editUnlocked || !actualsPasteUndo) return;
-    state.actuals = JSON.parse(actualsPasteUndo.json);
-    actualsPasteUndo = null;
-    markDirty();
-    renderActualsTab();
-    document.getElementById('actPasteMsg').textContent = '貼り付けを元に戻しました。';
-  });
+  renderActualsSummary();
+  actUpdateUndoButtons();
 }
-// 教科別時数(選択中の学級)と、全学級の達成率一覧
+// 表示中の学級について、教科ごとの時数と目標(必要時数)に対する割合を一覧にする
 function renderActualsSummary(){
   const wrap = document.getElementById('actSummaryWrap');
   if(!wrap) return;
-  const cls = actSelectedClass();
   const {year, month} = actSelectedMonth();
+  const classes = actScopeClasses();
   const fyMonths = fiscalMonthList(state.meta.fiscalYear);
   const now = new Date();
   const todayKey = dkey(now.getFullYear(), now.getMonth()+1, now.getDate());
   const toDate = key => key <= todayKey;
   const pct = (a,b) => b>0 ? Math.round(a/b*1000)/10 : null;
-  const pctText = v => v===null ? '―' : `${v}%`;
-  const rh = state.requiredHours['g'+cls.g];
+  const byClass = classes.map(c=>({c,
+    m: tallyActuals(c.id, c.g, [{year,month}]),
+    t: tallyActuals(c.id, c.g, fyMonths, toDate),
+    y: tallyActuals(c.id, c.g, fyMonths)}));
+  const extra = [...new Set(byClass.flatMap(x=>Object.keys(x.y.counts)))].filter(s=>!REQUIRED_HOURS_SUBJECTS.includes(s));
+  const scopeLabel = actScope==='all' ? '全校' : `${actScope}年`;
 
-  const tMonth = tallyActuals(cls.id, cls.g, [{year,month}]);
-  const tToDate = tallyActuals(cls.id, cls.g, fyMonths, toDate);
-  const tYear = tallyActuals(cls.id, cls.g, fyMonths);
-  const extra = [...new Set([...Object.keys(tMonth.counts), ...Object.keys(tYear.counts)])].filter(s=>!REQUIRED_HOURS_SUBJECTS.includes(s));
-
-  let html = `<div class="panel"><h2>${cls.label}の教科別時数</h2>`;
-  html += `<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">「目標」は設定タブの必要時数(${cls.g}年)です。「今日まで」は今日(${now.getMonth()+1}/${now.getDate()})までに入力されているコマ、「年度計」は今後の予定として入力済みのコマも含めた年度全体の数です。</p>`;
-  html += '<table class="stats-table"><thead><tr><th>教科</th><th>'+month+'月</th><th>今日まで</th><th>年度計</th><th>目標</th><th>達成率(今日まで)</th><th>見込み(年度計)</th><th>過不足(年度計)</th></tr></thead><tbody>';
-  let sumM=0, sumT=0, sumY=0, sumR=0;
-  const row = (label, m, t, y, r, isTotal) => {
-    const diff = r!==null ? y - r : null;
-    const diffStyle = diff===null ? '' : (diff<0 ? 'color:#c0392b;' : (diff>0 ? 'color:#1f7a3d;' : ''));
-    return `<tr${isTotal?' class="stats-total"':''}><td>${label}</td><td>${m}</td><td>${t}</td><td>${y}</td><td>${r===null?'―':r}</td><td>${r===null?'―':pctText(pct(t,r))}</td><td>${r===null?'―':pctText(pct(y,r))}</td><td style="${diffStyle}">${diff===null?'―':(diff>0?'+':'')+diff}</td></tr>`;
-  };
-  REQUIRED_HOURS_SUBJECTS.forEach(s=>{
-    const m = tMonth.counts[s]||0, t = tToDate.counts[s]||0, y = tYear.counts[s]||0, r = Number(rh[s])||0;
-    sumM+=m; sumT+=t; sumY+=y; sumR+=r;
-    html += row(s, m, t, y, r, false);
-  });
-  html += row('合計(標準時数との比較)', sumM, sumT, sumY, sumR, true);
-  extra.forEach(s=>{ html += row(`${escapeHtml(s)}(目標なし)`, tMonth.counts[s]||0, tToDate.counts[s]||0, tYear.counts[s]||0, null, false); });
-  html += `<tr><td>教科未入力のコマ</td><td>${tMonth.unassigned}</td><td>${tToDate.unassigned}</td><td>${tYear.unassigned}</td><td>―</td><td>―</td><td>―</td><td>―</td></tr>`;
-  html += '</tbody></table>';
-  html += '<small class="hint">「教科未入力のコマ」は、年間予定入力で「1」〜「6」「●」が入っているのに、まだ教科が決まっていないコマの数です。目標にない名前の教科(例:「学年活動」など)は「目標なし」として別に数え、合計には含めません。</small></div>';
-
-  // 全学級の達成率一覧(年度計/目標)
-  const classes = classList();
-  const byClass = classes.map(c=>({c, t: tallyActuals(c.id, c.g, fyMonths, toDate), y: tallyActuals(c.id, c.g, fyMonths)}));
-  html += '<div class="panel"><h2>全学級の達成率一覧</h2>';
-  html += '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">各学級の「今日まで」のコマ数と、目標に対する割合です(かっこ内は予定を含めた年度計の見込み)。</p>';
+  let html = `<div class="panel"><h2>${scopeLabel}の教科別時数と達成率</h2>`;
+  html += `<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">各セルは「今日(${now.getMonth()+1}/${now.getDate()})までのコマ数/目標」と達成率です。下段は ${month}月のコマ数と、今後の予定として入力済みの分も含めた年度計の見込み(割合)です。目標は設定タブの必要時数です。</p>`;
   html += '<div style="overflow-x:auto;"><table class="stats-table act-overview"><thead><tr><th>教科</th>'+classes.map(c=>`<th>${c.label}</th>`).join('')+'</tr></thead><tbody>';
-  const cellHtml = (t, y, r) => {
-    if(!r) return '<td>―</td>';
+  const cellHtml = (m, t, y, r) => {
+    if(!r) return `<td><span class="act-ov-num">${t}</span><br><small class="act-ov-sub">${month}月 ${m}／年度計 ${y}</small></td>`;
     const p1 = pct(t, r), p2 = pct(y, r);
-    return `<td><span class="act-ov-num">${t}/${r}</span> ${pctText(p1)}<br><small class="act-ov-sub">(見込み ${pctText(p2)})</small></td>`;
+    const low = p2!==null && p2 < 100 ? ' act-ov-short' : '';
+    return `<td><span class="act-ov-num">${t}/${r}</span> <strong>${p1}%</strong><br><small class="act-ov-sub${low}">${month}月 ${m}／見込み ${y} (${p2}%)</small></td>`;
   };
   REQUIRED_HOURS_SUBJECTS.forEach(s=>{
-    html += `<tr><td>${s}</td>`+byClass.map(({c,t,y})=>cellHtml(t.counts[s]||0, y.counts[s]||0, Number(state.requiredHours['g'+c.g][s])||0)).join('')+'</tr>';
+    html += `<tr><td>${s}</td>`+byClass.map(({c,m,t,y})=>cellHtml(m.counts[s]||0, t.counts[s]||0, y.counts[s]||0, Number(state.requiredHours['g'+c.g][s])||0)).join('')+'</tr>';
   });
-  html += '<tr class="stats-total"><td>合計</td>'+byClass.map(({c,t,y})=>{
-    const r = REQUIRED_HOURS_SUBJECTS.reduce((a,s)=>a+(Number(state.requiredHours['g'+c.g][s])||0),0);
-    const tt = REQUIRED_HOURS_SUBJECTS.reduce((a,s)=>a+(t.counts[s]||0),0);
-    const yy = REQUIRED_HOURS_SUBJECTS.reduce((a,s)=>a+(y.counts[s]||0),0);
-    return cellHtml(tt, yy, r);
-  }).join('')+'</tr>';
-  html += '<tr><td>教科未入力のコマ(年度計)</td>'+byClass.map(({y})=>`<td>${y.unassigned}</td>`).join('')+'</tr>';
-  html += '</tbody></table></div></div>';
+  const sumOf = (x) => REQUIRED_HOURS_SUBJECTS.reduce((a,s)=>a+(x.counts[s]||0),0);
+  html += '<tr class="stats-total"><td>合計(標準時数)</td>'+byClass.map(({c,m,t,y})=>cellHtml(sumOf(m), sumOf(t), sumOf(y), REQUIRED_HOURS_SUBJECTS.reduce((a,s)=>a+(Number(state.requiredHours['g'+c.g][s])||0),0))).join('')+'</tr>';
+  extra.forEach(s=>{
+    html += `<tr><td>${escapeHtml(s)}(目標なし)</td>`+byClass.map(({m,t,y})=>cellHtml(m.counts[s]||0, t.counts[s]||0, y.counts[s]||0, 0)).join('')+'</tr>';
+  });
+  html += '<tr><td>教科未入力のコマ</td>'+byClass.map(({m,t,y})=>`<td><span class="act-ov-num">${t.unassigned}</span><br><small class="act-ov-sub">${month}月 ${m.unassigned}／年度計 ${y.unassigned}</small></td>`).join('')+'</tr>';
+  html += '</tbody></table></div>';
+  html += '<small class="hint">「教科未入力のコマ」は、年間予定入力で「1」〜「6」「●」が入っているのに、まだ教科が決まっていないコマの数です。目標にない名前の教科は「目標なし」として別に数え、合計には含めません。見込みが100%に届かない教科は赤字で表示します。</small></div>';
   wrap.innerHTML = html;
 }
 function actShiftMonth(delta){
@@ -3936,10 +4151,14 @@ function actShiftMonth(delta){
   sel.selectedIndex = idx;
   renderActualsTab();
 }
-document.getElementById('actClassSelect').addEventListener('change', renderActualsTab);
+document.querySelectorAll('#actScopeSwitch button').forEach(b=>{
+  b.addEventListener('click', ()=>{ actScope = b.dataset.scope; renderActualsTab(); });
+});
 document.getElementById('actualsMonthSelect').addEventListener('change', renderActualsTab);
 document.getElementById('actPrevMonth').addEventListener('click', ()=>actShiftMonth(-1));
 document.getElementById('actNextMonth').addEventListener('click', ()=>actShiftMonth(1));
+document.getElementById('actUndoBtn').addEventListener('click', actUndo);
+document.getElementById('actRedoBtn').addEventListener('click', actRedo);
 
 function renderMealsTab(){
   const wrap = document.getElementById('mealsWrap');
@@ -4719,6 +4938,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-26</strong>: 「実績」タブを、学年ごと(1年・2年・3年)または全校の学級を1つの表に並べて表示・編集する形に変更。表はExcelと同じように、範囲選択・コピー/貼り付け(Excelとの相互コピペ可)・Deleteでの一括消去・Ctrl+Zでの元に戻す・キーボードでの移動ができる。「国」「数」「英」などの略称でも入力可。基本時間割の貼り付けは表示中の学級すべてにまとめて適用。</li>
     <li><strong>2026-09-26</strong>: 「実績」タブを新設。学級ごと・月ごとに①〜⑥の教科を入力でき(年間予定入力の記号をもとに、道徳・総合・特別活動・音楽は自動)、曜日ごとの基本時間割を登録してまとめて貼り付けられる。教科ごとの時数を集計し、設定タブの必要時数(目標)との比較・達成率と、全学級の達成率一覧を表示。設定タブに学年ごとの学級数を追加。「時数・集計」タブの「教科別実績の入力(手入力)」と「必要時数との比較」は実績タブに置き換えた。</li>
     <li><strong>2026-09-26</strong>: タブを整理。月間予定表・年間予定表の教員用/家庭用をそれぞれ1つのタブにまとめ、画面上部の「教員用」「家庭用」ボタンで切り替えられるようにした(月間予定表は切り替えても表示中の月をそのまま引き継ぎます)。</li>
     <li><strong>2026-09-25</strong>: 見直しで見つかった点をまとめて修正。年間予定入力タブの土曜の網掛けを、予定表と同じ「全学年が登校する日だけ外す」に統一。月間予定表(画面)で1〜3月の「令和◯年度」が1年ずれていたのを修正。年間予定表の画面表示にも特別支援学級の④と、Excelと同じ見出しの揃えを反映。複数月出力の「参考」シートは金色の帯をやめ【参考】表示のみで区別(白黒印刷対応)。そのほか古い案内文の修正と、使われなくなったデータ・書式の整理。</li>
@@ -4877,12 +5097,14 @@ document.getElementById('helpBody').innerHTML = `
   </ol>
 
   <h4>実績(学級ごとの時間割・教科時数)</h4>
-  <p>「実績」タブでは、学級ごと・月ごとに時間割(①〜⑥の教科)を入力し、教科時数を集計できます。学級数は「設定」タブの「学級数」で学年ごとに指定します。</p>
+  <p>「実績」タブでは、学年ごと(1年・2年・3年)または全校の学級を1つの表に並べて、月ごとの時間割(①〜⑥の教科)を入力し、教科時数を集計できます。上部のボタンで表示する学年・全校を切り替えます。学級数は「設定」タブの「学級数」で学年ごとに指定します。</p>
   <ul>
-    <li>各コマの初期値は、その学年の年間予定入力の①〜⑥から決まります。「道」「総」「学」「音」はそれぞれ道徳・総合・特別活動・音楽として自動で数え(灰色)、「1」〜「6」「●」のコマは教科を入力します(未入力は黄色)。候補から選ぶか、直接入力できます。</li>
-    <li>自動で入った教科や、行事などで空いているコマも書き換えられます(太字で表示。年間予定入力には反映されません)。自動で入った教科の欄を空にすると「授業なし」になり、元の教科を入れ直すと書き換えは取り消されます。</li>
-    <li>「基本時間割(月〜金)」に曜日ごとの時間割を登録し、「この月に貼り付け」を押すと、年間予定入力で「1」〜「6」が入っているコマにまとめて教科を入れられます。数字は基本時間割の何時間目かとして扱います(例: 月曜の③に「2」とあれば月曜の②の教科)。すでに教科が入っているコマと「●」のコマは変更しません。貼り付け直後は「直前の貼り付けを元に戻す」で取り消せます。</li>
-    <li>「教科別時数」では、選んだ学級の教科ごとのコマ数(その月・今日まで・年度計)と、設定タブの必要時数(目標)との比較・割合を表示します。「全学級の達成率一覧」では、全学級の教科ごとの達成率を一覧で比べられます。特別支援学級(5組)は対象外です。</li>
+    <li>表はExcelと同じように操作できます。セルをクリックして選択し、そのまま入力すると上書き(Enterで下、Tabで右へ移動)、ダブルクリックで候補から選択、F2で内容を編集、Escで取り消し。ドラッグやShift+矢印キーで範囲を選び、Ctrl+C/Ctrl+X/Ctrl+Vでコピー・切り取り・貼り付け(Excelで作った時間割の貼り付けも可)、Deleteでまとめて消去、Ctrl+Z/Ctrl+Yで元に戻す・やり直しができます。1つの値をコピーして範囲に貼り付けると、範囲すべてに同じ教科が入ります。</li>
+    <li>「国」「数」「英」「理」「社」「音」「美」「保体」「技家」「道」「総」「学活」などの略称でも入力・貼り付けでき、必要時数の教科名(国語・外国語・保健体育・技術家庭・特別活動など)にそろえて保存します。</li>
+    <li>各コマの初期値は、その学年の年間予定入力の①〜⑥から決まります(セル左上の小さな記号)。「道」「総」「学」「音」はそれぞれ道徳・総合・特別活動・音楽として自動で数え(灰色の文字)、「1」〜「6」「●」のコマは教科を入力します(未入力は黄色)。</li>
+    <li>自動で入った教科や、行事などで空いているコマも書き換えられます(太字で表示。年間予定入力には反映されません)。自動で入った教科を消すと「授業なし」になり、元の教科を入れ直すと書き換えは取り消されます。</li>
+    <li>「基本時間割(月〜金)」に学級ごとの曜日別の時間割を登録し、「この月に貼り付け」を押すと、表示中の学級すべてについて、年間予定入力で「1」〜「6」が入っているコマにまとめて教科を入れられます。数字は基本時間割の何時間目かとして扱います(例: 月曜の③に「2」とあれば月曜の②の教科)。すでに教科が入っているコマと「●」のコマは変更しません。貼り付けも「元に戻す」で取り消せます。</li>
+    <li>「教科別時数と達成率」では、表示中の学級について、教科ごとの今日までのコマ数と目標(設定タブの必要時数)に対する達成率、その月のコマ数、予定を含めた年度計の見込みを一覧で表示します。見込みが100%に届かない教科は赤字になります。特別支援学級(5組)は対象外です。</li>
   </ul>
 
   <h4>印刷部数の記録</h4>
