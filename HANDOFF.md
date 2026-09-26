@@ -9,9 +9,9 @@ Claude(claude.aiおよびClaude Code)での対話を通じて開発してきた�
 使う先生向けの説明は [README.md](README.md)、変更の記録は [CHANGELOG.md](CHANGELOG.md)、全アプリ共通のルールは `../CLAUDE.md` にある。
 このファイルは 2026-09-27 に `chatからの引継ぎ資料/files/HANDOFF.md` からアプリフォルダ直下へ移した。最初に受け取った資料のフォルダ `chatからの引継ぎ資料/`(最初の版のアプリ本体・サンプルデータ・資料のzip)は、同じ日にユーザーの指示で削除した。必要なときは Git の履歴から取り出せる(例: `git show 004883d:"chatからの引継ぎ資料/files.zip" > files.zip`)。
 
-**使う場所(2026-09-27 決定)**: 先生方は校務共有サーバーに置いた `index.html` と `.dat` ファイルを Chrome / Edge で開いて使う。GitHub Pages は開発・確認用。
+**使う場所(2026-09-27 決定)**: 先生方は校務共有サーバーに置いた `index.html` と データファイル(`.json`)を Chrome / Edge で開いて使う。GitHub Pages は開発・確認用。
 
-**2026-09-27 の変更**: 自動バックアップのファイル名を `行事予定_バックアップ_YYYY-MM-DD_HHMMSS.dat` に変更(共通ルールに合わせた。以前は `学校名_backup_YYYYMMDD_HHMMSS.dat`)。README・CHANGELOG・CLAUDE.md・.gitignore を追加。
+**2026-09-27 の変更**: データファイルの拡張子を `.dat` から `.json` に変更(中身は以前と同じJSON。開くときは `.json` と `.dat` の両方を選べる。保存・新規作成・自動バックアップ・サンプル出力は `.json`)。保存時に改行と字下げを入れるようにした(`stateToText`。読み込みは以前の1行の形式もそのまま読める)。自動バックアップのファイル名は `行事予定_バックアップ_YYYY-MM-DD_HHMMSS.json`(共通ルールに合わせた。以前は `学校名_backup_YYYYMMDD_HHMMSS.dat`)。`サンプルデータ_1年分.dat` を `.json` に改名。README・CHANGELOG・CLAUDE.md・.gitignore を追加。
 
 ## 現在の状況と次にやること(2026-09-26時点・まずここを読む)
 
@@ -53,7 +53,7 @@ Claude(claude.aiおよびClaude Code)での対話を通じて開発してきた�
 - **形式**: 単一のHTMLファイル(ビルド不要、ブラウザで直接開くだけで動作)
 - **対応ブラウザ**: Chrome / Edge 推奨(File System Access APIを使用するため)。他ブラウザではダウンロード方式にフォールバック
 - **依存ライブラリ**: なし(外部ライブラリ・CDN一切不使用。Excel生成も自前のZIP/OOXML実装)
-- **データ形式**: `.dat`拡張子のJSONファイル(`state`オブジェクトをそのままシリアライズ)。`formatVersion: 7`
+- **データ形式**: `.json`拡張子のJSONファイル(`state`オブジェクトを `stateToText` で改行・字下げ付きにして保存。2026-09-26 までは `.dat` 拡張子・改行なしで、今もそのまま読める)。`formatVersion: 7`
 
 ## 元になったExcelファイル
 
@@ -122,7 +122,7 @@ Claude(claude.aiおよびClaude Code)での対話を通じて開発してきた�
 }
 ```
 
-`normalizeState(obj)`が、欠けているフィールドを古い`.dat`ファイル読込時に自動補完する(後方互換)。**新しいフィールドを追加した際は必ずこの関数にも追記すること。** 廃止したフィールド`extraHours`(その他の手入力)・`subjectActuals`(教科別実績の手入力)は、読込時に`delete`で取り除いている。
+`normalizeState(obj)`が、欠けているフィールドを古いデータファイル(`.dat` を含む)読込時に自動補完する(後方互換)。**新しいフィールドを追加した際は必ずこの関数にも追記すること。** 廃止したフィールド`extraHours`(その他の手入力)・`subjectActuals`(教科別実績の手入力)は、読込時に`delete`で取り除いている。
 
 ### 「①〜⑥」欄と実績タブの関係(2026-09-26に方針変更)
 
