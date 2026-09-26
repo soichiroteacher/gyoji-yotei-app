@@ -7,7 +7,7 @@ Claude(claude.aiおよびClaude Code)での対話を通じて開発してきた�
 新しいClaudeセッションがこのファイルとGitHubリポジトリだけを見て作業を再開できるように書かれています。**
 
 使う先生向けの説明は [README.md](README.md)、変更の記録は [CHANGELOG.md](CHANGELOG.md)、全アプリ共通のルールは `../CLAUDE.md` にある。
-このファイルは 2026-09-27 に `chatからの引継ぎ資料/files/HANDOFF.md` からアプリフォルダ直下へ移した(`chatからの引継ぎ資料/` の残りは最初に受け取った資料で、今は使っていない)。
+このファイルは 2026-09-27 に `chatからの引継ぎ資料/files/HANDOFF.md` からアプリフォルダ直下へ移した。最初に受け取った資料のフォルダ `chatからの引継ぎ資料/`(最初の版のアプリ本体・サンプルデータ・資料のzip)は、同じ日にユーザーの指示で削除した。必要なときは Git の履歴から取り出せる(例: `git show 004883d:"chatからの引継ぎ資料/files.zip" > files.zip`)。
 
 **使う場所(2026-09-27 決定)**: 先生方は校務共有サーバーに置いた `index.html` と `.dat` ファイルを Chrome / Edge で開いて使う。GitHub Pages は開発・確認用。
 
