@@ -32,13 +32,13 @@ Claude(claude.aiおよびClaude Code)での対話を通じて開発してきた�
 
 ## どこに何があるか(最重要)
 
-- **ローカル作業フォルダ**: `C:\Users\idolo\Documents\projects\myapp\行事予定アプリ\`
+- **ローカル作業フォルダ**: `C:\Users\idolo\Documents\projects\apps\school-events\`
 - **本体ファイル**: `index.html`(単一HTMLファイル、ビルド不要。旧ファイル名`行事予定管理アプリ_Phase1.html`から2026-09-09にリネーム。GitHub Pagesでリダイレクトなしにそのまま開けるようindex.htmlに統一した)
 - **旧ファイル名の転送ページ**: `行事予定管理アプリ_Phase1.html`は11行だけのリダイレクトページ(旧URLのブックマークが404にならないよう残している)。本体ではないので編集しない。
 - **GitHubリポジトリ(バックアップ・履歴管理)**: https://github.com/soichiroteacher/gyoji-yotei-app (**PUBLIC**。作成時はPrivateのつもりだったが実際は公開状態。GitHub Pagesでも公開されている。`origin`、ブランチ`master`)
   - アプリファイルを編集するたびに自動で`git add`→`commit`→`push`する運用(ユーザーの`C:\Users\idolo\.claude\CLAUDE.md`のグローバル指示)。force pushはしない。
   - つまり、ローカルのファイルが万一失われても、このGitHubリポジトリの最新コミットに全履歴が残っている。
-- **クラウドミラー(Googleドライブ同期)**: `C:\Users\idolo\Documents\projects\appcopy\行事予定アプリ\`(`.git`を除いた全ファイルを都度上書きコピー。閲覧用)
+- **クラウドミラー(Googleドライブ同期)**: `C:\Users\idolo\Documents\projects\appcopy\school-events\`(`.git`を除いた全ファイルを都度上書きコピー。閲覧用)
 - **GitHub CLI**: このマシンには`gh`コマンドがインストール済み(`C:\Program Files\GitHub CLI\`、システムPATHにも登録済み)。GitHubアカウント`soichiroteacher`で認証済み。以前、インストール後にセッションを再起動しないまま使ったため一時的に`gh`コマンドが見つからず(PATHはプロセス起動時点のものを引き継ぐ仕様のため)フルパス指定が必要だったことがあるが、セッション再起動後は解消し、通常どおり`gh`だけで呼び出せる(2026-09-07 再起動により解消済み)。
 
 ## 概要
@@ -63,7 +63,7 @@ Claude(claude.aiおよびClaude Code)での対話を通じて開発してきた�
 - 変換手順: `unzip`でxlsmを展開 → PowerShellの`[xml]`でシートXML+`sharedStrings.xml`を解析しTSVへダンプ(自作スクリプト。**重要**: 日本語コメントを含む`.ps1`ファイルはUTF-8 BOM付きで保存しないと、Windows PowerShell 5.1がシステムのコードページで誤読し、コード自体が壊れて分かりにくい形で誤動作する。実際にこれで丸1回ハマった) → TSVをアプリのローカルサーバー配下に置いてブラウザ側`fetch`で読み込み → ブラウザのJSでアプリ自身の`emptyDayRecord`/`getDayStatus`/`normalizeState`等の関数を使って`state`を組み立てる(自前で型を再現するより安全) → 一時的に`static-server.ps1`へ`POST /__save_import`エンドポイントを追加し、組み立てた`state`をそのままファイルへ書き出させた(作業後は元に戻した)。
 - 学年別の登校日(`schoolDay`)は元データに明示的な列が無かったため、「平日かつ祝日でないのに①〜⑥が学年別に全て空欄」→非登校日、「土日祝なのに①〜⑥に何か入っている」→登校日(土曜授業等)、という推定ロジックで補完した。実際に春季/夏季/冬季休業日や、学校公開等の特別土曜授業を正しく検出できた。境界日や校外学習日など、まれに誤判定の可能性があるため、インポート後はユーザー側で年間予定表をひと通り目視確認することが望ましい。
 - 未対応のまま(元データに対応する列が見当たらなかった、または対応が難しかった)フィールド: `weeklyDuty`(週番)、`memo`(このアプリで新設した項目)、`staffMeeting`/`planningMeeting`のチェックボックス(元データでは「会議」欄に「【職員会議】」のようにテキストで注記されているのみで、別列としては存在しなかった。テキスト自体は`meeting`欄にそのまま取り込み済み)。
-- **重要な注意**: 変換済みファイルは実在の学校名・行事内容を含む本番データのため、`C:\Users\idolo\Documents\projects\myapp\`直下(行事予定アプリのGitリポジトリの**外**)に保存した。**このアプリのプロジェクトフォルダ(`行事予定アプリ`)の中には、実データやそれに類するファイルを絶対に置かないこと**(appcopyミラーとGitHub自動pushの対象になり、公開リポジトリに実データが漏れる恐れがあるため)。作業用に一時フォルダ(`.importwork`等)を切る場合も、作業完了後は必ずプロジェクトフォルダの外へ移すか削除すること。
+- **重要な注意**: 変換済みファイルは実在の学校名・行事内容を含む本番データのため、`C:\Users\idolo\Documents\projects\myapp\`直下(行事予定アプリのGitリポジトリの**外**)に保存した(2026-09-26、ユーザーの指示でごみ箱へ移動済み)。**このアプリのプロジェクトフォルダ(`apps\school-events`)の中には、実データやそれに類するファイルを絶対に置かないこと**(appcopyミラーとGitHub自動pushの対象になり、公開リポジトリに実データが漏れる恐れがあるため)。作業用に一時フォルダ(`.importwork`等)を切る場合も、作業完了後は必ずプロジェクトフォルダの外へ移すか削除すること。
 
 ## 環境上の注意(重要)
 
@@ -180,7 +180,7 @@ Excel出力の関数(`exportTeacherMonthlyXlsx`等)は内部で`downloadBytes(by
 ## Git / GitHub運用ルール(ユーザーのグローバル指示、`C:\Users\idolo\.claude\CLAUDE.md`より)
 
 - アプリファイルを編集・追加・削除したら、**確認を取らず自動的に**:
-  1. `C:\Users\idolo\Documents\projects\appcopy\行事予定アプリ\`へ`.git`を除く全体をミラーコピー(`cp -r`。誤って`.git`が混入したら`rm -rf`で除去すること)
+  1. `C:\Users\idolo\Documents\projects\appcopy\school-events\`へ`.git`を除く全体をミラーコピー(`cp -r`。誤って`.git`が混入したら`rm -rf`で除去すること)
   2. `git add` → `git commit`(変更内容が分かる日本語コミットメッセージ) → `git push origin master`
 - **force pushは絶対にしない**。pushが拒否された場合は状況をユーザーに報告して指示を仰ぐ(force pushで解決しない)。
 - リモート未設定やpush失敗時は黙って握りつぶさず、ユーザーに知らせる。
