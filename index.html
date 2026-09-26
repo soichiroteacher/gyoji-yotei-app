@@ -91,6 +91,17 @@
   .aud-switch button{border:none;border-radius:0;background:#fff;color:var(--accent);padding:5px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin:0;}
   .aud-switch button + button{border-left:1px solid var(--accent);}
   .aud-switch button.active{background:var(--accent);color:#fff;}
+  table.act-grid td{padding:3px 4px;white-space:nowrap;}
+  table.act-grid input{width:6.4em;font-size:12.5px;padding:3px 4px;box-sizing:border-box;font-family:inherit;border:1px solid var(--line);border-radius:3px;}
+  table.act-grid td.act-auto input{color:var(--ink-soft);background:#f2f4f3;}
+  table.act-grid td.act-need input{background:#fff6dc;border-color:#d9b04a;}
+  table.act-grid td.act-manual input{font-weight:700;}
+  table.act-grid td.act-none input{background:transparent;}
+  table.act-grid tr.act-off td{background:#f3f3f3;color:#999;}
+  .act-code{display:inline-block;min-width:1.1em;font-size:10.5px;color:var(--ink-soft);margin-right:2px;text-align:center;}
+  table.act-overview td{font-size:12px;line-height:1.35;}
+  .act-ov-num{color:var(--ink-soft);}
+  .act-ov-sub{color:var(--ink-soft);font-size:10.5px;}
   .search-wrap{position:relative;}
   .search-results{
     display:none;position:absolute;top:100%;left:0;margin-top:4px;width:340px;max-height:320px;overflow-y:auto;
@@ -323,6 +334,7 @@
   <button class="tab" data-tab="preview-annual">年間予定表</button>
   <button class="tab" data-tab="meals">給食</button>
   <button class="tab" data-tab="stats">時数・集計</button>
+  <button class="tab" data-tab="actuals">実績</button>
   <button class="tab" data-tab="settings">設定(学校名・祝休日)</button>
 </nav>
 
@@ -449,6 +461,24 @@
   </div>
 </main>
 
+<main class="narrow" id="mainActuals" style="display:none;">
+  <div class="panel" style="padding:12px;">
+    <div class="month-head">
+      <span style="font-size:13px;color:var(--ink-soft);">年度: <strong id="actFyDisplay">-</strong>(設定タブで変更)</span>
+      <label style="font-size:13px;color:var(--ink-soft);margin-left:8px;">学級</label>
+      <select id="actClassSelect"></select>
+      <label style="font-size:13px;color:var(--ink-soft);margin-left:8px;">月</label>
+      <button type="button" class="ghost tiny" id="actPrevMonth">◀</button>
+      <select id="actualsMonthSelect"></select>
+      <button type="button" class="ghost tiny" id="actNextMonth">▶</button>
+      <div class="spacer"></div>
+      <span style="font-size:12px;color:var(--ink-soft);">学級数は「設定」タブで変更できます</span>
+    </div>
+    <datalist id="actSubjectList"></datalist>
+    <div id="actualsWrap"></div>
+  </div>
+</main>
+
 <main class="narrow" id="mainSettings" style="display:none;">
   <div id="tab-settings">
     <div class="panel">
@@ -487,7 +517,14 @@
       <div class="field-row">
         <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="setSupportClassEnabled">特別支援学級を追加する</label>
         <input type="text" id="setSupportClassName" placeholder="5組" style="width:100px;">
-        <small class="hint">年間予定入力タブと月間予定表(画面・Excel出力)の給食・登校日・授業の欄に、学級を1つ追加します(年間予定表の集計・時数集計タブへの反映はありません)。</small>
+        <small class="hint">年間予定入力タブと月間予定表(画面・Excel出力)の給食・登校日・授業の欄に、学級を1つ追加します(年間予定表の年計等には④として加わります。時数・集計タブ・実績タブの集計は対象外です)。</small>
+      </div>
+      <div class="field-row">
+        <label>学級数</label>
+        <span>1年</span><input type="number" id="setClassCountG1" min="1" max="12" step="1" style="width:52px;">
+        <span>2年</span><input type="number" id="setClassCountG2" min="1" max="12" step="1" style="width:52px;">
+        <span>3年</span><input type="number" id="setClassCountG3" min="1" max="12" step="1" style="width:52px;">
+        <small class="hint">「実績」タブで、学級ごとに時間割を入力して教科時数を集計するために使います。</small>
       </div>
     </div>
 
@@ -570,7 +607,7 @@
       <h2>必要時数(学習指導要領)の編集</h2>
       <p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">
         中学校学習指導要領の年間標準授業時数を初期値として入っています。学校の実情に合わせて自由に編集できます(コマ数)。
-        「時数・集計」タブで、道徳・総合的な学習の時間・特別活動(学級活動等)・教科(①〜⑥として入力した合計)について、実績との比較を確認できます。
+        「実績」タブで、学級ごとに時間割から集計した教科時数と、この必要時数(目標)との比較・割合を確認できます。
       </p>
       <div id="requiredHoursWrap"></div>
     </div>
@@ -855,7 +892,7 @@
 // 同じ日に複数回更新した場合に見分けがつくよう、時刻まで含める。
 // 画面右上のバッジに表示するほか、保存時に.datファイルのmetaにも書き込まれるため、
 // 「このファイルはいつの時点のアプリで保存されたか」も後から確認できる。
-const APP_VERSION = '2026-09-26 09:03';
+const APP_VERSION = '2026-09-26 09:27';
 
 const DOW = ['日','月','火','水','木','金','土'];
 
@@ -889,13 +926,8 @@ function defaultRequiredHours(){
     g3:{国語:105,社会:140,数学:140,理科:140,音楽:35,美術:35,保健体育:105,技術家庭:35,外国語:140,道徳:35,総合:70,特別活動:35}
   };
 }
-// 「①〜⑥」欄の数字入力では教科まで区別できないため、道徳・総合・特別活動・音楽(いずれも既存の記号「道」「総」「学」「音」で自動集計済み)を除いた
-// 残りの教科について、実際に行った授業のコマ数を手入力で記録できるようにする(「時数・集計」タブの別セクション)。
-const SUBJECT_ACTUAL_SUBJECTS = ['国語','社会','数学','理科','美術','保健体育','技術家庭','外国語'];
-function defaultSubjectActuals(){
-  const zero = {}; SUBJECT_ACTUAL_SUBJECTS.forEach(s=>{ zero[s]=0; });
-  return { g1:{...zero}, g2:{...zero}, g3:{...zero} };
-}
+const MAX_CLASSES_PER_GRADE = 12;
+function defaultClassCounts(){ return { g1:3, g2:3, g3:3 }; }
 function defaultAnnualSettings(){
   return {
     teacher: { includeMonthly:true, includeTeacherOnly:true, includeMeeting:false },
@@ -940,7 +972,9 @@ function emptyState(){
     presets: defaultPresets(),
     colWidths:{},         // 列key -> 幅(px)。未指定は既定値を使用
     requiredHours: defaultRequiredHours(), // 学年別・教科別の年間必要時数(学習指導要領の値が初期値、編集可)
-    subjectActuals: defaultSubjectActuals(), // 学年別・教科別の「実際に行った授業」の累計コマ数(手入力。①〜⑥の数字入力とは別管理)
+    classCounts: defaultClassCounts(), // 実績タブ: 学年ごとの学級数 {g1,g2,g3}
+    classTimetables: {}, // 実績タブ: 学級ID("1-2"=1年2組) -> {1:[①〜⑥の教科],...,5:[...]}(月〜金の基本時間割)
+    actuals: {},         // 実績タブ: "YYYY-MM-DD" -> 学級ID -> [①〜⑥](null=年間予定入力からの自動判定のまま、文字列=手入力した教科、''=授業なし)
     annualSettings: defaultAnnualSettings() // 年間予定表(教員用/家庭用)にどこまでの情報を載せるか
   };
 }
@@ -1035,14 +1069,15 @@ function normalizeState(obj){
       else REQUIRED_HOURS_SUBJECTS.forEach(sub=>{ if(typeof obj.requiredHours[g][sub]!=='number') obj.requiredHours[g][sub] = def[g][sub]; });
     });
   }
-  if(!obj.subjectActuals){ obj.subjectActuals = defaultSubjectActuals(); }
-  else {
-    const defSA = defaultSubjectActuals();
-    ['g1','g2','g3'].forEach(g=>{
-      if(!obj.subjectActuals[g]) obj.subjectActuals[g] = defSA[g];
-      else SUBJECT_ACTUAL_SUBJECTS.forEach(sub=>{ if(typeof obj.subjectActuals[g][sub]!=='number') obj.subjectActuals[g][sub] = 0; });
-    });
-  }
+  delete obj.subjectActuals; // 廃止した「教科別実績の入力(手入力)」のデータ。実績タブ(時間割から自動集計)に置き換えた
+  // 実績タブ: 学年ごとの学級数・学級ごとの基本時間割・日ごとの教科(年間予定入力の①〜⑥からの自動判定を上書きした分)
+  if(!obj.classCounts || typeof obj.classCounts!=='object') obj.classCounts = defaultClassCounts();
+  ['g1','g2','g3'].forEach(g=>{
+    const n = Number(obj.classCounts[g]);
+    obj.classCounts[g] = (Number.isInteger(n) && n>=1 && n<=MAX_CLASSES_PER_GRADE) ? n : defaultClassCounts()[g];
+  });
+  if(!obj.classTimetables || typeof obj.classTimetables!=='object') obj.classTimetables = {};
+  if(!obj.actuals || typeof obj.actuals!=='object') obj.actuals = {};
   if(!obj.annualSettings){ obj.annualSettings = defaultAnnualSettings(); }
   else {
     const defA = defaultAnnualSettings();
@@ -2209,6 +2244,7 @@ function showView(view){
   document.getElementById('mainPreviewAnnualFamily').style.display = view==='preview-annual-family' ? '' : 'none';
   document.getElementById('mainMeals').style.display = view==='meals' ? '' : 'none';
   document.getElementById('mainStats').style.display = view==='stats' ? '' : 'none';
+  document.getElementById('mainActuals').style.display = view==='actuals' ? '' : 'none';
   document.getElementById('mainSettings').style.display = view==='settings' ? '' : 'none';
   document.querySelectorAll('.aud-switch').forEach(sw=>{
     const aud = sw.dataset.kind==='monthly' ? monthlyAudience : annualAudience;
@@ -2221,6 +2257,7 @@ function showView(view){
   if(view==='preview-annual-family') renderAnnualPreview('family');
   if(view==='meals') renderMealsTab();
   if(view==='stats') renderStats();
+  if(view==='actuals') renderActualsTab();
 }
 function viewForTab(tab){
   if(tab==='preview-monthly') return monthlyAudience==='teacher' ? 'preview-teacher' : 'preview-family';
@@ -2362,6 +2399,7 @@ function populateMonthSelect(){
   populateMonthSelectFor('pvMonthSelect');
   populateMonthSelectFor('pvFamilyMonthSelect');
   populateMonthSelectFor('statsMonthSelect');
+  populateMonthSelectFor('actualsMonthSelect');
 }
 function populateMonthSelectFor(selId){
   const sel = document.getElementById(selId);
@@ -3625,6 +3663,284 @@ function sortedCodes(tally){
   return keys;
 }
 
+//////////////////////// 実績(学級ごとの時間割・教科時数) ////////////////////////
+// 年間予定入力の①〜⑥をもとに各コマの教科を決める。「道」「総」「学」「音」はその教科として自動で数え、
+// 「1」〜「6」「●」のコマは教科を入力する。実績タブではどのコマも手で書き換えられ(年間予定入力側には反映しない)、
+// 書き換えた分だけ state.actuals に保存する(null=自動判定のまま、''=授業なし、文字列=その教科)。
+const ACT_CODE_SUBJECT = {'道':'道徳','総':'総合','学':'特別活動','音':'音楽'};
+const ACT_WEEKDAYS = [1,2,3,4,5];
+const ACT_DOW_LABEL = ['日','月','火','水','木','金','土'];
+let actualsPasteUndo = null; // 直前の「この月に貼り付け」を元に戻すための退避 {json, label}
+function classList(){
+  const list = [];
+  [1,2,3].forEach(g=>{ for(let n=1; n<=state.classCounts['g'+g]; n++) list.push({id:`${g}-${n}`, g, n, label:`${g}年${n}組`}); });
+  return list;
+}
+function isLessonCode(code){ return /^[1-6]$/.test(code) || code==='●'; }
+function actualCode(rec, g, p){ return (rec.periods['g'+g]||[])[p] || ''; }
+function actualDerived(rec, g, p){ return ACT_CODE_SUBJECT[actualCode(rec,g,p)] || ''; }
+function actualOverride(key, cid, p){
+  const a = state.actuals[key] && state.actuals[key][cid];
+  return (a && a[p]!==undefined && a[p]!==null) ? a[p] : null;
+}
+function actualEffective(key, rec, cid, g, p){
+  const o = actualOverride(key, cid, p);
+  return o!==null ? o : actualDerived(rec, g, p);
+}
+function setActualOverride(key, cid, p, val){
+  if(val===null){
+    const d = state.actuals[key];
+    if(!d || !d[cid]) return;
+    d[cid][p] = null;
+    if(d[cid].every(v=>v===null || v===undefined)) delete d[cid];
+    if(Object.keys(d).length===0) delete state.actuals[key];
+    return;
+  }
+  if(!state.actuals[key]) state.actuals[key] = {};
+  if(!state.actuals[key][cid]) state.actuals[key][cid] = [null,null,null,null,null,null];
+  state.actuals[key][cid][p] = val;
+}
+// 学級の教科別コマ数を数える。dayFilter(key)がfalseの日は数えない
+function tallyActuals(cid, g, monthList, dayFilter){
+  const counts = {}; let unassigned = 0;
+  monthList.forEach(({year,month})=>{
+    const dim = daysInMonth(year,month);
+    for(let d=1; d<=dim; d++){
+      const key = dkey(year,month,d);
+      if(dayFilter && !dayFilter(key)) continue;
+      if(!state.days[key] && !state.actuals[key]) continue;
+      const rec = migrateDayRecord(state.days[key]);
+      for(let p=0; p<6; p++){
+        const s = actualEffective(key, rec, cid, g, p);
+        if(s) counts[s] = (counts[s]||0) + 1;
+        else if(actualOverride(key, cid, p)===null && isLessonCode(actualCode(rec,g,p))) unassigned++;
+      }
+    }
+  });
+  return {counts, unassigned};
+}
+function actSelectedMonth(){
+  const [y,m] = (document.getElementById('actualsMonthSelect').value||'').split('-').map(Number);
+  return {year:y, month:m};
+}
+function actSelectedClass(){
+  const list = classList();
+  return list.find(c=>c.id===document.getElementById('actClassSelect').value) || list[0];
+}
+function renderActualsTab(){
+  const wrap = document.getElementById('actualsWrap');
+  if(!wrap) return;
+  document.getElementById('actFyDisplay').textContent = state.meta.fiscalYear;
+  document.getElementById('actSubjectList').innerHTML = REQUIRED_HOURS_SUBJECTS.map(s=>`<option value="${escapeHtml(s)}">`).join('');
+  const cs = document.getElementById('actClassSelect');
+  const prevClass = cs.value;
+  const classes = classList();
+  cs.innerHTML = classes.map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
+  if(classes.some(c=>c.id===prevClass)) cs.value = prevClass;
+  const cls = actSelectedClass();
+  const {year, month} = actSelectedMonth();
+  if(!year){ wrap.innerHTML = '<p class="preview-empty">月を選択してください。</p>'; return; }
+  const cid = cls.id, g = cls.g;
+  const dis = editUnlocked ? '' : ' disabled';
+
+  let html = '';
+  // 月の時間割(日ごと)
+  html += `<div class="panel"><h2>${cls.label}　${month}月の時間割</h2>`;
+  html += '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">各コマの左の小さな記号は、年間予定入力の①〜⑥に入っている内容です。「道」「総」「学」「音」は自動でその教科になり(灰色)、「1」〜「6」「●」のコマは教科を入力してください(未入力は黄色)。自動で入った教科や、行事などで空いているコマも、書き換えて教科を入れられます(太字。年間予定入力には反映されません)。自動で入った教科の欄を空にすると「授業なし」として扱います。書き換えを取り消すには、元の教科を入れ直してください。</p>';
+  html += '<div style="overflow-x:auto;"><table class="stats-table act-grid"><thead><tr><th>日</th><th>曜</th>'+['①','②','③','④','⑤','⑥'].map(x=>`<th>${x}</th>`).join('')+'</tr></thead><tbody>';
+  const dim = daysInMonth(year, month);
+  for(let d=1; d<=dim; d++){
+    const key = dkey(year, month, d);
+    const dow = new Date(year, month-1, d).getDay();
+    const rec = migrateDayRecord(state.days[key]);
+    const attending = isSchoolDay(year, month, d, g);
+    html += `<tr class="${attending?'':'act-off'}"><td>${d}</td><td>${ACT_DOW_LABEL[dow]}</td>`;
+    for(let p=0; p<6; p++){
+      const code = actualCode(rec, g, p);
+      const ov = actualOverride(key, cid, p);
+      const derived = actualDerived(rec, g, p);
+      const eff = ov!==null ? ov : derived;
+      const state_ = ov!==null ? 'act-manual' : (derived ? 'act-auto' : (isLessonCode(code) ? 'act-need' : 'act-none'));
+      html += `<td class="${state_}"><span class="act-code">${escapeHtml(code)}</span><input type="text" class="act-cell" list="actSubjectList" data-key="${key}" data-p="${p}" value="${escapeHtml(eff)}"${dis}></td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table></div></div>';
+
+  // 基本時間割(月〜金)と貼り付け
+  const tt = state.classTimetables[cid] || {};
+  html += `<div class="panel"><h2>${cls.label}の基本時間割(月〜金)</h2>`;
+  html += '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">曜日ごとの時間割を登録しておくと、「この月に貼り付け」で、年間予定入力の①〜⑥に「1」〜「6」が入っているコマへまとめて教科を入れられます。数字は基本時間割の何時間目かを表すものとして扱います(例: 月曜の③に「2」とあれば、月曜の②の教科が入ります)。すでに教科が入っているコマや、「●」のコマは変更しません。</p>';
+  html += '<table class="stats-table act-grid"><thead><tr><th></th>'+ACT_WEEKDAYS.map(w=>`<th>${ACT_DOW_LABEL[w]}</th>`).join('')+'</tr></thead><tbody>';
+  for(let p=0; p<6; p++){
+    html += `<tr><td>${'①②③④⑤⑥'[p]}</td>`+ACT_WEEKDAYS.map(w=>`<td><input type="text" class="act-tt" list="actSubjectList" data-dow="${w}" data-p="${p}" value="${escapeHtml((tt[w]&&tt[w][p])||'')}"${dis}></td>`).join('')+'</tr>';
+  }
+  html += '</tbody></table>';
+  html += `<div class="field-row" style="margin-top:8px;"><button type="button" class="ghost" id="actPasteMonth"${dis}>この月(${month}月)に貼り付け</button>`;
+  if(actualsPasteUndo) html += `<button type="button" class="ghost" id="actPasteUndo"${dis}>直前の貼り付けを元に戻す(${escapeHtml(actualsPasteUndo.label)})</button>`;
+  html += '<span id="actPasteMsg" style="font-size:12.5px;color:var(--ink-soft);"></span></div></div>';
+
+  html += '<div id="actSummaryWrap"></div>';
+  wrap.innerHTML = html;
+  renderActualsSummary();
+
+  // datalist付きの欄は、入力済みだと前方一致する候補しか出ないため、フォーカス時に一旦空にして全候補を出す
+  // (年間予定入力タブと同じ方式。何も入力せず離れたら元に戻す)。wrapは再描画しても同じ要素なので登録は1回だけ
+  if(!wrap.dataset.dlBound){
+  wrap.dataset.dlBound = '1';
+  wrap.addEventListener('focusin', (e)=>{
+    const inp = e.target;
+    if(inp.tagName==='INPUT' && inp.hasAttribute('list') && inp.value){ inp.dataset.dlOrig = inp.value; inp.dataset.dlTouched = '0'; inp.value = ''; }
+  });
+  wrap.addEventListener('input', (e)=>{ if(e.target.dataset && e.target.dataset.dlOrig!==undefined) e.target.dataset.dlTouched = '1'; });
+  wrap.addEventListener('focusout', (e)=>{
+    const inp = e.target;
+    if(inp.tagName==='INPUT' && inp.dataset.dlOrig!==undefined){
+      if(inp.value==='' && inp.dataset.dlTouched!=='1') inp.value = inp.dataset.dlOrig;
+      delete inp.dataset.dlOrig; delete inp.dataset.dlTouched;
+    }
+  });
+  wrap.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && e.target.tagName==='INPUT') e.target.blur(); });
+  }
+
+  wrap.querySelectorAll('.act-cell').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      if(!editUnlocked) return;
+      const key = inp.dataset.key, p = Number(inp.dataset.p);
+      const val = inp.value.trim();
+      const rec = migrateDayRecord(state.days[key]);
+      const derived = actualDerived(rec, g, p);
+      setActualOverride(key, cid, p, val===derived ? null : val);
+      const ov = actualOverride(key, cid, p);
+      const code = actualCode(rec, g, p);
+      inp.parentElement.className = ov!==null ? 'act-manual' : (derived ? 'act-auto' : (isLessonCode(code) ? 'act-need' : 'act-none'));
+      if(ov===null) inp.value = derived;
+      markDirty();
+      renderActualsSummary();
+    });
+  });
+  wrap.querySelectorAll('.act-tt').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      if(!editUnlocked) return;
+      const w = Number(inp.dataset.dow), p = Number(inp.dataset.p);
+      if(!state.classTimetables[cid]) state.classTimetables[cid] = {};
+      if(!state.classTimetables[cid][w]) state.classTimetables[cid][w] = ['','','','','',''];
+      state.classTimetables[cid][w][p] = inp.value.trim();
+      markDirty();
+    });
+  });
+  const btnPaste = document.getElementById('actPasteMonth');
+  btnPaste.addEventListener('click', ()=>{
+    if(!editUnlocked) return;
+    const msg = document.getElementById('actPasteMsg');
+    const tt = state.classTimetables[cid] || {};
+    const changes = [];
+    for(let d=1; d<=dim; d++){
+      const key = dkey(year, month, d);
+      const dow = new Date(year, month-1, d).getDay();
+      if(!tt[dow]) continue;
+      const rec = migrateDayRecord(state.days[key]);
+      for(let p=0; p<6; p++){
+        const code = actualCode(rec, g, p);
+        if(!/^[1-6]$/.test(code)) continue;
+        if(actualOverride(key, cid, p)!==null) continue;
+        const subj = (tt[dow][Number(code)-1]||'').trim();
+        if(subj) changes.push({key, p, subj});
+      }
+    }
+    if(changes.length===0){ msg.textContent = '貼り付けられるコマがありません(基本時間割が空か、対象のコマに既に教科が入っています)。'; return; }
+    if(!confirm(`${cls.label}の${month}月、${changes.length}コマに基本時間割の教科を入れます。よろしいですか？`)) return;
+    actualsPasteUndo = {json: JSON.stringify(state.actuals), label:`${cls.label} ${month}月`};
+    changes.forEach(c=>setActualOverride(c.key, cid, c.p, c.subj));
+    markDirty();
+    renderActualsTab();
+    document.getElementById('actPasteMsg').textContent = `${changes.length}コマに貼り付けました。`;
+  });
+  const btnUndo = document.getElementById('actPasteUndo');
+  if(btnUndo) btnUndo.addEventListener('click', ()=>{
+    if(!editUnlocked || !actualsPasteUndo) return;
+    state.actuals = JSON.parse(actualsPasteUndo.json);
+    actualsPasteUndo = null;
+    markDirty();
+    renderActualsTab();
+    document.getElementById('actPasteMsg').textContent = '貼り付けを元に戻しました。';
+  });
+}
+// 教科別時数(選択中の学級)と、全学級の達成率一覧
+function renderActualsSummary(){
+  const wrap = document.getElementById('actSummaryWrap');
+  if(!wrap) return;
+  const cls = actSelectedClass();
+  const {year, month} = actSelectedMonth();
+  const fyMonths = fiscalMonthList(state.meta.fiscalYear);
+  const now = new Date();
+  const todayKey = dkey(now.getFullYear(), now.getMonth()+1, now.getDate());
+  const toDate = key => key <= todayKey;
+  const pct = (a,b) => b>0 ? Math.round(a/b*1000)/10 : null;
+  const pctText = v => v===null ? '―' : `${v}%`;
+  const rh = state.requiredHours['g'+cls.g];
+
+  const tMonth = tallyActuals(cls.id, cls.g, [{year,month}]);
+  const tToDate = tallyActuals(cls.id, cls.g, fyMonths, toDate);
+  const tYear = tallyActuals(cls.id, cls.g, fyMonths);
+  const extra = [...new Set([...Object.keys(tMonth.counts), ...Object.keys(tYear.counts)])].filter(s=>!REQUIRED_HOURS_SUBJECTS.includes(s));
+
+  let html = `<div class="panel"><h2>${cls.label}の教科別時数</h2>`;
+  html += `<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">「目標」は設定タブの必要時数(${cls.g}年)です。「今日まで」は今日(${now.getMonth()+1}/${now.getDate()})までに入力されているコマ、「年度計」は今後の予定として入力済みのコマも含めた年度全体の数です。</p>`;
+  html += '<table class="stats-table"><thead><tr><th>教科</th><th>'+month+'月</th><th>今日まで</th><th>年度計</th><th>目標</th><th>達成率(今日まで)</th><th>見込み(年度計)</th><th>過不足(年度計)</th></tr></thead><tbody>';
+  let sumM=0, sumT=0, sumY=0, sumR=0;
+  const row = (label, m, t, y, r, isTotal) => {
+    const diff = r!==null ? y - r : null;
+    const diffStyle = diff===null ? '' : (diff<0 ? 'color:#c0392b;' : (diff>0 ? 'color:#1f7a3d;' : ''));
+    return `<tr${isTotal?' class="stats-total"':''}><td>${label}</td><td>${m}</td><td>${t}</td><td>${y}</td><td>${r===null?'―':r}</td><td>${r===null?'―':pctText(pct(t,r))}</td><td>${r===null?'―':pctText(pct(y,r))}</td><td style="${diffStyle}">${diff===null?'―':(diff>0?'+':'')+diff}</td></tr>`;
+  };
+  REQUIRED_HOURS_SUBJECTS.forEach(s=>{
+    const m = tMonth.counts[s]||0, t = tToDate.counts[s]||0, y = tYear.counts[s]||0, r = Number(rh[s])||0;
+    sumM+=m; sumT+=t; sumY+=y; sumR+=r;
+    html += row(s, m, t, y, r, false);
+  });
+  html += row('合計(標準時数との比較)', sumM, sumT, sumY, sumR, true);
+  extra.forEach(s=>{ html += row(`${escapeHtml(s)}(目標なし)`, tMonth.counts[s]||0, tToDate.counts[s]||0, tYear.counts[s]||0, null, false); });
+  html += `<tr><td>教科未入力のコマ</td><td>${tMonth.unassigned}</td><td>${tToDate.unassigned}</td><td>${tYear.unassigned}</td><td>―</td><td>―</td><td>―</td><td>―</td></tr>`;
+  html += '</tbody></table>';
+  html += '<small class="hint">「教科未入力のコマ」は、年間予定入力で「1」〜「6」「●」が入っているのに、まだ教科が決まっていないコマの数です。目標にない名前の教科(例:「学年活動」など)は「目標なし」として別に数え、合計には含めません。</small></div>';
+
+  // 全学級の達成率一覧(年度計/目標)
+  const classes = classList();
+  const byClass = classes.map(c=>({c, t: tallyActuals(c.id, c.g, fyMonths, toDate), y: tallyActuals(c.id, c.g, fyMonths)}));
+  html += '<div class="panel"><h2>全学級の達成率一覧</h2>';
+  html += '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">各学級の「今日まで」のコマ数と、目標に対する割合です(かっこ内は予定を含めた年度計の見込み)。</p>';
+  html += '<div style="overflow-x:auto;"><table class="stats-table act-overview"><thead><tr><th>教科</th>'+classes.map(c=>`<th>${c.label}</th>`).join('')+'</tr></thead><tbody>';
+  const cellHtml = (t, y, r) => {
+    if(!r) return '<td>―</td>';
+    const p1 = pct(t, r), p2 = pct(y, r);
+    return `<td><span class="act-ov-num">${t}/${r}</span> ${pctText(p1)}<br><small class="act-ov-sub">(見込み ${pctText(p2)})</small></td>`;
+  };
+  REQUIRED_HOURS_SUBJECTS.forEach(s=>{
+    html += `<tr><td>${s}</td>`+byClass.map(({c,t,y})=>cellHtml(t.counts[s]||0, y.counts[s]||0, Number(state.requiredHours['g'+c.g][s])||0)).join('')+'</tr>';
+  });
+  html += '<tr class="stats-total"><td>合計</td>'+byClass.map(({c,t,y})=>{
+    const r = REQUIRED_HOURS_SUBJECTS.reduce((a,s)=>a+(Number(state.requiredHours['g'+c.g][s])||0),0);
+    const tt = REQUIRED_HOURS_SUBJECTS.reduce((a,s)=>a+(t.counts[s]||0),0);
+    const yy = REQUIRED_HOURS_SUBJECTS.reduce((a,s)=>a+(y.counts[s]||0),0);
+    return cellHtml(tt, yy, r);
+  }).join('')+'</tr>';
+  html += '<tr><td>教科未入力のコマ(年度計)</td>'+byClass.map(({y})=>`<td>${y.unassigned}</td>`).join('')+'</tr>';
+  html += '</tbody></table></div></div>';
+  wrap.innerHTML = html;
+}
+function actShiftMonth(delta){
+  const sel = document.getElementById('actualsMonthSelect');
+  const idx = sel.selectedIndex + delta;
+  if(idx<0 || idx>=sel.options.length) return;
+  sel.selectedIndex = idx;
+  renderActualsTab();
+}
+document.getElementById('actClassSelect').addEventListener('change', renderActualsTab);
+document.getElementById('actualsMonthSelect').addEventListener('change', renderActualsTab);
+document.getElementById('actPrevMonth').addEventListener('click', ()=>actShiftMonth(-1));
+document.getElementById('actNextMonth').addEventListener('click', ()=>actShiftMonth(1));
+
 function renderMealsTab(){
   const wrap = document.getElementById('mealsWrap');
   if(!wrap) return;
@@ -3793,73 +4109,7 @@ function renderStats(){
   });
   html += '</div>';
 
-  // 教科別実績の入力(手入力・累計)
-  html += '<div class="panel"><h2>教科別実績の入力(手入力)</h2>';
-  html += '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">「①〜⑥」欄の数字入力ではどの教科かまで区別できないため、実際に行った授業のコマ数(年度累計)を教科ごとに手入力できます。道徳・総合的な学習の時間・特別活動・音楽は、既存の記号(「道」「総」「学」「音」)から自動集計されるため、ここには含みません。</p>';
-  html += '<table class="stats-table"><thead><tr><th></th><th>1年</th><th>2年</th><th>3年</th></tr></thead><tbody>';
-  SUBJECT_ACTUAL_SUBJECTS.forEach(sub=>{
-    html += `<tr><td>${sub}</td>`+['g1','g2','g3'].map(g=>
-      `<td><input type="number" min="0" step="1" class="subject-actual-input" data-grade="${g}" data-subject="${sub}" style="width:64px;" value="${state.subjectActuals[g][sub]}"></td>`
-    ).join('')+'</tr>';
-  });
-  const subjectActualTotal = g => SUBJECT_ACTUAL_SUBJECTS.reduce((s,sub)=>s+(Number(state.subjectActuals[g][sub])||0),0);
-  html += `<tr class="stats-total"><td>合計</td><td>${subjectActualTotal('g1')}</td><td>${subjectActualTotal('g2')}</td><td>${subjectActualTotal('g3')}</td></tr>`;
-  html += '</tbody></table></div>';
-
-  // 必要時数との比較(学習指導要領)
-  html += '<div class="panel"><h2>必要時数との比較(年間累計)</h2>';
-  html += '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">道徳・総合的な学習の時間・特別活動・音楽は①〜⑥欄の記号から自動集計、教科(国語・数学など)は上の「教科別実績の入力」の手入力値、「教科等(数字・●入力分の合計)」は①〜⑥に「1」〜「6」または「●」を入力した回数の合計です(教科別の手入力とは別集計につき、目安としてご覧ください)。一番下の「合計」は、上記の自動集計分(道徳・総合・特別活動・音楽・数字/●入力分)を合わせた、学年の標準時数全体との比較です。「設定」タブの「必要時数の編集」で必要時数を変更できます。</p>';
-  html += '<table class="stats-table"><thead><tr><th></th><th>1年 実績</th><th>1年 必要</th><th>1年 過不足</th><th>2年 実績</th><th>2年 必要</th><th>2年 過不足</th><th>3年 実績</th><th>3年 必要</th><th>3年 過不足</th></tr></thead><tbody>';
-  function compareRow(label, actualFn, requiredKey){
-    let row = `<tr><td>${label}</td>`;
-    [1,2,3].forEach(g=>{
-      const actual = actualFn(g);
-      let required;
-      if(requiredKey==='__subjectTotal__'){
-        const rh = state.requiredHours['g'+g];
-        required = REQUIRED_HOURS_SUBJECTS.filter(s=>!['道徳','総合','特別活動'].includes(s)).reduce((s,sub)=>s+(Number(rh[sub])||0),0);
-      } else if(requiredKey==='__grandTotal__'){
-        const rh = state.requiredHours['g'+g];
-        required = REQUIRED_HOURS_SUBJECTS.reduce((s,sub)=>s+(Number(rh[sub])||0),0);
-      } else {
-        required = state.requiredHours['g'+g][requiredKey] || 0;
-      }
-      const diff = actual - required;
-      const diffColor = diff<0 ? 'color:#c0392b;' : (diff>0 ? 'color:#1f7a3d;' : '');
-      row += `<td>${actual}</td><td>${required}</td><td style="${diffColor}">${diff>0?'+':''}${diff}</td>`;
-    });
-    row += '</tr>';
-    return row;
-  }
-  // ①〜⑥に「1」〜「6」または「●」(特別時間割)を入力した回数の合計。「行」(行事によるカット)・
-  // 「弁」(弁当)・「欠」(欠課)は授業時数ではないため含めない
-  const subjectSum = g => ['1','2','3','4','5','6','●'].reduce((s,code)=>s+(yearStats.periodTally[g][code]||0),0);
-  const autoTotal = g => (yearStats.periodTally[g]['道']||0) + (yearStats.periodTally[g]['総']||0) + (yearStats.periodTally[g]['学']||0) + (yearStats.periodTally[g]['音']||0) + subjectSum(g);
-  html += compareRow('道徳', g=>yearStats.periodTally[g]['道']||0, '道徳');
-  html += compareRow('総合的な学習の時間', g=>yearStats.periodTally[g]['総']||0, '総合');
-  html += compareRow('特別活動(学級活動等)', g=>yearStats.periodTally[g]['学']||0, '特別活動');
-  html += compareRow('音楽', g=>yearStats.periodTally[g]['音']||0, '音楽');
-  SUBJECT_ACTUAL_SUBJECTS.forEach(sub=>{
-    html += compareRow(sub, g=>state.subjectActuals['g'+g][sub]||0, sub);
-  });
-  html += compareRow('教科等(数字・●入力分の合計)', subjectSum, '__subjectTotal__');
-  html += compareRow('合計(標準時数との比較)', autoTotal, '__grandTotal__');
-  html += '</tbody></table>';
-  html += '<small class="hint">「教科」必要時数は、必要時数合計から道徳・総合的な学習の時間・特別活動を除いた値(各教科の合計)です。</small>';
-  html += '</div>';
-
   wrap.innerHTML = html;
-  wrap.querySelectorAll('.subject-actual-input').forEach(inp=>{
-    inp.disabled = !editUnlocked;
-    inp.addEventListener('change', (e)=>{
-      if(!editUnlocked) return;
-      const g = e.target.dataset.grade, sub = e.target.dataset.subject;
-      const v = Number(e.target.value);
-      state.subjectActuals[g][sub] = isNaN(v) || v<0 ? 0 : v;
-      markDirty();
-      renderStats();
-    });
-  });
   wrap.querySelectorAll('.event-hour-label').forEach(inp=>{
     inp.disabled = !editUnlocked;
     inp.addEventListener('change', (e)=>{
@@ -4044,8 +4294,9 @@ function renderSettingsTab(){
   renderRequiredHoursEditor();
   renderPrintCountList();
   refreshBackupUI();
+  [1,2,3].forEach(g=>{ document.getElementById('setClassCountG'+g).value = state.classCounts['g'+g]; });
   ['setSchoolName','setVersionLabelMonthly','setVersionLabelAnnual','setFiscalYear','setTerm2Start','setTerm3Start',
-   'setSupportClassEnabled',
+   'setSupportClassEnabled','setClassCountG1','setClassCountG2','setClassCountG3',
    'presetClub','presetLunch','presetPeriod','presetWeeklyDuty',
    'pwCurrentInput','pwNewInput','pwNewInput2','btnChangePassword',
    'btnImportPrevYearEvents','setColorHoliday','setColorAbsent','btnResetColors',
@@ -4232,6 +4483,16 @@ document.getElementById('setSupportClassName').addEventListener('input', (e)=>{
   rebuildColumnDefs();
   refreshAll();
 });
+[1,2,3].forEach(g=>{
+  document.getElementById('setClassCountG'+g).addEventListener('change', (e)=>{
+    if(!editUnlocked) return;
+    const n = Math.round(Number(e.target.value));
+    // 学級数を減らしても、その学級の入力済みデータ(時間割・実績)は消さずに残す(再び増やせば元に戻る)
+    state.classCounts['g'+g] = (n>=1 && n<=MAX_CLASSES_PER_GRADE) ? n : state.classCounts['g'+g];
+    e.target.value = state.classCounts['g'+g];
+    markDirty();
+  });
+});
 function stepMonth(delta){
   const sel = document.getElementById('monthSelect');
   const idx = sel.selectedIndex;
@@ -4268,6 +4529,7 @@ function jumpToDay(y, m, d, focusField){
   document.getElementById('mainPreviewAnnualFamily').style.display='none';
   document.getElementById('mainMeals').style.display='none';
   document.getElementById('mainStats').style.display='none';
+  document.getElementById('mainActuals').style.display='none';
   document.getElementById('mainSettings').style.display='none';
   const fy2 = m>=4 ? y : y-1;
   if(fy2 !== state.meta.fiscalYear){ state.meta.fiscalYear = fy2; populateMonthSelect(); }
@@ -4457,6 +4719,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-26</strong>: 「実績」タブを新設。学級ごと・月ごとに①〜⑥の教科を入力でき(年間予定入力の記号をもとに、道徳・総合・特別活動・音楽は自動)、曜日ごとの基本時間割を登録してまとめて貼り付けられる。教科ごとの時数を集計し、設定タブの必要時数(目標)との比較・達成率と、全学級の達成率一覧を表示。設定タブに学年ごとの学級数を追加。「時数・集計」タブの「教科別実績の入力(手入力)」と「必要時数との比較」は実績タブに置き換えた。</li>
     <li><strong>2026-09-26</strong>: タブを整理。月間予定表・年間予定表の教員用/家庭用をそれぞれ1つのタブにまとめ、画面上部の「教員用」「家庭用」ボタンで切り替えられるようにした(月間予定表は切り替えても表示中の月をそのまま引き継ぎます)。</li>
     <li><strong>2026-09-25</strong>: 見直しで見つかった点をまとめて修正。年間予定入力タブの土曜の網掛けを、予定表と同じ「全学年が登校する日だけ外す」に統一。月間予定表(画面)で1〜3月の「令和◯年度」が1年ずれていたのを修正。年間予定表の画面表示にも特別支援学級の④と、Excelと同じ見出しの揃えを反映。複数月出力の「参考」シートは金色の帯をやめ【参考】表示のみで区別(白黒印刷対応)。そのほか古い案内文の修正と、使われなくなったデータ・書式の整理。</li>
     <li><strong>2026-09-11</strong>: 「(前年度)の行事を候補に追加」機能を調整。祝日(国民の祝日)の日は候補化の対象外にし、1つの欄に複数の行事が全角スペース区切りで入っている場合は項目ごとに別々の候補として登録するように変更。</li>
@@ -4613,8 +4876,14 @@ document.getElementById('helpBody').innerHTML = `
     <li>Chrome / Edge では、次回アプリを開いたときに前回のファイルを自動的に読み込みます。ブラウザの許可が切れている場合だけ、画面上部に表示されるボタンを1回押してください。</li>
   </ol>
 
-  <h4>時数・集計 - 必要時数との比較</h4>
-  <p>「設定」タブの「必要時数(学習指導要領)の編集」には、中学校学習指導要領の年間標準授業時数が初期値として入っています(学年・教科ごとにコマ数を自由に編集できます)。「時数・集計」タブの「必要時数との比較」では、道徳・総合的な学習の時間・特別活動(学級活動等)・音楽、および①〜⑥に「1」〜「6」または「●」(特別時間割)を入力した分をまとめた「教科等」について、実績と必要時数の差(不足はオレンジ〜赤、超過は緑)を確認できます。個々の教科(国語・数学など)ごとの内訳は、時間割の教科までは記録していないため区別できませんが、必要であれば「教科別実績の入力」に手入力できます。表の一番下の「合計」は、これら自動集計分をすべて合わせた、学年の標準時数全体との比較です。</p>
+  <h4>実績(学級ごとの時間割・教科時数)</h4>
+  <p>「実績」タブでは、学級ごと・月ごとに時間割(①〜⑥の教科)を入力し、教科時数を集計できます。学級数は「設定」タブの「学級数」で学年ごとに指定します。</p>
+  <ul>
+    <li>各コマの初期値は、その学年の年間予定入力の①〜⑥から決まります。「道」「総」「学」「音」はそれぞれ道徳・総合・特別活動・音楽として自動で数え(灰色)、「1」〜「6」「●」のコマは教科を入力します(未入力は黄色)。候補から選ぶか、直接入力できます。</li>
+    <li>自動で入った教科や、行事などで空いているコマも書き換えられます(太字で表示。年間予定入力には反映されません)。自動で入った教科の欄を空にすると「授業なし」になり、元の教科を入れ直すと書き換えは取り消されます。</li>
+    <li>「基本時間割(月〜金)」に曜日ごとの時間割を登録し、「この月に貼り付け」を押すと、年間予定入力で「1」〜「6」が入っているコマにまとめて教科を入れられます。数字は基本時間割の何時間目かとして扱います(例: 月曜の③に「2」とあれば月曜の②の教科)。すでに教科が入っているコマと「●」のコマは変更しません。貼り付け直後は「直前の貼り付けを元に戻す」で取り消せます。</li>
+    <li>「教科別時数」では、選んだ学級の教科ごとのコマ数(その月・今日まで・年度計)と、設定タブの必要時数(目標)との比較・割合を表示します。「全学級の達成率一覧」では、全学級の教科ごとの達成率を一覧で比べられます。特別支援学級(5組)は対象外です。</li>
+  </ul>
 
   <h4>印刷部数の記録</h4>
   <p>「設定」タブの「印刷部数の記録」では、行事予定などを印刷して配布した部数を、日付・区分(職員配布/生徒配布)・誰に(または対象学年など)・枚数・メモとして記録できます。一覧の「編集」でその内容を入力欄に呼び出して再保存、「削除」で記録を削除できます。職員配布・生徒配布それぞれの合計枚数が一覧の上部に表示されます。</p>
@@ -4622,8 +4891,6 @@ document.getElementById('helpBody').innerHTML = `
   <h4>自動バックアップ</h4>
   <p>「設定」タブの「自動バックアップ」から、.datファイルのバックアップを自動保存するフォルダを指定できます。一度選んだフォルダは次回以降も記憶されますが、ブラウザの仕様上、アプリを開くたびに「アクセスを許可」ボタンを1回押す必要があります(フォルダの選び直しは不要です)。バックアップの頻度は「保存のたびに毎回」「30分おきに1回」「1日に1回(初期設定)」から選べます。バックアップは元のファイルを上書きせず、日時付きの別ファイルとして保存されます。</p>
 
-  <h4>時数・集計 - 教科別実績の入力</h4>
-  <p>①〜⑥欄の数字入力(1〜6)だけでは、どの教科(国語・数学など)の授業だったかまでは区別できません。「時数・集計」タブの「教科別実績の入力」では、道徳・総合的な学習の時間・特別活動・音楽を除く教科(国語・社会・数学・理科・美術・保健体育・技術家庭・外国語)について、実際に行った授業のコマ数を学年ごとに手入力できます(年度累計の数値を直接編集する形式です)。入力した値は、すぐ下の「必要時数との比較」表にも反映されます。道徳・総合的な学習の時間・特別活動・音楽は、①〜⑥欄とは別の記号(「道」「総」「学」「音」)から自動的に集計されるため、ここでの手入力は不要です。「教科(数字入力分の合計)」の行は、①〜⑥に数字を入力した回数の単純合計であり、教科別の手入力の値とは別集計です(目安としてご覧ください)。</p>
 
   <h4>アプリの不具合・様式変更をAIに依頼するときの書き方</h4>
   <pre>1. 対象ファイル: このアプリの index.html(添付/アップロード)
@@ -5057,6 +5324,7 @@ function refreshAll(){
   if(document.getElementById('mainPreviewAnnualFamily').style.display!=='none') renderAnnualPreview('family');
   if(document.getElementById('mainMeals').style.display!=='none') renderMealsTab();
   if(document.getElementById('mainStats').style.display!=='none') renderStats();
+  if(document.getElementById('mainActuals').style.display!=='none') renderActualsTab();
 }
 if(!supportsFSA){
   const b = document.getElementById('noFileBanner');
