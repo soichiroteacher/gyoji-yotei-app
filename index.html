@@ -907,7 +907,7 @@
 // 同じ日に複数回更新した場合に見分けがつくよう、時刻まで含める。
 // 画面右上のバッジに表示するほか、保存時に.datファイルのmetaにも書き込まれるため、
 // 「このファイルはいつの時点のアプリで保存されたか」も後から確認できる。
-const APP_VERSION = '2026-09-26 09:54';
+const APP_VERSION = '2026-09-26 21:56';
 
 const DOW = ['日','月','火','水','木','金','土'];
 
@@ -4246,6 +4246,50 @@ function renderMealsTab(){
   }
 }
 
+// 学年ごとの授業日数と授業週数。授業週数は2通り:
+// ・登校日のある週: 月〜日を1週とし、その学年の登校日が1日でもある週を1週と数える。月をまたぐ週は、
+//   その週の最初の登校日がある月(学期)に数える(月の合計と学期・年間の値が一致するように)。
+// ・日数換算: 授業日数÷5(小数第1位まで)。
+function computeTeachingDaysWeeks(g){
+  const months = fiscalMonthList(state.meta.fiscalYear);
+  const days = {}, weeks = {}, seenWeeks = new Set();
+  months.forEach(({year,month})=>{
+    const ym = `${year}-${month}`;
+    days[ym] = 0; weeks[ym] = 0;
+    const dim = daysInMonth(year,month);
+    for(let d=1; d<=dim; d++){
+      if(!isSchoolDay(year,month,d,g)) continue;
+      days[ym]++;
+      const dt = new Date(year, month-1, d);
+      const monday = new Date(year, month-1, d - ((dt.getDay()+6)%7));
+      const wk = dkey(monday.getFullYear(), monday.getMonth()+1, monday.getDate());
+      if(!seenWeeks.has(wk)){ seenWeeks.add(wk); weeks[ym]++; }
+    }
+  });
+  return {days, weeks};
+}
+function renderTeachingDaysWeeksPanel(){
+  const months = fiscalMonthList(state.meta.fiscalYear);
+  const groups = [
+    ...months.map(m=>({label:`${m.month}月`, list:[m]})),
+    {label:'1学期', list:getTermMonths(1), total:true},
+    {label:'2学期', list:getTermMonths(2), total:true},
+    {label:'3学期', list:getTermMonths(3), total:true},
+    {label:'年間計', list:months, total:true}
+  ];
+  const sum = (obj, list) => list.reduce((a,m)=>a+(obj[`${m.year}-${m.month}`]||0), 0);
+  let html = '<div class="panel"><h2>授業日数・授業週数</h2><div style="overflow-x:auto;"><table class="stats-table"><thead><tr><th></th>'+groups.map(c=>`<th>${c.label}</th>`).join('')+'</tr></thead><tbody>';
+  [1,2,3].forEach(g=>{
+    const {days, weeks} = computeTeachingDaysWeeks(g);
+    const td = (v, c) => `<td${c.total?' class="stats-total"':''}>${v}</td>`;
+    html += `<tr><td>${g}年　授業日数</td>`+groups.map(c=>td(sum(days,c.list), c)).join('')+'</tr>';
+    html += `<tr><td>${g}年　授業週数(登校日のある週)</td>`+groups.map(c=>td(sum(weeks,c.list), c)).join('')+'</tr>';
+    html += `<tr><td>${g}年　授業週数(日数÷5)</td>`+groups.map(c=>td((Math.round(sum(days,c.list)/5*10)/10).toFixed(1), c)).join('')+'</tr>';
+  });
+  html += '</tbody></table></div>';
+  html += '<small class="hint">授業日数は各学年の登校日の日数です。「登校日のある週」は月〜日を1週とし、登校日が1日でもあれば(祝日などで日数が少ない週も)1週と数えます。月をまたぐ週は、その週の最初の登校日がある月・学期に数えます。「日数÷5」は授業日数を週5日で換算した値で、標準授業時数の「年間35週」と比べる目安になります。</small></div>';
+  return html;
+}
 function renderStats(){
   const wrap = document.getElementById('statsWrap');
   if(!wrap) return;
@@ -4269,6 +4313,7 @@ function renderStats(){
   ];
 
   let html = '';
+  html += renderTeachingDaysWeeksPanel();
 
   // 学校行事の回数(「行事のある日数」は、授業枠(①〜⑥)に入力された「行」の合計時数として集計する。
   // 授業枠に記録されない行事の時数は、下の自由記述欄に手入力して年間計に合算できる)
@@ -4938,6 +4983,7 @@ document.getElementById('btnHolidayOvrSave').addEventListener('click', ()=>{
 document.getElementById('helpBody').innerHTML = `
   <h4>更新履歴</h4>
   <ul class="changelog">
+    <li><strong>2026-09-26</strong>: 「時数・集計」タブに「授業日数・授業週数」を追加。学年ごとに、4月〜3月・学期ごと・年間の授業日数と、授業週数(登校日のある週の数/授業日数÷5の換算値)を表示。</li>
     <li><strong>2026-09-26</strong>: 「年間予定入力」タブの名前を「予定入力」に変更(ヘルプ等の説明文も合わせて変更)。</li>
     <li><strong>2026-09-26</strong>: 「実績」タブを、学年ごと(1年・2年・3年)または全校の学級を1つの表に並べて表示・編集する形に変更。表はExcelと同じように、範囲選択・コピー/貼り付け(Excelとの相互コピペ可)・Deleteでの一括消去・Ctrl+Zでの元に戻す・キーボードでの移動ができる。「国」「数」「英」などの略称でも入力可。基本時間割の貼り付けは表示中の学級すべてにまとめて適用。</li>
     <li><strong>2026-09-26</strong>: 「実績」タブを新設。学級ごと・月ごとに①〜⑥の教科を入力でき(年間予定入力の記号をもとに、道徳・総合・特別活動・音楽は自動)、曜日ごとの基本時間割を登録してまとめて貼り付けられる。教科ごとの時数を集計し、設定タブの必要時数(目標)との比較・達成率と、全学級の達成率一覧を表示。設定タブに学年ごとの学級数を追加。「時数・集計」タブの「教科別実績の入力(手入力)」と「必要時数との比較」は実績タブに置き換えた。</li>
@@ -5083,6 +5129,7 @@ document.getElementById('helpBody').innerHTML = `
   <h4>時数・集計の確認</h4>
   <p>「時数・集計」タブでは、入力した内容から次を自動集計して確認できます(いずれも1〜3年のみが対象です)。</p>
   <ul>
+    <li>授業日数・授業週数(4月〜3月の月ごと、学期ごと、年間計)。授業週数は、登校日が1日でもある週を1週と数えた値と、授業日数÷5で換算した値の2通りを表示します。月をまたぐ週は、その週の最初の登校日がある月・学期に数えます。</li>
     <li>学校行事の回数(授業枠(①〜⑥)に入力された「行」の合計時数、教員のみの内容がある日数)。授業枠に記録されない行事の時数は、名称と時数を自由入力すると年間計に合算されます。</li>
     <li>授業日課の内訳(①〜⑥時限に入力した「道」「総」「学」「1」〜「6」などの記号ごとのコマ数)</li>
   </ul>
