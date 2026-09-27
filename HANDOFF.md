@@ -42,7 +42,7 @@ Claude(claude.aiおよびClaude Code)での対話を通じて開発してきた�
 - **ローカル作業フォルダ**: `C:\Users\idolo\Documents\projects\apps\school-events\`
 - **本体ファイル**: `index.html`(単一HTMLファイル、ビルド不要。旧ファイル名`行事予定管理アプリ_Phase1.html`から2026-09-09にリネーム。GitHub Pagesでリダイレクトなしにそのまま開けるようindex.htmlに統一した)
 - **旧ファイル名の転送ページ**: `行事予定管理アプリ_Phase1.html`は11行だけのリダイレクトページ(旧URLのブックマークが404にならないよう残している)。本体ではないので編集しない。
-- **GitHubリポジトリ(バックアップ・履歴管理)**: https://github.com/soichiroteacher/gyoji-yotei-app (**PUBLIC**。作成時はPrivateのつもりだったが実際は公開状態。GitHub Pagesでも公開されている。`origin`、ブランチ`master`)
+- **GitHubリポジトリ(バックアップ・履歴管理)**: https://github.com/soichiroteacher/school-events (2026-09-27 に旧名から改名。旧名のURLも GitHub が自動で転送するが、GitHub Pages の旧URLは表示されなくなった) (**PUBLIC**。作成時はPrivateのつもりだったが実際は公開状態。GitHub Pagesでも公開されている。`origin`、ブランチ`master`)
   - アプリファイルを編集するたびに自動で`git add`→`commit`→`push`する運用(ユーザーの`C:\Users\idolo\.claude\CLAUDE.md`のグローバル指示)。force pushはしない。
   - つまり、ローカルのファイルが万一失われても、このGitHubリポジトリの最新コミットに全履歴が残っている。
 - **クラウドミラー(Googleドライブ同期)**: `C:\Users\idolo\Documents\projects\appcopy\school-events\`(`.git`を除いた全ファイルを都度上書きコピー。閲覧用)
@@ -215,7 +215,7 @@ Excel出力の関数(`exportTeacherMonthlyXlsx`等)は内部で`downloadBytes(by
 0. **2026年度Excelデータのインポート変換**(2026-09-08): 実際の運用Excel(.xlsm)を読み取り、`.dat`ファイルへ変換。詳細は上記「2026年度Excelデータのインポート変換 — 完了」参照。アプリ本体のコード変更は伴わない(データ移行のみ)。
 
 1. **教科別実績の手入力機能**(2026-09-07): 「時数・集計」タブに、道徳・総合・特別活動・音楽を除く8教科について実際の授業コマ数を手入力できる表を追加。「必要時数との比較」表にも反映。
-2. **GitHubリポジトリ新規作成・自動push運用の開始**(2026-09-07): `gyoji-yotei-app`(Private)を作成、`origin`に設定。以降アプリファイル変更時は自動commit+push。
+2. **GitHubリポジトリ新規作成・自動push運用の開始**(2026-09-07): `gyoji-yotei-app`(Private。2026-09-27 に `school-events` へ改名)を作成、`origin`に設定。以降アプリファイル変更時は自動commit+push。
 3. **印刷部数記録・年間給食喫食数と給食のない日一覧・必要時数比較への自由入力行**(2026-09-07): 設定タブに印刷部数の履歴ログ、時数・集計タブに給食喫食数集計(宿泊行事の例外はチェックボックスで都度切替)、必要時数比較に「その他」手入力行を追加。年度変更ボタンのラベル更新漏れバグも修正。
 4. **17項目の一括改善**(2026-09-07以前): 印刷枚数記録・給食のない日一覧・行事時間数の自由入力・年間予定の右揃え/A3縦向き調整・行事等の複数枠入力モーダル・セル色の設定化・欠セル暗色化・非登校日の網掛け・週番縦書き・入力グリッドのグループ罫線 等。詳細はGitHubのコミット履歴を参照。
 5. それ以前(候補プール機能、Excel書式を原本の罫線・色分けに合わせる調整、時限・週番列のスリム化等)は`git log`参照。
